@@ -1,4 +1,4 @@
-import type { SyntheticEvent } from 'react'
+import type { MouseEvent, SyntheticEvent } from 'react'
 import type { Recipe } from '../types/Recipe'
 
 type RecipeCardProps = {
@@ -15,42 +15,72 @@ function RecipeCard({
   onSelectRecipe,
 }: RecipeCardProps) {
   const fallbackImage =
-    'https://via.placeholder.com/1200x800?text=Recipe+Image'
+    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&q=80&auto=format&fit=crop'
 
   function handleImageError(event: SyntheticEvent<HTMLImageElement, Event>) {
     event.currentTarget.src = fallbackImage
   }
 
+  function handleCardClick() {
+    onSelectRecipe(recipe)
+  }
+
+  function handleFavoriteClick(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    onToggleFavorite(recipe.id)
+  }
+
   return (
     <article className="recipe-card">
-      <img
-        src={recipe.image || fallbackImage}
-        alt={recipe.title}
-        className="recipe-card__image"
-        onClick={() => onSelectRecipe(recipe)}
-        onError={handleImageError}
-      />
+      <button
+        type="button"
+        className="recipe-card__open-button"
+        onClick={handleCardClick}
+        aria-label={`Open ${recipe.title}`}
+      >
+        <img
+          src={recipe.image || fallbackImage}
+          alt={recipe.title}
+          className="recipe-card__image"
+          onError={handleImageError}
+        />
 
-      <div className="recipe-card__content">
-        <div className="recipe-card__meta">
-          <p className="recipe-card__category">{recipe.category}</p>
-          {recipe.source === 'sample' ? (
-            <span className="recipe-card__badge">Sample</span>
-          ) : null}
+        <div className="recipe-card__content">
+          <div className="recipe-card__meta">
+            <p className="recipe-card__category">{recipe.category}</p>
+
+            {recipe.source === 'sample' ? (
+              <span className="recipe-card__badge">🌎 Community</span>
+            ) : (
+              <span className="recipe-card__badge">👤 Yours</span>
+            )}
+          </div>
+
+          <h3 className="recipe-card__title">{recipe.title}</h3>
+
+          <p className="recipe-card__description">{recipe.description}</p>
+
+          <div className="recipe-card__nutrition">
+            <span>🔥 {recipe.calories}</span>
+            <span>🥩 {recipe.protein}g</span>
+            <span>🍚 {recipe.carbs}g</span>
+            <span>🥑 {recipe.fat}g</span>
+          </div>
         </div>
+      </button>
 
-        <h3 className="recipe-card__title">{recipe.title}</h3>
-
-        <p className="recipe-card__description">{recipe.description}</p>
-
-        <p className="recipe-card__calories">{recipe.calories} calories</p>
-
+      <div className="recipe-card__footer">
         <button
           type="button"
-          className="recipe-card__favorite-button"
-          onClick={() => onToggleFavorite(recipe.id)}
+          className={
+            isFavorite
+              ? 'favorite-button favorite-button--active'
+              : 'favorite-button'
+          }
+          onClick={handleFavoriteClick}
         >
-          {isFavorite ? 'Remove favorite' : 'Add to favorites'}
+          {isFavorite ? '❤️ Favorited' : '🤍 Favorite'}
         </button>
       </div>
     </article>

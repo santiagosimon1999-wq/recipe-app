@@ -15,26 +15,48 @@ function RecipeModal({
   onDelete,
   canManage = false,
 }: RecipeModalProps) {
-  const instructions = Array.isArray(recipe.instructions)
-    ? recipe.instructions
-    : recipe.instructions
-        .split('\n')
-        .map((step) => step.trim())
-        .filter((step) => step !== '')
+  const instructions = recipe.instructions
+    .split('\n')
+    .map((step) => step.trim())
+    .filter((step) => step !== '')
 
   return (
-    <div className="recipe-modal__overlay" onClick={onClose}>
+    <div className="recipe-modal-overlay" onClick={onClose}>
       <div
         className="recipe-modal"
         onClick={(event) => event.stopPropagation()}
       >
-        <button
-          type="button"
-          className="recipe-modal__close-button"
-          onClick={onClose}
-        >
-          ×
-        </button>
+        <div className="recipe-modal__top-bar">
+          <div className="recipe-modal__actions">
+            {canManage ? (
+              <>
+                <button
+                  type="button"
+                  className="recipe-modal__edit-button"
+                  onClick={() => onEdit(recipe)}
+                >
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  className="recipe-modal__delete-button"
+                  onClick={() => onDelete(recipe.id)}
+                >
+                  Delete
+                </button>
+              </>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            className="recipe-modal__close-button"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
 
         {recipe.image ? (
           <img
@@ -44,61 +66,57 @@ function RecipeModal({
           />
         ) : null}
 
-        <div className="recipe-modal__content">
-          <div className="recipe-modal__header">
-            <div>
-              <p className="recipe-modal__category">{recipe.category}</p>
-              <h2 className="recipe-modal__title">{recipe.title}</h2>
-            </div>
+        <p className="recipe-card__category">{recipe.category}</p>
 
-            {recipe.source === 'sample' ? (
-              <span className="recipe-card__badge">Sample</span>
-            ) : null}
+        <h2 className="recipe-modal__title">{recipe.title}</h2>
+
+        <p className="recipe-modal__description">{recipe.description}</p>
+
+        <div className="recipe-modal__nutrition-grid">
+          <div className="recipe-modal__nutrition-item">
+            <span>Calories</span>
+            <strong>{recipe.calories}</strong>
           </div>
 
-          <p className="recipe-modal__description">{recipe.description}</p>
-
-          <div className="recipe-modal__nutrition">
-            <p><strong>Calories:</strong> {recipe.calories}</p>
-            <p><strong>Protein:</strong> {recipe.protein}g</p>
-            <p><strong>Carbs:</strong> {recipe.carbs}g</p>
-            <p><strong>Fat:</strong> {recipe.fat}g</p>
+          <div className="recipe-modal__nutrition-item">
+            <span>Protein</span>
+            <strong>{recipe.protein}g</strong>
           </div>
 
-          <div className="recipe-modal__section">
-            <h3>Ingredients</h3>
-            <ul className="recipe-modal__list">
-              {recipe.ingredients.map((ingredient) => (
-                <li key={ingredient}>{ingredient}</li>
-              ))}
-            </ul>
+          <div className="recipe-modal__nutrition-item">
+            <span>Carbs</span>
+            <strong>{recipe.carbs}g</strong>
           </div>
 
-          <div className="recipe-modal__section">
-            <h3>Instructions</h3>
-            <ol className="recipe-modal__list">
-              {instructions.map((step, index) => (
-                <li key={`${index}-${step}`}>{step}</li>
-              ))}
-            </ol>
+          <div className="recipe-modal__nutrition-item">
+            <span>Fat</span>
+            <strong>{recipe.fat}g</strong>
           </div>
-
-          {canManage ? (
-            <div className="recipe-modal__actions">
-              <button type="button" onClick={() => onEdit(recipe)}>
-                Edit
-              </button>
-
-              <button type="button" onClick={() => onDelete(recipe.id)}>
-                Delete
-              </button>
-            </div>
-          ) : recipe.source === 'sample' ? (
-            <p className="recipe-modal__note">
-              Sample recipes are view-only.
-            </p>
-          ) : null}
         </div>
+
+        <div className="recipe-modal__section">
+          <h3>Ingredients</h3>
+          <ul className="recipe-modal__ingredients-list">
+            {recipe.ingredients.map((ingredient, index) => (
+              <li key={`${index}-${ingredient}`}>{ingredient}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="recipe-modal__section">
+          <h3>Instructions</h3>
+          <ol className="recipe-modal__instructions-list">
+            {instructions.map((step, index) => (
+              <li key={`${index}-${step}`}>{step}</li>
+            ))}
+          </ol>
+        </div>
+
+        {!canManage && recipe.source === 'sample' ? (
+          <p className="recipe-modal__description">
+            Sample recipes are view-only.
+          </p>
+        ) : null}
       </div>
     </div>
   )

@@ -51,6 +51,16 @@ function mapDbRecipeToUiRecipe(row: {
   }
 }
 
+function getUserInitial(email: string | undefined) {
+  if (!email) return 'P'
+  return email.charAt(0).toUpperCase()
+}
+
+function getUserName(email: string | undefined) {
+  if (!email) return 'Panda'
+  return email.split('@')[0]
+}
+
 export default function App() {
   const { logout, user } = useAuth()
 
@@ -89,13 +99,7 @@ export default function App() {
       try {
         const rows = await getRecipes(user.id)
         const mappedRecipes = rows.map(mapDbRecipeToUiRecipe)
-
-        const combinedRecipes = [...mappedRecipes, ...initialRecipes].filter(
-          (recipe, index, array) =>
-            array.findIndex((item) => item.id === recipe.id) === index
-        )
-
-        setRecipeList(combinedRecipes)
+        setRecipeList([...mappedRecipes, ...initialRecipes])
       } catch (error) {
         console.error('Failed to load recipes from Supabase:', error)
         setRecipeList(initialRecipes)
@@ -114,9 +118,7 @@ export default function App() {
   }, [theme])
 
   useEffect(() => {
-    if (!formMessage) {
-      return
-    }
+    if (!formMessage) return
 
     const timeoutId = window.setTimeout(() => {
       setFormMessage('')
@@ -148,15 +150,21 @@ export default function App() {
     (recipe) => recipe.source !== 'user'
   )
 
+  const allUserRecipes = recipeList.filter((recipe) => recipe.source === 'user')
+  const totalCalories = allUserRecipes.reduce(
+    (total, recipe) => total + recipe.calories,
+    0
+  )
+  const averageCalories =
+    allUserRecipes.length > 0 ? Math.round(totalCalories / allUserRecipes.length) : 0
+
   const showClearFiltersButton =
     searchTerm !== '' || selectedCategory !== 'All' || showFavoritesOnly
 
   const canManageSelectedRecipe = !!user && selectedRecipe?.source === 'user'
 
   async function handleAddRecipe(recipeData: Recipe) {
-    if (!user || savingRecipe) {
-      return
-    }
+    if (!user || savingRecipe) return
 
     setSavingRecipe(true)
     setFormMessage('')
@@ -164,7 +172,6 @@ export default function App() {
     try {
       if (import.meta.env.DEV) {
         const nutritionDebug = debugParseIngredients(recipeData.ingredients)
-
         console.group('Nutrition debug')
         console.table(nutritionDebug)
         console.groupEnd()
@@ -243,9 +250,7 @@ export default function App() {
   }
 
   function handleStartCreateRecipe() {
-    if (!user) {
-      return
-    }
+    if (!user) return
 
     setRecipeBeingEdited(null)
     setShowRecipeForm(true)
@@ -254,9 +259,7 @@ export default function App() {
   }
 
   function handleStartEditRecipe(recipe: Recipe) {
-    if (!user) {
-      return
-    }
+    if (!user) return
 
     if (recipe.source !== 'user') {
       setFormMessage('Sample recipes cannot be edited.')
@@ -270,18 +273,14 @@ export default function App() {
   }
 
   function handleCancelRecipeForm() {
-    if (savingRecipe) {
-      return
-    }
+    if (savingRecipe) return
 
     setShowRecipeForm(false)
     setRecipeBeingEdited(null)
   }
 
   async function handleDeleteRecipe(recipeId: number) {
-    if (!user) {
-      return
-    }
+    if (!user) return
 
     const recipeToDelete = recipeList.find((recipe) => recipe.id === recipeId)
 
@@ -294,9 +293,7 @@ export default function App() {
       `Delete "${recipeToDelete?.title ?? 'this recipe'}"?`
     )
 
-    if (!confirmed) {
-      return
-    }
+    if (!confirmed) return
 
     try {
       await deleteRecipeById(recipeId)
@@ -352,56 +349,99 @@ export default function App() {
   }
 
   function handleToggleTheme() {
-    setTheme((currentTheme) =>
-      currentTheme === 'light' ? 'dark' : 'light'
-    )
+    setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))
   }
 
   return (
     <AuthGate>
       <main className={`app app--${theme}`}>
         <div className="app__container">
-          <div className="app__header">
-            <div>
-              <h1 className="app__title">My Recipes</h1>
-              <p className="app__favorites-count">
-                Favorites: {favoriteRecipeIds.length}
-              </p>
-            </div>
+          <header className="app-hero">
+            <nav className="app-nav">
+              <div>
+                <p className="app-eyebrow">Recipe social tracker</p>
+                <h1 className="app__title">Panda Recipes</h1>
+              </div>
 
-            <div>
-              {user ? <p>{user.email}</p> : null}
+              <div className="app-nav__actions">
+                <button
+                  type="button"
+                  className="theme-toggle-button"
+                  onClick={handleToggleTheme}
+                >
+                  {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+                </button>
 
-              <button
-                type="button"
-                className="theme-toggle-button"
-                onClick={handleToggleTheme}
-              >
-                {theme === 'light' ? 'Dark mode' : 'Light mode'}
-              </button>
+                {user ? (
+                  <button
+                    type="button"
+                    className="logout-button"
+                    onClick={() => void logout()}
+                  >
+                    Log out
+                  </button>
+                ) : null}
+              </div>
+            </nav>
+
+            <section className="profile-card">
+              <div className="profile-card__main">
+                <div className="profile-card__avatar">
+                  {getUserInitial(user?.email)}
+                </div>
+
+                <div>
+                  <p className="profile-card__label">Welcome back</p>
+                  <h2 className="profile-card__name">
+                    {getUserName(user?.email)}
+                  </h2>
+                  <p className="profile-card__email">{user?.email}</p>
+                </div>
+              </div>
+
+              <div className="profile-card__stats">
+                <div className="profile-stat">
+                  <span>{allUserRecipes.length}</span>
+                  <p>Recipes</p>
+                </div>
+
+                <div className="profile-stat">
+                  <span>{favoriteRecipeIds.length}</span>
+                  <p>Favorites</p>
+                </div>
+
+                <div className="profile-stat">
+                  <span>{averageCalories}</span>
+                  <p>Avg cal</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="hero-content">
+              <div>
+                <p className="app__subtitle">
+                  Save your recipes, track macros, and discover meal ideas like a
+                  social recipe board.
+                </p>
+
+                <div className="hero-tags">
+                  <span>📸 Social recipe sharing</span>
+                  <span>🥗 Macro tracking</span>
+                </div>
+              </div>
 
               {user ? (
-                <button type="button" onClick={() => void logout()}>
-                  Log out
+                <button
+                  type="button"
+                  className="create-recipe-toggle-button"
+                  onClick={handleStartCreateRecipe}
+                  disabled={savingRecipe}
+                >
+                  + Create Recipe
                 </button>
               ) : null}
-            </div>
-          </div>
-
-          <p className="app__subtitle">
-            A simple recipe app built with React + TypeScript
-          </p>
-
-          {user ? (
-            <button
-              type="button"
-              className="create-recipe-toggle-button"
-              onClick={handleStartCreateRecipe}
-              disabled={savingRecipe}
-            >
-              Create recipe
-            </button>
-          ) : null}
+            </section>
+          </header>
 
           {formMessage ? <p className="form-message">{formMessage}</p> : null}
 
@@ -414,60 +454,93 @@ export default function App() {
             />
           ) : null}
 
-          <SearchBar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-          />
+          <section className="discover-panel">
+            <div className="discover-panel__header">
+              <div>
+                <p className="app-eyebrow">Discover</p>
+                <h2>Find your next meal</h2>
+              </div>
+            </div>
 
-          <CategoryFilter
-            selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
-          />
+            <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
 
-          <button
-            type="button"
-            className={
-              showFavoritesOnly
-                ? 'favorites-toggle-button favorites-toggle-button--active'
-                : 'favorites-toggle-button'
-            }
-            onClick={handleToggleShowFavoritesOnly}
-          >
-            {showFavoritesOnly ? 'Showing favorites only' : 'Show favorites only'}
-          </button>
+            <CategoryFilter
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+            />
 
-          {showClearFiltersButton ? (
-            <button
-              type="button"
-              className="clear-filters-button"
-              onClick={handleClearFilters}
-            >
-              Clear filters
-            </button>
-          ) : null}
+            <div className="filter-actions">
+              <button
+                type="button"
+                className={
+                  showFavoritesOnly
+                    ? 'favorites-toggle-button favorites-toggle-button--active'
+                    : 'favorites-toggle-button'
+                }
+                onClick={handleToggleShowFavoritesOnly}
+              >
+                {showFavoritesOnly ? '★ Favorites only' : '☆ Show favorites'}
+              </button>
+
+              {showClearFiltersButton ? (
+                <button
+                  type="button"
+                  className="clear-filters-button"
+                  onClick={handleClearFilters}
+                >
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
+          </section>
 
           {userRecipes.length > 0 ? (
-            <>
-              <h2>Your Recipes</h2>
+            <section className="recipe-section">
+              <div className="recipe-section__header">
+                <div>
+                  <p className="app-eyebrow">Your kitchen</p>
+                  <h2>Your Recipes</h2>
+                </div>
+                <span>{userRecipes.length} saved</span>
+              </div>
+
               <RecipeGrid
                 recipes={userRecipes}
                 favoriteRecipeIds={favoriteRecipeIds}
                 onToggleFavorite={handleToggleFavorite}
                 onSelectRecipe={handleSelectRecipe}
               />
-            </>
-          ) : null}
+            </section>
+          ) : (
+            <section className="empty-profile-state">
+              <h2>Your recipe board is empty</h2>
+              <p>
+                Create your first recipe with ingredients, macros, instructions,
+                and a real image.
+              </p>
+              <button type="button" onClick={handleStartCreateRecipe}>
+                Create your first recipe
+              </button>
+            </section>
+          )}
 
           {sampleRecipes.length > 0 ? (
-            <>
-              <h2>Sample Recipes</h2>
+            <section className="recipe-section">
+              <div className="recipe-section__header">
+                <div>
+                  <p className="app-eyebrow">Community inspiration</p>
+                  <h2>Explore Recipes</h2>
+                </div>
+                <span>{sampleRecipes.length} ideas</span>
+              </div>
+
               <RecipeGrid
                 recipes={sampleRecipes}
                 favoriteRecipeIds={favoriteRecipeIds}
                 onToggleFavorite={handleToggleFavorite}
                 onSelectRecipe={handleSelectRecipe}
               />
-            </>
+            </section>
           ) : null}
 
           {selectedRecipe ? (
