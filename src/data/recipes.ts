@@ -1,78 +1,434 @@
-import type { Recipe } from "../types/Recipe";
+import type { Recipe } from '../types/Recipe'
 
 export const recipes: Recipe[] = [
   {
     id: 1,
-    title: "Chicken Bowl",
-    description: "Healthy grilled chicken with rice and vegetables.",
-    category: "Healthy",
+    title: 'Greek Chicken Salad',
     image:
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c",
+      'https://images.unsplash.com/photo-1546793665-c74683f339c1?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A fresh Mediterranean salad with grilled chicken, cucumber, tomato, and olive oil.',
+    category: 'Mediterranean',
+    calories: 420,
+    protein: 36,
+    carbs: 14,
+    fat: 24,
     ingredients: [
-      "Chicken breast",
-      "Rice",
-      "Broccoli",
-      "Carrots"
+      '200g chicken breast',
+      '1 tomato',
+      '1 cucumber',
+      '1/2 onion',
+      '1 tbsp olive oil',
+      '1 cup lettuce',
     ],
-    instructions: [
-      "Cook the rice",
-      "Grill the chicken",
-      "Steam vegetables",
-      "Serve together"
-    ],
-    calories: 520,
-    protein: 42,
-    carbs: 48,
-    fat: 14,
+    instructions:
+      'Season and grill the chicken. Chop the vegetables. Slice the chicken and combine everything in a bowl. Drizzle with olive oil and serve.',
   },
-
   {
     id: 2,
-    title: "Classic Burger",
-    description: "Juicy beef burger with fries.",
-    category: "Fast Food",
+    title: 'Veggie Stir Fry Rice Bowl',
     image:
-      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd",
+      'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A colorful Asian-style rice bowl with stir-fried vegetables and simple seasoning.',
+    category: 'Asian',
+    calories: 390,
+    protein: 10,
+    carbs: 60,
+    fat: 12,
     ingredients: [
-      "Beef patty",
-      "Burger buns",
-      "Cheese",
-      "Fries"
+      '1 cup rice',
+      '1 carrot',
+      '1 bell pepper',
+      '1 cup broccoli',
+      '1 tbsp olive oil',
+      '1/2 onion',
     ],
-    instructions: [
-      "Cook beef patty",
-      "Toast buns",
-      "Assemble burger",
-      "Serve with fries"
-    ],
-    calories: 890,
-    protein: 45,
-    carbs: 70,
-    fat: 48,
+    instructions:
+      'Cook the rice. Slice the vegetables. Stir fry the onion, carrot, pepper, and broccoli in olive oil. Serve the vegetables over rice.',
   },
-
   {
     id: 3,
-    title: "Pasta Alfredo",
-    description: "Creamy Alfredo pasta with parmesan cheese.",
-    category: "Italian",
+    title: 'Black Bean Taco Bowl',
     image:
-      "https://images.unsplash.com/photo-1645112411341-6c4fd023714a",
-    ingredients: [
-      "Pasta",
-      "Cream",
-      "Parmesan",
-      "Butter"
-    ],
-    instructions: [
-      "Boil pasta",
-      "Prepare Alfredo sauce",
-      "Mix together",
-      "Serve hot"
-    ],
-    calories: 760,
-    protein: 24,
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A Mexican-inspired bowl with black beans, rice, tomato, and onion.',
+    category: 'Mexican',
+    calories: 510,
+    protein: 16,
     carbs: 82,
-    fat: 36,
+    fat: 12,
+    ingredients: [
+      '1 cup black beans',
+      '1 cup rice',
+      '1 tomato',
+      '1/2 onion',
+      '1 tbsp olive oil',
+    ],
+    instructions:
+      'Cook the rice. Heat the black beans. Chop the tomato and onion. Assemble in a bowl and finish with olive oil.',
   },
-];
+  {
+    id: 4,
+    title: 'Creamy Pasta Bowl',
+    image:
+      'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A simple Italian pasta bowl with cheese, tomato, and onion.',
+    category: 'Italian',
+    calories: 610,
+    protein: 22,
+    carbs: 74,
+    fat: 24,
+    ingredients: [
+      '1 cup pasta',
+      '100g cheese',
+      '1 tomato',
+      '1/2 onion',
+      '1 tbsp olive oil',
+    ],
+    instructions:
+      'Cook the pasta. Sauté onion and tomato in olive oil. Toss with pasta and melt in the cheese before serving.',
+  },
+  {
+    id: 5,
+    title: 'Chickpea Curry Bowl',
+    image:
+      'https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A cozy Indian-inspired chickpea bowl with onion, tomato, and rice.',
+    category: 'Indian',
+    calories: 540,
+    protein: 18,
+    carbs: 78,
+    fat: 14,
+    ingredients: [
+      '1 cup chickpeas',
+      '1 cup rice',
+      '1 tomato',
+      '1 onion',
+      '1 tbsp olive oil',
+    ],
+    instructions:
+      'Cook the rice. Sauté onion and tomato in olive oil. Add chickpeas and simmer briefly. Serve over rice.',
+  },
+  {
+    id: 6,
+    title: 'Roasted Sweet Potato Plate',
+    image: '',
+    description:
+      'A satisfying vegan plate with roasted sweet potato, chickpeas, and spinach.',
+    category: 'Vegan',
+    calories: 430,
+    protein: 13,
+    carbs: 58,
+    fat: 16,
+    ingredients: [
+      '1 sweet potato',
+      '1 cup chickpeas',
+      '1 cup spinach',
+      '1 tbsp olive oil',
+    ],
+    instructions:
+      'Roast the sweet potato. Warm the chickpeas. Plate with spinach and drizzle olive oil on top.',
+  },
+  {
+    id: 7,
+    title: 'Cheesy Veggie Omelet',
+    image:
+      'https://images.unsplash.com/photo-1510693206972-df098062cb71?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A protein-rich vegetarian omelet with cheese, onion, and tomato.',
+    category: 'Vegetarian',
+    calories: 360,
+    protein: 24,
+    carbs: 8,
+    fat: 26,
+    ingredients: [
+      '3 eggs',
+      '50g cheese',
+      '1/2 onion',
+      '1 tomato',
+      '1 tsp olive oil',
+    ],
+    instructions:
+      'Beat the eggs. Cook onion and tomato lightly in olive oil. Add eggs and cheese, fold, and cook until set.',
+  },
+  {
+    id: 8,
+    title: 'Banana Oat Parfait',
+    image:
+      'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A quick dessert made with oats, banana, yogurt, and honey.',
+    category: 'Desserts',
+    calories: 320,
+    protein: 12,
+    carbs: 52,
+    fat: 7,
+    ingredients: [
+      '1 banana',
+      '1 cup yogurt',
+      '1/2 cup oats',
+      '1 tbsp honey',
+    ],
+    instructions:
+      'Layer yogurt, oats, and sliced banana in a glass or bowl. Drizzle with honey and chill before serving.',
+  },
+  {
+    id: 9,
+    title: 'Homestyle Burger Plate',
+    image:
+      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A fast food-style burger plate with beef, bread, and onion.',
+    category: 'Fast Food',
+    calories: 690,
+    protein: 32,
+    carbs: 38,
+    fat: 42,
+    ingredients: [
+      '150g ground beef',
+      '2 slices bread',
+      '1/2 onion',
+      '1 tomato',
+      '1 tbsp olive oil',
+    ],
+    instructions:
+      'Shape and cook the beef patty. Toast the bread. Assemble with onion and tomato, then serve warm.',
+  },
+  {
+    id: 10,
+    title: 'Party Nacho Bowl',
+    image:
+      'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A simple party-style bowl with beans, cheese, tomato, and crunchy sides.',
+    category: 'Party Food',
+    calories: 560,
+    protein: 20,
+    carbs: 48,
+    fat: 30,
+    ingredients: [
+      '1 cup black beans',
+      '75g cheese',
+      '1 tomato',
+      '1/2 onion',
+      '2 slices bread',
+    ],
+    instructions:
+      'Warm the beans. Chop the vegetables. Toast the bread into crispy pieces and serve everything layered with cheese.',
+  },
+  {
+    id: 11,
+    title: 'Mini Breakfast Toasts',
+    image:
+      'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1200&q=80',
+    description: 'Kid-friendly breakfast toasts with banana and honey.',
+    category: 'Kids Food',
+    calories: 260,
+    protein: 6,
+    carbs: 42,
+    fat: 8,
+    ingredients: [
+      '2 slices bread',
+      '1 banana',
+      '1 tsp butter',
+      '1 tsp honey',
+    ],
+    instructions:
+      'Toast the bread. Spread butter lightly. Top with banana slices and drizzle with honey.',
+  },
+  {
+    id: 12,
+    title: 'Lentil Tomato Soup',
+    image:
+      'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A warm bowl of lentil soup with tomato, onion, and garlic.',
+    category: 'Soups and Stews',
+    calories: 310,
+    protein: 16,
+    carbs: 44,
+    fat: 8,
+    ingredients: [
+      '1 cup lentils',
+      '1 tomato',
+      '1 onion',
+      '2 cloves garlic',
+      '1 tbsp olive oil',
+    ],
+    instructions:
+      'Sauté onion and garlic in olive oil. Add tomato and lentils with water. Simmer until tender and serve hot.',
+  },
+  {
+    id: 13,
+    title: 'Fresh Garden Salad',
+    image:
+      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A light salad with lettuce, cucumber, tomato, and olive oil.',
+    category: 'Salads',
+    calories: 180,
+    protein: 3,
+    carbs: 11,
+    fat: 14,
+    ingredients: [
+      '1 cup lettuce',
+      '1 cucumber',
+      '1 tomato',
+      '1/2 onion',
+      '1 tbsp olive oil',
+    ],
+    instructions:
+      'Chop all vegetables, combine in a bowl, and dress with olive oil.',
+  },
+  {
+    id: 14,
+    title: 'Chicken Rice Bowl',
+    image:
+      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A balanced main course with chicken, rice, and vegetables.',
+    category: 'Main Courses',
+    calories: 754,
+    protein: 68,
+    carbs: 62,
+    fat: 23,
+    ingredients: [
+      '200g chicken breast',
+      '1 cup rice',
+      '1 tbsp olive oil',
+      '1 tomato',
+      '1/2 onion',
+      '1 cup broccoli',
+    ],
+    instructions:
+      'Cook the rice. Grill the chicken. Chop the vegetables and steam the broccoli. Plate everything together and drizzle with olive oil.',
+  },
+  {
+    id: 15,
+    title: 'Garlic Bread Bites',
+    image: '',
+    description:
+      'A quick appetizer with toasted bread, garlic, and butter.',
+    category: 'Appetizers',
+    calories: 240,
+    protein: 5,
+    carbs: 24,
+    fat: 14,
+    ingredients: [
+      '2 slices bread',
+      '2 cloves garlic',
+      '1 tbsp butter',
+    ],
+    instructions:
+      'Toast the bread. Mix butter with minced garlic. Spread over bread and cut into small bites.',
+  },
+  {
+    id: 16,
+    title: 'Global Grain Bowl',
+    image:
+      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'An international-style grain bowl with rice, beans, and vegetables.',
+    category: 'International',
+    calories: 470,
+    protein: 15,
+    carbs: 72,
+    fat: 12,
+    ingredients: [
+      '1 cup rice',
+      '1 cup beans',
+      '1 tomato',
+      '1 cucumber',
+      '1 tbsp olive oil',
+    ],
+    instructions:
+      'Cook the rice. Warm the beans. Chop the vegetables and assemble everything in a bowl.',
+  },
+  {
+    id: 17,
+    title: 'Breakfast Oat Bowl',
+    image:
+      'https://images.unsplash.com/photo-1517673400267-0251440c45dc?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A simple breakfast bowl with oats, milk, banana, and honey.',
+    category: 'Breakfast',
+    calories: 340,
+    protein: 11,
+    carbs: 55,
+    fat: 8,
+    ingredients: [
+      '1 cup oats',
+      '1 cup milk',
+      '1 banana',
+      '1 tbsp honey',
+    ],
+    instructions:
+      'Cook the oats with milk. Top with banana slices and honey.',
+  },
+  {
+    id: 18,
+    title: 'Grilled Salmon Plate',
+    image:
+      'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A grilled salmon meal with vegetables and a light side.',
+    category: 'Grilled',
+    calories: 480,
+    protein: 42,
+    carbs: 12,
+    fat: 28,
+    ingredients: [
+      '200g salmon',
+      '1 cup broccoli',
+      '1 tomato',
+      '1 tbsp olive oil',
+    ],
+    instructions:
+      'Grill the salmon. Steam the broccoli. Serve with tomato and olive oil.',
+  },
+  {
+    id: 19,
+    title: 'Low Carb Chicken Plate',
+    image: '',
+    description:
+      'A low carb plate with chicken, spinach, and mushrooms.',
+    category: 'Low Carb',
+    calories: 350,
+    protein: 39,
+    carbs: 9,
+    fat: 17,
+    ingredients: [
+      '200g chicken breast',
+      '1 cup spinach',
+      '1 cup mushroom',
+      '1 tbsp olive oil',
+    ],
+    instructions:
+      'Cook the chicken. Sauté mushrooms and spinach in olive oil. Serve together.',
+  },
+  {
+    id: 20,
+    title: 'High Protein Power Bowl',
+    image:
+      'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1200&q=80',
+    description:
+      'A high protein bowl with chicken, eggs, and rice.',
+    category: 'High Protein',
+    calories: 670,
+    protein: 64,
+    carbs: 48,
+    fat: 24,
+    ingredients: [
+      '200g chicken breast',
+      '2 eggs',
+      '1 cup rice',
+      '1 cup broccoli',
+    ],
+    instructions:
+      'Cook the rice. Grill the chicken. Boil the eggs. Steam the broccoli and assemble the bowl.',
+  },
+]

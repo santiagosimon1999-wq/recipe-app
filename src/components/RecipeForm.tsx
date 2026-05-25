@@ -1,109 +1,125 @@
-import { useEffect, useState } from "react";
-import type { Recipe } from "../types/Recipe";
+import { useState, type ChangeEvent, type FormEvent } from 'react'
+import type { Recipe } from '../types/Recipe'
+import { RECIPE_CATEGORIES } from '../utils/categories'
 
 type RecipeFormProps = {
-  initialRecipe: Recipe | null;
-  onSaveRecipe: (recipe: Recipe) => void;
-  onCancel: () => void;
-};
+  initialRecipe: Recipe | null
+  onSaveRecipe: (recipe: Recipe) => void
+  onCancel: () => void
+}
 
-function RecipeForm({
-  initialRecipe,
-  onSaveRecipe,
-  onCancel,
-}: RecipeFormProps) {
-  const [title, setTitle] = useState("");
-  const [image, setImage] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("Healthy");
-  const [calories, setCalories] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
-  const [ingredients, setIngredients] = useState("");
-  const [instructions, setInstructions] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+type RecipeFormState = {
+  title: string
+  image: string
+  imageFile: File | null
+  description: string
+  category: string
+  ingredients: string
+  instructions: string
+}
 
-  useEffect(() => {
-    if (initialRecipe) {
-      setTitle(initialRecipe.title);
-      setImage(initialRecipe.image);
-      setDescription(initialRecipe.description);
-      setCategory(initialRecipe.category);
-      setCalories(String(initialRecipe.calories));
-      setProtein(String(initialRecipe.protein));
-      setCarbs(String(initialRecipe.carbs));
-      setFat(String(initialRecipe.fat));
-      setIngredients(initialRecipe.ingredients.join("\n"));
-      setInstructions(initialRecipe.instructions);
-    } else {
-      setTitle("");
-      setImage("");
-      setDescription("");
-      setCategory("Healthy");
-      setCalories("");
-      setProtein("");
-      setCarbs("");
-      setFat("");
-      setIngredients("");
-      setInstructions("");
+function getInitialFormState(initialRecipe: Recipe | null): RecipeFormState {
+  if (!initialRecipe) {
+    return {
+      title: '',
+      image: '',
+      imageFile: null,
+      description: '',
+      category: RECIPE_CATEGORIES[0],
+      ingredients: '',
+      instructions: '',
+    }
+  }
+
+  return {
+    title: initialRecipe.title,
+    image: initialRecipe.image,
+    imageFile: null,
+    description: initialRecipe.description,
+    category: initialRecipe.category,
+    ingredients: initialRecipe.ingredients.join('\n'),
+    instructions: initialRecipe.instructions,
+  }
+}
+
+function RecipeForm({ initialRecipe, onSaveRecipe, onCancel }: RecipeFormProps) {
+  const [formState, setFormState] = useState<RecipeFormState>(() =>
+    getInitialFormState(initialRecipe)
+  )
+
+  const [errorMessage, setErrorMessage] = useState('')
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(
+    initialRecipe?.image ?? ''
+  )
+
+  function updateField<K extends keyof RecipeFormState>(
+    field: K,
+    value: RecipeFormState[K]
+  ) {
+    setFormState((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null
+
+    if (!file) {
+      updateField('imageFile', null)
+      setImagePreviewUrl(initialRecipe?.image ?? '')
+      return
     }
 
-    setErrorMessage("");
-  }, [initialRecipe]);
+    updateField('imageFile', file)
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+    const previewUrl = URL.createObjectURL(file)
+    setImagePreviewUrl(previewUrl)
+  }
 
-    if (
-      !title.trim() ||
-      !image.trim() ||
-      !description.trim() ||
-      !ingredients.trim() ||
-      !instructions.trim()
-    ) {
-      setErrorMessage("Please fill in all fields.");
-      return;
-    }
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
 
     if (
-      Number(calories) < 0 ||
-      Number(protein) < 0 ||
-      Number(carbs) < 0 ||
-      Number(fat) < 0
+      !formState.title.trim() ||
+      !formState.description.trim() ||
+      !formState.ingredients.trim() ||
+      !formState.instructions.trim()
     ) {
-      setErrorMessage("Nutrition values cannot be negative.");
-      return;
+      setErrorMessage('Please fill in all required fields.')
+      return
     }
 
     const recipeToSave: Recipe = {
       id: initialRecipe?.id ?? 0,
-      title: title.trim(),
-      image: image.trim(),
-      description: description.trim(),
-      category,
-      calories: Number(calories),
-      protein: Number(protein),
-      carbs: Number(carbs),
-      fat: Number(fat),
-      ingredients: ingredients
-        .split("\n")
+      title: formState.title.trim(),
+      image: formState.image.trim(),
+      imageFile: formState.imageFile,
+      description: formState.description.trim(),
+      category: formState.category,
+      calories: initialRecipe?.calories ?? 0,
+      protein: initialRecipe?.protein ?? 0,
+      carbs: initialRecipe?.carbs ?? 0,
+      fat: initialRecipe?.fat ?? 0,
+      ingredients: formState.ingredients
+        .split('\n')
         .map((ingredient) => ingredient.trim())
-        .filter((ingredient) => ingredient !== ""),
-      instructions: instructions.trim(),
-    };
+        .filter((ingredient) => ingredient !== ''),
+      instructions: formState.instructions.trim(),
+      source: initialRecipe?.source ?? 'user',
+    }
 
-    onSaveRecipe(recipeToSave);
-    setErrorMessage("");
-  };
+    setErrorMessage('')
+    onSaveRecipe(recipeToSave)
+  }
 
   return (
     <section className="recipe-form-section">
       <h2 className="recipe-form__title">
-        {initialRecipe ? "Edit Recipe" : "Create Recipe"}
+        {initialRecipe ? 'Edit Recipe' : 'Create Recipe'}
       </h2>
 
-      {errorMessage && <p className="recipe-form__error">{errorMessage}</p>}
+      {errorMessage ? <p className="recipe-form__error">{errorMessage}</p> : null}
 
       <form className="recipe-form" onSubmit={handleSubmit}>
         <div className="recipe-form__group">
@@ -111,27 +127,37 @@ function RecipeForm({
           <input
             id="title"
             type="text"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
+            value={formState.title}
+            onChange={(event) => updateField('title', event.target.value)}
           />
         </div>
 
         <div className="recipe-form__group">
-          <label htmlFor="image">Image URL</label>
+          <label htmlFor="imageFile">Recipe Image</label>
           <input
-            id="image"
-            type="text"
-            value={image}
-            onChange={(event) => setImage(event.target.value)}
+            id="imageFile"
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
           />
+
+          {imagePreviewUrl ? (
+            <img
+              className="recipe-form__image-preview"
+              src={imagePreviewUrl}
+              alt="Recipe preview"
+            />
+          ) : (
+            <p>You can save the recipe without an image.</p>
+          )}
         </div>
 
         <div className="recipe-form__group">
           <label htmlFor="description">Description</label>
           <textarea
             id="description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            value={formState.description}
+            onChange={(event) => updateField('description', event.target.value)}
           />
         </div>
 
@@ -139,63 +165,27 @@ function RecipeForm({
           <label htmlFor="category">Category</label>
           <select
             id="category"
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
+            value={formState.category}
+            onChange={(event) => updateField('category', event.target.value)}
           >
-            <option value="Healthy">Healthy</option>
-            <option value="Italian">Italian</option>
-            <option value="Fast Food">Fast Food</option>
+            {RECIPE_CATEGORIES.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </select>
         </div>
 
-        <div className="recipe-form__row">
-          <div className="recipe-form__group">
-            <label htmlFor="calories">Calories</label>
-            <input
-              id="calories"
-              type="number"
-              value={calories}
-              onChange={(event) => setCalories(event.target.value)}
-            />
-          </div>
-
-          <div className="recipe-form__group">
-            <label htmlFor="protein">Protein</label>
-            <input
-              id="protein"
-              type="number"
-              value={protein}
-              onChange={(event) => setProtein(event.target.value)}
-            />
-          </div>
-
-          <div className="recipe-form__group">
-            <label htmlFor="carbs">Carbs</label>
-            <input
-              id="carbs"
-              type="number"
-              value={carbs}
-              onChange={(event) => setCarbs(event.target.value)}
-            />
-          </div>
-
-          <div className="recipe-form__group">
-            <label htmlFor="fat">Fat</label>
-            <input
-              id="fat"
-              type="number"
-              value={fat}
-              onChange={(event) => setFat(event.target.value)}
-            />
-          </div>
-        </div>
-
         <div className="recipe-form__group">
-          <label htmlFor="ingredients">Ingredients (one per line)</label>
+          <label htmlFor="ingredients">Ingredients — one per line</label>
           <textarea
             id="ingredients"
-            value={ingredients}
-            onChange={(event) => setIngredients(event.target.value)}
+            value={formState.ingredients}
+            onChange={(event) => updateField('ingredients', event.target.value)}
+            placeholder={`Example:
+200g chicken breast
+1 cup rice
+1 tbsp olive oil`}
           />
         </div>
 
@@ -203,27 +193,23 @@ function RecipeForm({
           <label htmlFor="instructions">Instructions</label>
           <textarea
             id="instructions"
-            value={instructions}
-            onChange={(event) => setInstructions(event.target.value)}
+            value={formState.instructions}
+            onChange={(event) => updateField('instructions', event.target.value)}
           />
         </div>
 
         <div className="recipe-form__actions">
-          <button type="submit" className="recipe-form__submit-button">
-            {initialRecipe ? "Save changes" : "Add recipe"}
+          <button type="submit">
+            {initialRecipe ? 'Update Recipe' : 'Save Recipe'}
           </button>
 
-          <button
-            type="button"
-            className="recipe-form__cancel-button"
-            onClick={onCancel}
-          >
+          <button type="button" onClick={onCancel}>
             Cancel
           </button>
         </div>
       </form>
     </section>
-  );
+  )
 }
 
-export default RecipeForm;
+export default RecipeForm

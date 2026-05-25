@@ -1,11 +1,12 @@
-import type { Recipe } from "../types/Recipe";
+import type { SyntheticEvent } from 'react'
+import type { Recipe } from '../types/Recipe'
 
 type RecipeCardProps = {
-  recipe: Recipe;
-  isFavorite: boolean;
-  onToggleFavorite: (recipeId: number) => void;
-  onSelectRecipe: (recipe: Recipe) => void;
-};
+  recipe: Recipe
+  isFavorite: boolean
+  onToggleFavorite: (recipeId: number) => void
+  onSelectRecipe: (recipe: Recipe) => void
+}
 
 function RecipeCard({
   recipe,
@@ -13,21 +14,32 @@ function RecipeCard({
   onToggleFavorite,
   onSelectRecipe,
 }: RecipeCardProps) {
+  const fallbackImage =
+    'https://via.placeholder.com/1200x800?text=Recipe+Image'
+
+  function handleImageError(event: SyntheticEvent<HTMLImageElement, Event>) {
+    event.currentTarget.src = fallbackImage
+  }
+
   return (
-    <article
-      className="recipe-card"
-      onClick={() => onSelectRecipe(recipe)}
-    >
+    <article className="recipe-card">
       <img
-        className="recipe-card__image"
-        src={recipe.image}
+        src={recipe.image || fallbackImage}
         alt={recipe.title}
+        className="recipe-card__image"
+        onClick={() => onSelectRecipe(recipe)}
+        onError={handleImageError}
       />
 
       <div className="recipe-card__content">
-        <span className="recipe-card__category">{recipe.category}</span>
+        <div className="recipe-card__meta">
+          <p className="recipe-card__category">{recipe.category}</p>
+          {recipe.source === 'sample' ? (
+            <span className="recipe-card__badge">Sample</span>
+          ) : null}
+        </div>
 
-        <h2 className="recipe-card__title">{recipe.title}</h2>
+        <h3 className="recipe-card__title">{recipe.title}</h3>
 
         <p className="recipe-card__description">{recipe.description}</p>
 
@@ -35,21 +47,14 @@ function RecipeCard({
 
         <button
           type="button"
-          className={
-            isFavorite
-              ? "favorite-button favorite-button--active"
-              : "favorite-button"
-          }
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleFavorite(recipe.id);
-          }}
+          className="recipe-card__favorite-button"
+          onClick={() => onToggleFavorite(recipe.id)}
         >
-          {isFavorite ? "Remove from favorites" : "Add to favorites"}
+          {isFavorite ? 'Remove favorite' : 'Add to favorites'}
         </button>
       </div>
     </article>
-  );
+  )
 }
 
-export default RecipeCard;
+export default RecipeCard

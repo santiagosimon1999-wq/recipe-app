@@ -1,9 +1,9 @@
-type CategoryFilterProps = {
-  selectedCategory: string;
-  onCategoryChange: (category: string) => void;
-};
+import { RECIPE_FILTER_CATEGORIES } from '../utils/categories'
 
-const categories = ["All", "Healthy", "Italian", "Fast Food"];
+type CategoryFilterProps = {
+  selectedCategory: string
+  onCategoryChange: (category: string) => void
+}
 
 function CategoryFilter({
   selectedCategory,
@@ -14,14 +14,14 @@ function CategoryFilter({
       <p className="category-filter__label">Filter by category</p>
 
       <div className="category-filter__buttons">
-        {categories.map((category) => (
+        {RECIPE_FILTER_CATEGORIES.map((category) => (
           <button
             key={category}
             type="button"
             className={
               selectedCategory === category
-                ? "category-filter__button category-filter__button--active"
-                : "category-filter__button"
+                ? 'category-filter__button category-filter__button--active'
+                : 'category-filter__button'
             }
             onClick={() => onCategoryChange(category)}
           >
@@ -30,7 +30,7 @@ function CategoryFilter({
         ))}
       </div>
     </div>
-  );
+  )
 }
 
-export default CategoryFilter;
+export default CategoryFilter
