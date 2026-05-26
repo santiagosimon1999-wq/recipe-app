@@ -5,6 +5,7 @@ type RecipeModalProps = {
   onClose: () => void
   onEdit: (recipe: Recipe) => void
   onDelete: (recipeId: number) => void
+  onTogglePublic?: (recipe: Recipe) => void
   canManage?: boolean
 }
 
@@ -13,12 +14,22 @@ function RecipeModal({
   onClose,
   onEdit,
   onDelete,
+  onTogglePublic,
   canManage = false,
 }: RecipeModalProps) {
   const instructions = recipe.instructions
     .split('\n')
     .map((step) => step.trim())
     .filter((step) => step !== '')
+
+  const recipeStatusLabel =
+    recipe.source === 'community'
+      ? `Shared by ${recipe.authorName ?? 'Community Chef'}`
+      : recipe.source === 'user'
+        ? recipe.isPublic
+          ? 'Your shared recipe'
+          : 'Your private recipe'
+        : 'Sample recipe'
 
   return (
     <div className="recipe-modal-overlay" onClick={onClose}>
@@ -36,6 +47,14 @@ function RecipeModal({
                   onClick={() => onEdit(recipe)}
                 >
                   Edit
+                </button>
+
+                <button
+                  type="button"
+                  className="recipe-modal__edit-button"
+                  onClick={() => onTogglePublic?.(recipe)}
+                >
+                  {recipe.isPublic ? 'Make Private' : 'Share Recipe'}
                 </button>
 
                 <button
@@ -66,7 +85,10 @@ function RecipeModal({
           />
         ) : null}
 
-        <p className="recipe-card__category">{recipe.category}</p>
+        <div className="recipe-modal__badges">
+          <p className="recipe-card__category">{recipe.category}</p>
+          <p className="recipe-card__badge">{recipeStatusLabel}</p>
+        </div>
 
         <h2 className="recipe-modal__title">{recipe.title}</h2>
 

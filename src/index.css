@@ -396,6 +396,23 @@ img {
   margin-bottom: 16px;
 }
 
+.community-feed__intro,
+.community-feed__hint {
+  margin: 16px 0 0;
+  color: var(--text-soft);
+  line-height: 1.7;
+}
+
+.community-feed__intro {
+  font-size: 1rem;
+}
+
+.community-feed__hint {
+  padding: 18px;
+  border-radius: 18px;
+  background-color: var(--surface-soft);
+}
+
 .recipe-section__header span {
   padding: 8px 12px;
   border-radius: 999px;

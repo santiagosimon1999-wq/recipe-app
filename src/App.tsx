@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import './index.css'
-import RecipeGrid from './components/RecipeGrid'
-import SearchBar from './components/SearchBar'
-import CategoryFilter from './components/CategoryFilter'
-import RecipeModal from './components/RecipeModal'
-import RecipeForm from './components/RecipeForm'
 import { AuthGate } from './components/auth/AuthGate'
 import { useAuth } from './context/useAuth'
+import AppHeader from './components/AppHeader'
+import DiscoverPanel from './components/DiscoverPanel'
+import RecipeDashboard from './components/RecipeDashboard'
+import RecipeForm from './components/RecipeForm'
+import CommunityFeedPage from './pages/CommunityFeedPage'
+import ProfilePage from './pages/ProfilePage'
 import { recipes as initialRecipes } from './data/recipes'
 import {
   calculateNutrition,
@@ -18,11 +19,13 @@ import {
   getRecipes,
   updateRecipe as updateRecipeById,
 } from './lib/recipeService'
+import { supabase } from './lib/supabaseClient'
 import { uploadRecipeImage } from './lib/storageService'
 import type { Recipe } from './types/Recipe'
 
-function mapDbRecipeToUiRecipe(row: {
+type DbRecipeRow = {
   id: number
+  user_id: string
   title: string
   image_url: string | null
   description: string
@@ -33,7 +36,29 @@ function mapDbRecipeToUiRecipe(row: {
   fat: number
   ingredients: string[]
   instructions: string
-}): Recipe {
+  author_name?: string | null
+  is_public?: boolean | null
+}
+
+type Profile = {
+  id: string
+  display_name: string | null
+  username: string | null
+}
+
+const starterRecipes: Recipe[] = initialRecipes.map((recipe) => ({
+  ...recipe,
+  source: 'sample',
+  isPublic: true,
+  authorName: 'Panda Recipes',
+}))
+
+function mapDbRecipeToUiRecipe(
+  row: DbRecipeRow,
+  currentUserId?: string
+): Recipe {
+  const belongsToCurrentUser = row.user_id === currentUserId
+
   return {
     id: row.id,
     title: row.title,
@@ -47,24 +72,27 @@ function mapDbRecipeToUiRecipe(row: {
     fat: row.fat,
     ingredients: row.ingredients,
     instructions: row.instructions,
-    source: 'user',
+    source: belongsToCurrentUser ? 'user' : 'community',
+    userId: row.user_id,
+    authorName: row.author_name ?? 'Panda Chef',
+    isPublic: row.is_public ?? true,
   }
 }
 
-function getUserInitial(email: string | undefined) {
-  if (!email) return 'P'
-  return email.charAt(0).toUpperCase()
+function getUserInitial(nameOrEmail: string | undefined) {
+  if (!nameOrEmail) return 'P'
+  return nameOrEmail.charAt(0).toUpperCase()
 }
 
-function getUserName(email: string | undefined) {
+function getFallbackUserName(email: string | undefined) {
   if (!email) return 'Panda'
   return email.split('@')[0]
 }
 
 export default function App() {
   const { logout, user } = useAuth()
-
   const [recipeList, setRecipeList] = useState<Recipe[]>([])
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [favoriteRecipeIds, setFavoriteRecipeIds] = useState<number[]>(() => {
@@ -88,21 +116,119 @@ export default function App() {
   const [recipeBeingEdited, setRecipeBeingEdited] = useState<Recipe | null>(null)
   const [formMessage, setFormMessage] = useState('')
   const [savingRecipe, setSavingRecipe] = useState(false)
+  const [view, setView] = useState<'dashboard' | 'profile' | 'community'>('dashboard')
+
+  const displayName =
+    profile?.display_name || getFallbackUserName(user?.email)
+
+  useEffect(() => {
+    async function loadProfile() {
+      if (!user) {
+        setProfile(null)
+        return
+      }
+
+      const fallbackName = getFallbackUserName(user.email)
+
+      try {
+        const { data: existingProfile, error: profileError } =
+          await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle()
+
+        if (profileError) throw profileError
+
+        if (existingProfile) {
+          setProfile(existingProfile as Profile)
+          return
+        }
+
+        const { data: newProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            display_name: fallbackName,
+            username: fallbackName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+          })
+          .select()
+          .single()
+
+        if (insertError) throw insertError
+
+        setProfile(newProfile as Profile)
+      } catch (error) {
+        console.error('Failed to load profile:', error)
+        setProfile({
+          id: user.id,
+          display_name: fallbackName,
+          username: fallbackName.toLowerCase(),
+        })
+      }
+    }
+
+    void loadProfile()
+  }, [user])
 
   useEffect(() => {
     async function loadRecipes() {
       if (!user) {
-        setRecipeList(initialRecipes)
+        try {
+          const { data: publicRows, error: publicError } = await supabase
+            .from('recipes')
+            .select('*')
+            .eq('is_public', true)
+            .order('created_at', { ascending: false })
+
+          if (publicError) throw publicError
+
+          const publicRecipes = ((publicRows ?? []) as DbRecipeRow[]).map(
+            (row) => mapDbRecipeToUiRecipe(row)
+          )
+
+          setRecipeList([...publicRecipes, ...starterRecipes])
+        } catch (error) {
+          console.error('Failed to load public community recipes:', error)
+          setRecipeList(starterRecipes)
+        }
+
         return
       }
 
       try {
-        const rows = await getRecipes(user.id)
-        const mappedRecipes = rows.map(mapDbRecipeToUiRecipe)
-        setRecipeList([...mappedRecipes, ...initialRecipes])
+        const ownRows = (await getRecipes(user.id)) as DbRecipeRow[]
+
+        const { data: communityRows, error: communityError } = await supabase
+          .from('recipes')
+          .select('*')
+          .eq('is_public', true)
+          .neq('user_id', user.id)
+          .order('created_at', { ascending: false })
+
+        if (communityError) throw communityError
+
+        const ownRecipes = ownRows.map((row) =>
+          mapDbRecipeToUiRecipe(row, user.id)
+        )
+
+        const communityRecipes = ((communityRows ?? []) as DbRecipeRow[]).map(
+          (row) => mapDbRecipeToUiRecipe(row, user.id)
+        )
+
+        setRecipeList([...ownRecipes, ...communityRecipes, ...starterRecipes])
       } catch (error) {
         console.error('Failed to load recipes from Supabase:', error)
-        setRecipeList(initialRecipes)
+
+        try {
+          const rows = (await getRecipes(user.id)) as DbRecipeRow[]
+          const mappedRecipes = rows.map((row) =>
+            mapDbRecipeToUiRecipe(row, user.id)
+          )
+          setRecipeList([...mappedRecipes, ...starterRecipes])
+        } catch {
+          setRecipeList(starterRecipes)
+        }
       }
     }
 
@@ -146,8 +272,11 @@ export default function App() {
   })
 
   const userRecipes = filteredRecipes.filter((recipe) => recipe.source === 'user')
+  const communityRecipes = filteredRecipes.filter(
+    (recipe) => recipe.source === 'community'
+  )
   const sampleRecipes = filteredRecipes.filter(
-    (recipe) => recipe.source !== 'user'
+    (recipe) => recipe.source === 'sample'
   )
 
   const allUserRecipes = recipeList.filter((recipe) => recipe.source === 'user')
@@ -156,7 +285,9 @@ export default function App() {
     0
   )
   const averageCalories =
-    allUserRecipes.length > 0 ? Math.round(totalCalories / allUserRecipes.length) : 0
+    allUserRecipes.length > 0
+      ? Math.round(totalCalories / allUserRecipes.length)
+      : 0
 
   const showClearFiltersButton =
     searchTerm !== '' || selectedCategory !== 'All' || showFavoritesOnly
@@ -187,11 +318,11 @@ export default function App() {
 
       if (recipeBeingEdited) {
         if (recipeBeingEdited.source !== 'user') {
-          setFormMessage('Sample recipes cannot be edited.')
+          setFormMessage('Only your own recipes can be edited.')
           return
         }
 
-        const updatedRow = await updateRecipeById(recipeBeingEdited.id, {
+        const updatedRow = (await updateRecipeById(recipeBeingEdited.id, {
           title: recipeData.title,
           description: recipeData.description,
           ingredients: recipeData.ingredients,
@@ -202,9 +333,25 @@ export default function App() {
           protein: nutrition.protein,
           carbs: nutrition.carbs,
           fat: nutrition.fat,
-        })
+          is_public: recipeData.isPublic,
+        })) as DbRecipeRow
 
-        const updatedRecipe = mapDbRecipeToUiRecipe(updatedRow)
+        await supabase
+          .from('recipes')
+          .update({
+            author_name: displayName,
+            is_public: recipeBeingEdited.isPublic ?? true,
+          })
+          .eq('id', recipeBeingEdited.id)
+
+        const updatedRecipe = mapDbRecipeToUiRecipe(
+          {
+            ...updatedRow,
+            author_name: displayName,
+            is_public: recipeBeingEdited.isPublic ?? true,
+          },
+          user.id
+        )
 
         setRecipeList((currentRecipes) =>
           currentRecipes.map((recipe) =>
@@ -215,7 +362,7 @@ export default function App() {
         setSelectedRecipe(updatedRecipe)
         setFormMessage('Recipe updated successfully.')
       } else {
-        const createdRow = await createRecipe(user.id, {
+        const createdRow = (await createRecipe(user.id, {
           title: recipeData.title,
           description: recipeData.description,
           ingredients: recipeData.ingredients,
@@ -226,9 +373,25 @@ export default function App() {
           protein: nutrition.protein,
           carbs: nutrition.carbs,
           fat: nutrition.fat,
-        })
+          is_public: recipeData.isPublic,
+        })) as DbRecipeRow
 
-        const createdRecipe = mapDbRecipeToUiRecipe(createdRow)
+        await supabase
+          .from('recipes')
+          .update({
+            author_name: displayName,
+            is_public: recipeData.isPublic,
+          })
+          .eq('id', createdRow.id)
+
+        const createdRecipe = mapDbRecipeToUiRecipe(
+          {
+            ...createdRow,
+            author_name: displayName,
+            is_public: true,
+          },
+          user.id
+        )
 
         setRecipeList((currentRecipes) => [createdRecipe, ...currentRecipes])
         setFormMessage('Recipe added successfully.')
@@ -262,7 +425,7 @@ export default function App() {
     if (!user) return
 
     if (recipe.source !== 'user') {
-      setFormMessage('Sample recipes cannot be edited.')
+      setFormMessage('Only your own recipes can be edited.')
       return
     }
 
@@ -285,7 +448,7 @@ export default function App() {
     const recipeToDelete = recipeList.find((recipe) => recipe.id === recipeId)
 
     if (recipeToDelete?.source !== 'user') {
-      setFormMessage('Sample recipes cannot be deleted.')
+      setFormMessage('Only your own recipes can be deleted.')
       return
     }
 
@@ -319,6 +482,46 @@ export default function App() {
     } catch (error) {
       console.error('Failed to delete recipe:', error)
       setFormMessage('Failed to delete recipe.')
+    }
+  }
+
+  async function handleToggleRecipePublic(recipe: Recipe) {
+    if (!user || recipe.source !== 'user') return
+
+    const nextIsPublic = !recipe.isPublic
+
+    try {
+      const { data, error } = await supabase
+        .from('recipes')
+        .update({
+          is_public: nextIsPublic,
+          author_name: displayName,
+        })
+        .eq('id', recipe.id)
+        .eq('user_id', user.id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const updatedRecipe = mapDbRecipeToUiRecipe(data as DbRecipeRow, user.id)
+
+      setRecipeList((currentRecipes) =>
+        currentRecipes.map((currentRecipe) =>
+          currentRecipe.id === recipe.id ? updatedRecipe : currentRecipe
+        )
+      )
+
+      setSelectedRecipe(updatedRecipe)
+
+      setFormMessage(
+        updatedRecipe.isPublic
+          ? 'Recipe shared with the community.'
+          : 'Recipe is now private.'
+      )
+    } catch (error) {
+      console.error('Failed to update recipe visibility:', error)
+      setFormMessage('Failed to update recipe visibility.')
     }
   }
 
@@ -356,202 +559,84 @@ export default function App() {
     <AuthGate>
       <main className={`app app--${theme}`}>
         <div className="app__container">
-          <header className="app-hero">
-            <nav className="app-nav">
-              <div>
-                <p className="app-eyebrow">Recipe social tracker</p>
-                <h1 className="app__title">Panda Recipes</h1>
-              </div>
+          <AppHeader
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+            onChangeView={setView}
+            view={view}
+            onLogout={() => void logout()}
+            onStartCreateRecipe={handleStartCreateRecipe}
+            savingRecipe={savingRecipe}
+            displayName={displayName}
+            email={user?.email}
+            userInitial={getUserInitial(displayName || user?.email)}
+            totalRecipes={allUserRecipes.length}
+            favoriteCount={favoriteRecipeIds.length}
+            averageCalories={averageCalories}
+            isLoggedIn={Boolean(user)}
+          />
 
-              <div className="app-nav__actions">
-                <button
-                  type="button"
-                  className="theme-toggle-button"
-                  onClick={handleToggleTheme}
-                >
-                  {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-                </button>
-
-                {user ? (
-                  <button
-                    type="button"
-                    className="logout-button"
-                    onClick={() => void logout()}
-                  >
-                    Log out
-                  </button>
-                ) : null}
-              </div>
-            </nav>
-
-            <section className="profile-card">
-              <div className="profile-card__main">
-                <div className="profile-card__avatar">
-                  {getUserInitial(user?.email)}
-                </div>
-
-                <div>
-                  <p className="profile-card__label">Welcome back</p>
-                  <h2 className="profile-card__name">
-                    {getUserName(user?.email)}
-                  </h2>
-                  <p className="profile-card__email">{user?.email}</p>
-                </div>
-              </div>
-
-              <div className="profile-card__stats">
-                <div className="profile-stat">
-                  <span>{allUserRecipes.length}</span>
-                  <p>Recipes</p>
-                </div>
-
-                <div className="profile-stat">
-                  <span>{favoriteRecipeIds.length}</span>
-                  <p>Favorites</p>
-                </div>
-
-                <div className="profile-stat">
-                  <span>{averageCalories}</span>
-                  <p>Avg cal</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="hero-content">
-              <div>
-                <p className="app__subtitle">
-                  Save your recipes, track macros, and discover meal ideas like a
-                  social recipe board.
-                </p>
-
-                <div className="hero-tags">
-                  <span>📸 Social recipe sharing</span>
-                  <span>🥗 Macro tracking</span>
-                </div>
-              </div>
-
-              {user ? (
-                <button
-                  type="button"
-                  className="create-recipe-toggle-button"
-                  onClick={handleStartCreateRecipe}
-                  disabled={savingRecipe}
-                >
-                  + Create Recipe
-                </button>
-              ) : null}
-            </section>
-          </header>
-
-          {formMessage ? <p className="form-message">{formMessage}</p> : null}
-
-          {showRecipeForm ? (
-            <RecipeForm
-              key={recipeBeingEdited?.id ?? 'new'}
-              initialRecipe={recipeBeingEdited}
-              onSaveRecipe={handleAddRecipe}
-              onCancel={handleCancelRecipeForm}
-            />
-          ) : null}
-
-          <section className="discover-panel">
-            <div className="discover-panel__header">
-              <div>
-                <p className="app-eyebrow">Discover</p>
-                <h2>Find your next meal</h2>
-              </div>
-            </div>
-
-            <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-
-            <CategoryFilter
+          {view === 'profile' ? (
+            <ProfilePage />
+          ) : view === 'community' ? (
+            <CommunityFeedPage
+              recipes={communityRecipes}
+              sampleRecipes={sampleRecipes}
+              favoriteRecipeIds={favoriteRecipeIds}
+              searchTerm={searchTerm}
               selectedCategory={selectedCategory}
+              showFavoritesOnly={showFavoritesOnly}
+              showClearFiltersButton={showClearFiltersButton}
+              onSearchChange={setSearchTerm}
               onCategoryChange={setSelectedCategory}
+              onToggleShowFavoritesOnly={handleToggleShowFavoritesOnly}
+              onClearFilters={handleClearFilters}
+              onToggleFavorite={handleToggleFavorite}
+              onSelectRecipe={handleSelectRecipe}
             />
-
-            <div className="filter-actions">
-              <button
-                type="button"
-                className={
-                  showFavoritesOnly
-                    ? 'favorites-toggle-button favorites-toggle-button--active'
-                    : 'favorites-toggle-button'
-                }
-                onClick={handleToggleShowFavoritesOnly}
-              >
-                {showFavoritesOnly ? '★ Favorites only' : '☆ Show favorites'}
-              </button>
-
-              {showClearFiltersButton ? (
-                <button
-                  type="button"
-                  className="clear-filters-button"
-                  onClick={handleClearFilters}
-                >
-                  Clear filters
-                </button>
-              ) : null}
-            </div>
-          </section>
-
-          {userRecipes.length > 0 ? (
-            <section className="recipe-section">
-              <div className="recipe-section__header">
-                <div>
-                  <p className="app-eyebrow">Your kitchen</p>
-                  <h2>Your Recipes</h2>
-                </div>
-                <span>{userRecipes.length} saved</span>
-              </div>
-
-              <RecipeGrid
-                recipes={userRecipes}
-                favoriteRecipeIds={favoriteRecipeIds}
-                onToggleFavorite={handleToggleFavorite}
-                onSelectRecipe={handleSelectRecipe}
-              />
-            </section>
           ) : (
-            <section className="empty-profile-state">
-              <h2>Your recipe board is empty</h2>
-              <p>
-                Create your first recipe with ingredients, macros, instructions,
-                and a real image.
-              </p>
-              <button type="button" onClick={handleStartCreateRecipe}>
-                Create your first recipe
-              </button>
-            </section>
-          )}
+            <>
+              {formMessage ? (
+                <p className="form-message">{formMessage}</p>
+              ) : null}
 
-          {sampleRecipes.length > 0 ? (
-            <section className="recipe-section">
-              <div className="recipe-section__header">
-                <div>
-                  <p className="app-eyebrow">Community inspiration</p>
-                  <h2>Explore Recipes</h2>
-                </div>
-                <span>{sampleRecipes.length} ideas</span>
-              </div>
+              {showRecipeForm ? (
+                <RecipeForm
+                  key={recipeBeingEdited?.id ?? 'new'}
+                  initialRecipe={recipeBeingEdited}
+                  onSaveRecipe={handleAddRecipe}
+                  onCancel={handleCancelRecipeForm}
+                />
+              ) : null}
 
-              <RecipeGrid
-                recipes={sampleRecipes}
+              <DiscoverPanel
+                searchTerm={searchTerm}
+                selectedCategory={selectedCategory}
+                showFavoritesOnly={showFavoritesOnly}
+                showClearFiltersButton={showClearFiltersButton}
+                onSearchChange={setSearchTerm}
+                onCategoryChange={setSelectedCategory}
+                onToggleShowFavoritesOnly={handleToggleShowFavoritesOnly}
+                onClearFilters={handleClearFilters}
+              />
+
+              <RecipeDashboard
+                userRecipes={userRecipes}
+                communityRecipes={communityRecipes}
+                sampleRecipes={sampleRecipes}
                 favoriteRecipeIds={favoriteRecipeIds}
                 onToggleFavorite={handleToggleFavorite}
                 onSelectRecipe={handleSelectRecipe}
+                onStartCreateRecipe={handleStartCreateRecipe}
+                selectedRecipe={selectedRecipe}
+                canManageSelectedRecipe={canManageSelectedRecipe}
+                onCloseModal={handleCloseModal}
+                onEditRecipe={handleStartEditRecipe}
+                onDeleteRecipe={handleDeleteRecipe}
+                onTogglePublic={handleToggleRecipePublic}
               />
-            </section>
-          ) : null}
-
-          {selectedRecipe ? (
-            <RecipeModal
-              recipe={selectedRecipe}
-              onClose={handleCloseModal}
-              onEdit={handleStartEditRecipe}
-              onDelete={handleDeleteRecipe}
-              canManage={canManageSelectedRecipe}
-            />
-          ) : null}
+            </>
+          )}
         </div>
       </main>
     </AuthGate>

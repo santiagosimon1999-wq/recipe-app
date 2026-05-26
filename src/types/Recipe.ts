@@ -1,4 +1,4 @@
-export type RecipeSource = 'sample' | 'user'
+export type RecipeSource = 'sample' | 'user' | 'community'
 
 export type Recipe = {
   id: number
@@ -14,4 +14,7 @@ export type Recipe = {
   ingredients: string[]
   instructions: string
   source?: RecipeSource
+  userId?: string
+  authorName?: string
+  isPublic?: boolean
 }

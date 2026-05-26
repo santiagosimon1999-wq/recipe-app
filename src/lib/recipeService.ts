@@ -14,6 +14,7 @@ export type RecipeCreateInput = {
   protein?: number
   carbs?: number
   fat?: number
+  is_public?: boolean
 }
 
 export type RecipeUpdateInput = Partial<RecipeCreateInput>
@@ -50,6 +51,7 @@ export async function createRecipe(
       protein: recipe.protein ?? 0,
       carbs: recipe.carbs ?? 0,
       fat: recipe.fat ?? 0,
+      is_public: recipe.is_public ?? true,
     })
     .select()
     .single()
@@ -82,6 +84,7 @@ export async function updateRecipe(
     ...(updates.protein !== undefined ? { protein: updates.protein } : {}),
     ...(updates.carbs !== undefined ? { carbs: updates.carbs } : {}),
     ...(updates.fat !== undefined ? { fat: updates.fat } : {}),
+    ...(updates.is_public !== undefined ? { is_public: updates.is_public } : {}),
   }
 
   const { data, error } = await supabase

@@ -16,6 +16,7 @@ type RecipeFormState = {
   category: string
   ingredients: string
   instructions: string
+  isPublic: boolean
 }
 
 function getInitialFormState(initialRecipe: Recipe | null): RecipeFormState {
@@ -28,6 +29,7 @@ function getInitialFormState(initialRecipe: Recipe | null): RecipeFormState {
       category: RECIPE_CATEGORIES[0],
       ingredients: '',
       instructions: '',
+      isPublic: true,
     }
   }
 
@@ -39,6 +41,7 @@ function getInitialFormState(initialRecipe: Recipe | null): RecipeFormState {
     category: initialRecipe.category,
     ingredients: initialRecipe.ingredients.join('\n'),
     instructions: initialRecipe.instructions,
+    isPublic: initialRecipe.isPublic ?? true,
   }
 }
 
@@ -107,6 +110,7 @@ function RecipeForm({ initialRecipe, onSaveRecipe, onCancel }: RecipeFormProps) 
         .filter((ingredient) => ingredient !== ''),
       instructions: formState.instructions.trim(),
       source: initialRecipe?.source ?? 'user',
+      isPublic: formState.isPublic,
     }
 
     setErrorMessage('')
@@ -187,6 +191,18 @@ function RecipeForm({ initialRecipe, onSaveRecipe, onCancel }: RecipeFormProps) 
 1 cup rice
 1 tbsp olive oil`}
           />
+        </div>
+
+        <div className="recipe-form__group recipe-form__checkbox-group">
+          <label htmlFor="isPublic">
+            <input
+              id="isPublic"
+              type="checkbox"
+              checked={formState.isPublic}
+              onChange={(event) => updateField('isPublic', event.target.checked)}
+            />
+            Share this recipe publicly
+          </label>
         </div>
 
         <div className="recipe-form__group">
