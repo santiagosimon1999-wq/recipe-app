@@ -108,3 +108,151 @@ export async function deleteRecipe(recipeId: number): Promise<void> {
     throw error
   }
 }
+
+// Likes API
+export async function getLikesCount(recipeId: number): Promise<number> {
+  const { data, error, count } = await supabase
+    .from('recipe_likes')
+    .select('id', { count: 'exact', head: true })
+    .eq('recipe_id', recipeId)
+
+  if (error) throw error
+
+  return count ?? 0
+}
+
+export async function getLikesCountsForRecipeIds(
+  recipeIds: number[]
+): Promise<Record<number, number>> {
+  if (recipeIds.length === 0) return {}
+  // Fetch all likes for the given recipe IDs and compute counts per recipe.
+  const { data, error } = await supabase
+    .from('recipe_likes')
+    .select('recipe_id')
+    .in('recipe_id', recipeIds)
+
+  if (error) throw error
+
+  const rows = data ?? []
+  const counts: Record<number, number> = {}
+  for (const id of recipeIds) counts[id] = 0
+  ;(rows as any[]).forEach((r) => {
+    const id = r.recipe_id as number
+    counts[id] = (counts[id] ?? 0) + 1
+  })
+
+  return counts
+}
+
+export async function getLikedRecipeIdsByUser(userId: string): Promise<number[]> {
+  if (!userId) return []
+
+  const { data, error } = await supabase
+    .from('recipe_likes')
+    .select('recipe_id')
+    .eq('user_id', userId)
+
+  if (error) throw error
+
+  return (data ?? []).map((r: any) => Number(r.recipe_id))
+}
+
+export async function likeRecipe(
+  userId: string,
+  recipeId: number
+): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('recipe_likes')
+      .insert({ user_id: userId, recipe_id: recipeId })
+
+    if (error) {
+      // Log full error for debugging
+      console.error('Supabase likeRecipe error:', error)
+      // If unique violation (already liked), treat as success
+      const code = (error as any)?.code ?? (error as any)?.status
+      if (code === '23505' || code === 409) return
+      throw error
+    }
+
+    return
+  } catch (err) {
+    console.error('Failed to insert like:', err)
+    throw err
+  }
+}
+
+export async function unlikeRecipe(userId: string, recipeId: number): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('recipe_likes')
+      .delete()
+      .match({ user_id: userId, recipe_id: recipeId })
+
+    if (error) {
+      console.error('Supabase unlikeRecipe error:', error)
+      throw error
+    }
+
+    return
+  } catch (err) {
+    console.error('Failed to delete like:', err)
+    throw err
+  }
+}
+
+// Saved recipes (favorites)
+export async function getSavedRecipeIdsByUser(userId: string): Promise<number[]> {
+  if (!userId) return []
+
+  const { data, error } = await supabase
+    .from('saved_recipes')
+    .select('recipe_id')
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Supabase getSavedRecipeIdsByUser error:', error)
+    throw error
+  }
+
+  return (data ?? []).map((r: any) => Number(r.recipe_id))
+}
+
+export async function saveRecipeForUser(userId: string, recipeId: number): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('saved_recipes')
+      .insert({ user_id: userId, recipe_id: recipeId })
+
+    if (error) {
+      console.error('Supabase saveRecipeForUser error:', error)
+      const code = (error as any)?.code ?? (error as any)?.status
+      if (code === '23505' || code === 409) return
+      throw error
+    }
+
+    return
+  } catch (err) {
+    console.error('Failed to save recipe:', err)
+    throw err
+  }
+}
+
+export async function unsaveRecipeForUser(userId: string, recipeId: number): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('saved_recipes')
+      .delete()
+      .match({ user_id: userId, recipe_id: recipeId })
+
+    if (error) {
+      console.error('Supabase unsaveRecipeForUser error:', error)
+      throw error
+    }
+
+    return
+  } catch (err) {
+    console.error('Failed to unsave recipe:', err)
+    throw err
+  }
+}

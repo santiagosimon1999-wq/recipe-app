@@ -7,6 +7,9 @@ type RecipeModalProps = {
   onDelete: (recipeId: number) => void
   onTogglePublic?: (recipe: Recipe) => void
   canManage?: boolean
+  liked: boolean
+  likeCount: number
+  onToggleLike?: (recipeId: number) => void
 }
 
 function RecipeModal({
@@ -16,6 +19,9 @@ function RecipeModal({
   onDelete,
   onTogglePublic,
   canManage = false,
+  liked,
+  likeCount,
+  onToggleLike,
 }: RecipeModalProps) {
   const instructions = recipe.instructions
     .split('\n')
@@ -39,6 +45,17 @@ function RecipeModal({
       >
         <div className="recipe-modal__top-bar">
           <div className="recipe-modal__actions">
+            {recipe.source !== 'sample' && (
+              <button
+                type="button"
+                className={
+                  liked ? 'like-button like-button--active' : 'like-button'
+                }
+                onClick={() => onToggleLike?.(recipe.id)}
+              >
+                {liked ? `💚 ${likeCount}` : `🤍 ${likeCount}`}
+              </button>
+            )}
             {canManage ? (
               <>
                 <button

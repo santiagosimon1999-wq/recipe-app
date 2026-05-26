@@ -69,7 +69,7 @@ export default function AppHeader({
           {isLoggedIn ? (
             <button
               type="button"
-              className="profile-button"
+              className="theme-toggle-button"
               onClick={() => onChangeView('profile')}
             >
               Profile

@@ -56,6 +56,11 @@ function mapRecipeRow(row: DbRecipeRow): Recipe {
 
 export default function ProfilePage() {
   const { user } = useAuth()
+  const [isEditing, setIsEditing] = useState(false)
+  const [editDisplayName, setEditDisplayName] = useState('')
+  const [editUsername, setEditUsername] = useState('')
+  const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null)
+  const [savingProfile, setSavingProfile] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [recipeCount, setRecipeCount] = useState<number | null>(null)
   const [favoritesCount, setFavoritesCount] = useState(0)
@@ -151,6 +156,50 @@ export default function ProfilePage() {
     void loadProfile()
   }, [user])
 
+  useEffect(() => {
+    if (profile) {
+      setEditDisplayName(profile.display_name ?? '')
+      setEditUsername(profile.username ?? '')
+    }
+  }, [profile])
+
+  async function handleSaveProfile() {
+    if (!user) return
+
+    setSavingProfile(true)
+    try {
+      let avatar_url = profile?.avatar_url ?? null
+
+      if (editAvatarFile) {
+        // Lazy import to avoid circulars
+        const { uploadProfileImage } = await import('../lib/storageService')
+        avatar_url = await uploadProfileImage(user.id, editAvatarFile)
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ display_name: editDisplayName || null, username: editUsername || null, avatar_url })
+        .eq('id', user.id)
+        .select()
+        .maybeSingle()
+
+      if (error) throw error
+
+      if (data) {
+        setProfile(data as Profile)
+      } else {
+        setProfile((p) => ({ ...(p ?? {}), display_name: editDisplayName || null, username: editUsername || null, avatar_url }))
+      }
+
+      setIsEditing(false)
+    } catch (err) {
+      console.error('Failed to save profile:', err)
+      setError('Failed to save profile. Please try again.')
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
   if (!user) {
     return (
       <section style={{ padding: '2rem', textAlign: 'center' }}>
@@ -195,23 +244,23 @@ export default function ProfilePage() {
               placeItems: 'center',
             }}
           >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={`${displayName} avatar`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              <span
-                style={{
-                  fontSize: '3rem',
-                  color: '#374151',
-                  fontWeight: 900,
-                }}
-              >
-                {displayName.charAt(0).toUpperCase()}
-              </span>
-            )}
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={`${displayName} avatar`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <span
+                  style={{
+                    fontSize: '3rem',
+                    color: '#374151',
+                    fontWeight: 900,
+                  }}
+                >
+                  {displayName.charAt(0).toUpperCase()}
+                </span>
+              )}
           </div>
 
           <div
@@ -244,6 +293,41 @@ export default function ProfilePage() {
             <p style={{ margin: '0.75rem 0 0', color: '#4b5563' }}>
               {user.email}
             </p>
+            <div style={{ marginTop: 12 }}>
+              {isEditing ? (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <input
+                    value={editDisplayName}
+                    onChange={(e) => setEditDisplayName(e.target.value)}
+                    placeholder="Display name"
+                  />
+                  <input
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    placeholder="Username"
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setEditAvatarFile(e.target.files?.[0] ?? null)}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" onClick={handleSaveProfile} disabled={savingProfile}>
+                      {savingProfile ? 'Saving…' : 'Save'}
+                    </button>
+                    <button type="button" onClick={() => setIsEditing(false)} disabled={savingProfile}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <button type="button" onClick={() => setIsEditing(true)}>
+                    Edit profile
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

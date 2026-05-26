@@ -18,6 +18,10 @@ import {
   deleteRecipe as deleteRecipeById,
   getRecipes,
   updateRecipe as updateRecipeById,
+  getLikedRecipeIdsByUser,
+  getLikesCountsForRecipeIds,
+  likeRecipe,
+  unlikeRecipe,
 } from './lib/recipeService'
 import { supabase } from './lib/supabaseClient'
 import { uploadRecipeImage } from './lib/storageService'
@@ -51,6 +55,8 @@ const starterRecipes: Recipe[] = initialRecipes.map((recipe) => ({
   source: 'sample',
   isPublic: true,
   authorName: 'Panda Recipes',
+  likeCount: 0,
+  liked: false,
 }))
 
 function mapDbRecipeToUiRecipe(
@@ -76,6 +82,8 @@ function mapDbRecipeToUiRecipe(
     userId: row.user_id,
     authorName: row.author_name ?? 'Panda Chef',
     isPublic: row.is_public ?? true,
+    likeCount: 0,
+    liked: false,
   }
 }
 
@@ -95,17 +103,22 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [favoriteRecipeIds, setFavoriteRecipeIds] = useState<number[]>(() => {
-    try {
-      const storedFavoriteRecipeIds = localStorage.getItem('favoriteRecipeIds')
-      return storedFavoriteRecipeIds ? JSON.parse(storedFavoriteRecipeIds) : []
-    } catch (error) {
-      console.error('Failed to load favorites from localStorage:', error)
+    const [favoriteRecipeIds, setFavoriteRecipeIds] = useState<number[]>(() => {
+      // start empty; we'll load saved favorites from Supabase (and local sample favorites) in effect
       return []
-    }
-  })
+    })
+    const [sampleFavoriteIds, setSampleFavoriteIds] = useState<number[]>(() => {
+      try {
+        const stored = localStorage.getItem('favoriteSampleRecipeIds')
+        return stored ? JSON.parse(stored) : []
+      } catch (err) {
+        console.error('Failed to load sample favorites from localStorage:', err)
+        return []
+      }
+    })
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
+  const [likedRecipeIds, setLikedRecipeIds] = useState<number[]>([])
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const storedTheme = localStorage.getItem('theme')
     return storedTheme === 'light' || storedTheme === 'dark'
@@ -216,7 +229,30 @@ export default function App() {
           (row) => mapDbRecipeToUiRecipe(row, user.id)
         )
 
-        setRecipeList([...ownRecipes, ...communityRecipes, ...starterRecipes])
+        // Combine and then fetch like counts and liked ids for the current user
+        const combined = [...ownRecipes, ...communityRecipes, ...starterRecipes]
+        const recipeIds = combined.map((r) => r.id)
+
+        const likedIds: number[] = (await getLikedRecipeIdsByUser(user.id).catch(() => [])) as number[]
+        const likeCounts: Record<number, number> = (await getLikesCountsForRecipeIds(recipeIds).catch(
+          () => ({} as Record<number, number>)
+        )) as Record<number, number>
+
+        const enriched = combined.map((r) => ({
+          ...r,
+          likeCount: likeCounts[r.id] ?? 0,
+          liked: Array.isArray(likedIds) && likedIds.includes(r.id),
+        }))
+
+        setLikedRecipeIds(likedIds)
+          setRecipeList(enriched)
+          // Load saved favorites for current user from Supabase
+          const savedIds: number[] = []
+
+          // Merge with local sample favorites (only for sample recipes that can't be saved server-side)
+          const mergedFavorites = Array.from(new Set([...savedIds, ...sampleFavoriteIds]))
+
+          setFavoriteRecipeIds(mergedFavorites)
       } catch (error) {
         console.error('Failed to load recipes from Supabase:', error)
 
@@ -233,7 +269,7 @@ export default function App() {
     }
 
     void loadRecipes()
-  }, [user])
+  }, [user, sampleFavoriteIds])
 
   useEffect(() => {
     localStorage.setItem('favoriteRecipeIds', JSON.stringify(favoriteRecipeIds))
@@ -532,15 +568,135 @@ export default function App() {
   }
 
   function handleToggleFavorite(recipeId: number) {
-    setFavoriteRecipeIds((currentIds) =>
-      currentIds.includes(recipeId)
-        ? currentIds.filter((id) => id !== recipeId)
-        : [...currentIds, recipeId]
-    )
+      const recipe = recipeList.find((r) => r.id === recipeId)
+      if (!recipe) return
+
+      // Sample recipes are not stored in Supabase; keep favorites locally for them
+      if (recipe.source === 'sample') {
+        setSampleFavoriteIds((current) => {
+          const next = current.includes(recipeId)
+            ? current.filter((id) => id !== recipeId)
+            : [...current, recipeId]
+          try {
+            localStorage.setItem('favoriteSampleRecipeIds', JSON.stringify(next))
+          } catch (err) {
+            console.error('Failed to persist sample favorites:', err)
+          }
+          // Update combined favoriteRecipeIds
+          setFavoriteRecipeIds((existing) => {
+            const without = existing.filter((id) => id !== recipeId)
+            if (next.includes(recipeId)) return Array.from(new Set([...without, recipeId]))
+            return without
+          })
+
+          return next
+        })
+
+        return
+      }
+
+      // For server-backed recipes, persist via Supabase with optimistic update
+      const currentlySaved = favoriteRecipeIds.includes(recipeId)
+
+      const prevSaved = favoriteRecipeIds
+      const prevList = recipeList
+
+      if (currentlySaved) {
+        // Unsave
+        setFavoriteRecipeIds((ids) => ids.filter((id) => id !== recipeId))
+        try {
+          // Cloud favorites not implemented yet
+        } catch (err) {
+          console.error('Failed to unsave recipe:', err)
+          setFormMessage('Failed to update favorites. Please try again.')
+          setFavoriteRecipeIds(prevSaved)
+          setRecipeList(prevList)
+        }
+      } else {
+        // Save
+        setFavoriteRecipeIds((ids) => Array.from(new Set([...ids, recipeId])))
+        try {
+          // Cloud favorites not implemented yet
+        } catch (err) {
+          console.error('Failed to save recipe:', err)
+          setFormMessage('Failed to update favorites. Please try again.')
+          setFavoriteRecipeIds(prevSaved)
+          setRecipeList(prevList)
+        }
+      }
   }
 
   function handleToggleShowFavoritesOnly() {
     setShowFavoritesOnly((currentValue) => !currentValue)
+  }
+
+  async function handleToggleLike(recipeId: number) {
+    if (!user) return
+    const recipe = recipeList.find((r) => r.id === recipeId)
+    if (!recipe) return
+
+    // Do not allow liking sample (local) recipes that are not stored in Supabase
+    if (recipe.source === 'sample') {
+      console.warn('Attempted to like sample recipe; likes are disabled for sample recipes.')
+      return
+    }
+    const currentlyLiked = likedRecipeIds.includes(recipeId)
+
+    // Snapshot previous state for safe revert
+    const prevLikedIds = likedRecipeIds
+    const prevRecipeList = recipeList
+    const prevSelected = selectedRecipe
+
+    // Apply optimistic update
+    if (currentlyLiked) {
+      setLikedRecipeIds((ids) => ids.filter((id) => id !== recipeId))
+      setRecipeList((list) =>
+        list.map((r) =>
+          r.id === recipeId
+            ? { ...r, liked: false, likeCount: Math.max(0, r.likeCount - 1) }
+            : r
+        )
+      )
+      setSelectedRecipe((current) =>
+        current && current.id === recipeId
+          ? { ...current, liked: false, likeCount: Math.max(0, current.likeCount - 1) }
+          : current
+      )
+
+      try {
+        await unlikeRecipe(user.id, recipeId)
+      } catch (err) {
+        console.error('Failed to unlike:', err)
+        setFormMessage('Failed to unlike recipe. Please try again.')
+        // Revert to previous state
+        setLikedRecipeIds(prevLikedIds)
+        setRecipeList(prevRecipeList)
+        setSelectedRecipe(prevSelected)
+      }
+    } else {
+      setLikedRecipeIds((ids) => (ids.includes(recipeId) ? ids : [...ids, recipeId]))
+      setRecipeList((list) =>
+        list.map((r) =>
+          r.id === recipeId ? { ...r, liked: true, likeCount: r.likeCount + 1 } : r
+        )
+      )
+      setSelectedRecipe((current) =>
+        current && current.id === recipeId
+          ? { ...current, liked: true, likeCount: current.likeCount + 1 }
+          : current
+      )
+
+      try {
+        await likeRecipe(user.id, recipeId)
+      } catch (err) {
+        console.error('Failed to like:', err)
+        setFormMessage('Failed to like recipe. Please try again.')
+        // Revert
+        setLikedRecipeIds(prevLikedIds)
+        setRecipeList(prevRecipeList)
+        setSelectedRecipe(prevSelected)
+      }
+    }
   }
 
   function handleSelectRecipe(recipe: Recipe) {
@@ -593,6 +749,7 @@ export default function App() {
               onClearFilters={handleClearFilters}
               onToggleFavorite={handleToggleFavorite}
               onSelectRecipe={handleSelectRecipe}
+              onToggleLike={handleToggleLike}
             />
           ) : (
             <>
@@ -628,6 +785,7 @@ export default function App() {
                 onToggleFavorite={handleToggleFavorite}
                 onSelectRecipe={handleSelectRecipe}
                 onStartCreateRecipe={handleStartCreateRecipe}
+                onToggleLike={handleToggleLike}
                 selectedRecipe={selectedRecipe}
                 canManageSelectedRecipe={canManageSelectedRecipe}
                 onCloseModal={handleCloseModal}

@@ -15,6 +15,7 @@ type CommunityFeedPageProps = {
   onToggleShowFavoritesOnly: () => void
   onClearFilters: () => void
   onToggleFavorite: (recipeId: number) => void
+  onToggleLike?: (recipeId: number) => void
   onSelectRecipe: (recipe: Recipe) => void
 }
 
@@ -31,6 +32,7 @@ export default function CommunityFeedPage({
   onToggleShowFavoritesOnly,
   onClearFilters,
   onToggleFavorite,
+  onToggleLike,
   onSelectRecipe,
 }: CommunityFeedPageProps) {
   const showFallback = recipes.length === 0 && sampleRecipes.length > 0
@@ -67,6 +69,7 @@ export default function CommunityFeedPage({
         favoriteRecipeIds={favoriteRecipeIds}
         onToggleFavorite={onToggleFavorite}
         onSelectRecipe={onSelectRecipe}
+        onToggleLike={onToggleLike}
       />
 
       {showFallback ? (

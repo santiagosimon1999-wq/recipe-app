@@ -10,6 +10,7 @@ type RecipeDashboardProps = {
   onToggleFavorite: (recipeId: number) => void
   onSelectRecipe: (recipe: Recipe) => void
   onStartCreateRecipe: () => void
+  onToggleLike?: (recipeId: number) => void
   selectedRecipe: Recipe | null
   canManageSelectedRecipe: boolean
   onCloseModal: () => void
@@ -26,6 +27,7 @@ export default function RecipeDashboard({
   onToggleFavorite,
   onSelectRecipe,
   onStartCreateRecipe,
+  onToggleLike,
   selectedRecipe,
   canManageSelectedRecipe,
   onCloseModal,
@@ -44,6 +46,7 @@ export default function RecipeDashboard({
           favoriteRecipeIds={favoriteRecipeIds}
           onToggleFavorite={onToggleFavorite}
           onSelectRecipe={onSelectRecipe}
+          onToggleLike={onToggleLike}
         />
       ) : (
         <section className="empty-profile-state">
@@ -66,6 +69,7 @@ export default function RecipeDashboard({
         favoriteRecipeIds={favoriteRecipeIds}
         onToggleFavorite={onToggleFavorite}
         onSelectRecipe={onSelectRecipe}
+        onToggleLike={onToggleLike}
       />
 
       <RecipeSection
@@ -76,6 +80,7 @@ export default function RecipeDashboard({
         favoriteRecipeIds={favoriteRecipeIds}
         onToggleFavorite={onToggleFavorite}
         onSelectRecipe={onSelectRecipe}
+        onToggleLike={onToggleLike}
       />
 
       {selectedRecipe ? (
@@ -86,6 +91,9 @@ export default function RecipeDashboard({
           onDelete={onDeleteRecipe}
           onTogglePublic={onTogglePublic}
           canManage={canManageSelectedRecipe}
+          liked={Boolean(selectedRecipe.liked)}
+          likeCount={selectedRecipe.likeCount ?? 0}
+          onToggleLike={onToggleLike}
         />
       ) : null}
     </>

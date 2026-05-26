@@ -6,6 +6,9 @@ type RecipeCardProps = {
   isFavorite: boolean
   onToggleFavorite: (recipeId: number) => void
   onSelectRecipe: (recipe: Recipe) => void
+  liked?: boolean
+  likeCount?: number
+  onToggleLike?: (recipeId: number) => void
 }
 
 function RecipeCard({
@@ -13,6 +16,9 @@ function RecipeCard({
   isFavorite,
   onToggleFavorite,
   onSelectRecipe,
+  liked,
+  likeCount = 0,
+  onToggleLike,
 }: RecipeCardProps) {
   const fallbackImage =
     'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&q=80&auto=format&fit=crop'
@@ -82,6 +88,19 @@ function RecipeCard({
         >
           {isFavorite ? '❤️ Favorited' : '🤍 Favorite'}
         </button>
+        {recipe.source !== 'sample' && (
+          <button
+            type="button"
+            className={liked ? 'like-button like-button--active' : 'like-button'}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onToggleLike?.(recipe.id)
+            }}
+          >
+            {liked ? `💚 ${likeCount ?? 0}` : `🤍 ${likeCount ?? 0}`}
+          </button>
+        )}
       </div>
     </article>
   )
