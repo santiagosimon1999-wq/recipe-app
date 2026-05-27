@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient'
 import type { Database } from '../types/database'
+import { normalizeSupabaseRecipeId } from '../utils/favorites'
 
 type RecipeRow = Database['public']['Tables']['recipes']['Row']
 
@@ -20,6 +21,10 @@ export type RecipeCreateInput = {
 export type RecipeUpdateInput = Partial<RecipeCreateInput>
 
 export async function getRecipes(userId: string): Promise<RecipeRow[]> {
+  if (!userId) {
+    throw new Error('getRecipes requires an authenticated user id')
+  }
+
   const { data, error } = await supabase
     .from('recipes')
     .select('*')
@@ -37,6 +42,10 @@ export async function createRecipe(
   userId: string,
   recipe: RecipeCreateInput
 ): Promise<RecipeRow> {
+  if (!userId) {
+    throw new Error('createRecipe requires an authenticated user id')
+  }
+
   const { data, error } = await supabase
     .from('recipes')
     .insert({
@@ -65,8 +74,13 @@ export async function createRecipe(
 
 export async function updateRecipe(
   recipeId: number,
+  userId: string,
   updates: RecipeUpdateInput
 ): Promise<RecipeRow> {
+  if (!userId) {
+    throw new Error('updateRecipe requires an authenticated user id')
+  }
+
   const payload: RecipeUpdateInput = {
     ...(updates.title !== undefined ? { title: updates.title } : {}),
     ...(updates.description !== undefined
@@ -91,6 +105,7 @@ export async function updateRecipe(
     .from('recipes')
     .update(payload)
     .eq('id', recipeId)
+    .eq('user_id', userId)
     .select()
     .single()
 
@@ -101,8 +116,16 @@ export async function updateRecipe(
   return data
 }
 
-export async function deleteRecipe(recipeId: number): Promise<void> {
-  const { error } = await supabase.from('recipes').delete().eq('id', recipeId)
+export async function deleteRecipe(recipeId: number, userId: string): Promise<void> {
+  if (!userId) {
+    throw new Error('deleteRecipe requires an authenticated user id')
+  }
+
+  const { error } = await supabase
+    .from('recipes')
+    .delete()
+    .eq('id', recipeId)
+    .eq('user_id', userId)
 
   if (error) {
     throw error
@@ -215,17 +238,25 @@ export async function getSavedRecipeIdsByUser(userId: string): Promise<number[]>
     throw error
   }
 
-  return (data ?? []).map((r: any) => Number(r.recipe_id))
+  return (data ?? [])
+    .map((row) => Math.trunc(Number((row as { recipe_id: number | string }).recipe_id)))
+    .filter((id) => Number.isFinite(id) && id > 0)
 }
 
 export async function saveRecipeForUser(userId: string, recipeId: number): Promise<void> {
+  const dbRecipeId = normalizeSupabaseRecipeId(recipeId)
+
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('saved_recipes')
-      .insert({ user_id: userId, recipe_id: recipeId })
+      .insert({ user_id: userId, recipe_id: dbRecipeId })
 
     if (error) {
-      console.error('Supabase saveRecipeForUser error:', error)
+      console.error('Supabase saveRecipeForUser insert error:', {
+        userId,
+        recipeId: dbRecipeId,
+        error,
+      })
       const code = (error as any)?.code ?? (error as any)?.status
       if (code === '23505' || code === 409) return
       throw error
@@ -239,14 +270,20 @@ export async function saveRecipeForUser(userId: string, recipeId: number): Promi
 }
 
 export async function unsaveRecipeForUser(userId: string, recipeId: number): Promise<void> {
+  const dbRecipeId = normalizeSupabaseRecipeId(recipeId)
+
   try {
     const { error } = await supabase
       .from('saved_recipes')
       .delete()
-      .match({ user_id: userId, recipe_id: recipeId })
+      .match({ user_id: userId, recipe_id: dbRecipeId })
 
     if (error) {
-      console.error('Supabase unsaveRecipeForUser error:', error)
+      console.error('Supabase unsaveRecipeForUser delete error:', {
+        userId,
+        recipeId: dbRecipeId,
+        error,
+      })
       throw error
     }
 

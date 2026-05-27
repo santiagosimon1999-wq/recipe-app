@@ -6,8 +6,9 @@ type RecipeDashboardProps = {
   userRecipes: Recipe[]
   communityRecipes: Recipe[]
   sampleRecipes: Recipe[]
-  favoriteRecipeIds: number[]
-  onToggleFavorite: (recipeId: number) => void
+  sampleFavoriteIds: number[]
+  cloudFavoriteRecipeIds: number[]
+  onToggleFavorite: (recipe: Recipe) => void
   onSelectRecipe: (recipe: Recipe) => void
   onStartCreateRecipe: () => void
   onToggleLike?: (recipeId: number) => void
@@ -23,7 +24,8 @@ export default function RecipeDashboard({
   userRecipes,
   communityRecipes,
   sampleRecipes,
-  favoriteRecipeIds,
+  sampleFavoriteIds,
+  cloudFavoriteRecipeIds,
   onToggleFavorite,
   onSelectRecipe,
   onStartCreateRecipe,
@@ -43,7 +45,8 @@ export default function RecipeDashboard({
           title="Your Recipes"
           countLabel="saved"
           recipes={userRecipes}
-          favoriteRecipeIds={favoriteRecipeIds}
+          sampleFavoriteIds={sampleFavoriteIds}
+          cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
           onToggleFavorite={onToggleFavorite}
           onSelectRecipe={onSelectRecipe}
           onToggleLike={onToggleLike}
@@ -66,7 +69,8 @@ export default function RecipeDashboard({
         title="Shared Recipes"
         countLabel="shared"
         recipes={communityRecipes}
-        favoriteRecipeIds={favoriteRecipeIds}
+        sampleFavoriteIds={sampleFavoriteIds}
+        cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
         onToggleFavorite={onToggleFavorite}
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}
@@ -77,7 +81,8 @@ export default function RecipeDashboard({
         title="Explore Recipes"
         countLabel="ideas"
         recipes={sampleRecipes}
-        favoriteRecipeIds={favoriteRecipeIds}
+        sampleFavoriteIds={sampleFavoriteIds}
+        cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
         onToggleFavorite={onToggleFavorite}
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}

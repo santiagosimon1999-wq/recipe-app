@@ -5,7 +5,8 @@ import RecipeGrid from '../components/RecipeGrid'
 type CommunityFeedPageProps = {
   recipes: Recipe[]
   sampleRecipes: Recipe[]
-  favoriteRecipeIds: number[]
+  sampleFavoriteIds: number[]
+  cloudFavoriteRecipeIds: number[]
   searchTerm: string
   selectedCategory: string
   showFavoritesOnly: boolean
@@ -14,7 +15,7 @@ type CommunityFeedPageProps = {
   onCategoryChange: (category: string) => void
   onToggleShowFavoritesOnly: () => void
   onClearFilters: () => void
-  onToggleFavorite: (recipeId: number) => void
+  onToggleFavorite: (recipe: Recipe) => void
   onToggleLike?: (recipeId: number) => void
   onSelectRecipe: (recipe: Recipe) => void
 }
@@ -22,7 +23,8 @@ type CommunityFeedPageProps = {
 export default function CommunityFeedPage({
   recipes,
   sampleRecipes,
-  favoriteRecipeIds,
+  sampleFavoriteIds,
+  cloudFavoriteRecipeIds,
   searchTerm,
   selectedCategory,
   showFavoritesOnly,
@@ -66,7 +68,8 @@ export default function CommunityFeedPage({
 
       <RecipeGrid
         recipes={feedRecipes}
-        favoriteRecipeIds={favoriteRecipeIds}
+        sampleFavoriteIds={sampleFavoriteIds}
+        cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
         onToggleFavorite={onToggleFavorite}
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}

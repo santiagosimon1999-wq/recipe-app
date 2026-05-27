@@ -1,17 +1,20 @@
 import type { Recipe } from "../types/Recipe";
+import { getRecipeListKey, isRecipeFavorited } from "../utils/favorites";
 import RecipeCard from "./RecipeCard";
 
 type RecipeGridProps = {
   recipes: Recipe[];
-  favoriteRecipeIds: number[];
-  onToggleFavorite: (recipeId: number) => void;
+  sampleFavoriteIds: number[];
+  cloudFavoriteRecipeIds: number[];
+  onToggleFavorite: (recipe: Recipe) => void;
   onSelectRecipe: (recipe: Recipe) => void;
   onToggleLike?: (recipeId: number) => void;
 };
 
 function RecipeGrid({
   recipes,
-  favoriteRecipeIds,
+  sampleFavoriteIds,
+  cloudFavoriteRecipeIds,
   onToggleFavorite,
   onSelectRecipe,
   onToggleLike,
@@ -29,9 +32,13 @@ function RecipeGrid({
     <section className="recipe-grid">
       {recipes.map((recipe) => (
         <RecipeCard
-          key={recipe.id}
+          key={getRecipeListKey(recipe)}
           recipe={recipe}
-          isFavorite={favoriteRecipeIds.includes(recipe.id)}
+          isFavorite={isRecipeFavorited(
+            recipe,
+            sampleFavoriteIds,
+            cloudFavoriteRecipeIds
+          )}
           onToggleFavorite={onToggleFavorite}
           onSelectRecipe={onSelectRecipe}
           liked={Boolean(recipe.liked)}
@@ -44,4 +51,3 @@ function RecipeGrid({
 }
 
 export default RecipeGrid;
-

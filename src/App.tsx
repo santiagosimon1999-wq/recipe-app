@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import './index.css'
 import { AuthGate } from './components/auth/AuthGate'
 import { useAuth } from './context/useAuth'
@@ -20,12 +20,22 @@ import {
   updateRecipe as updateRecipeById,
   getLikedRecipeIdsByUser,
   getLikesCountsForRecipeIds,
+  getSavedRecipeIdsByUser,
   likeRecipe,
+  saveRecipeForUser,
   unlikeRecipe,
+  unsaveRecipeForUser,
 } from './lib/recipeService'
 import { supabase } from './lib/supabaseClient'
 import { uploadRecipeImage } from './lib/storageService'
 import type { Recipe } from './types/Recipe'
+import {
+  getRecipeListKey,
+  getSupabaseRecipeId,
+  isRecipeFavorited,
+  isSampleRecipe,
+  parseDbRecipeId,
+} from './utils/favorites'
 
 type DbRecipeRow = {
   id: number
@@ -64,9 +74,14 @@ function mapDbRecipeToUiRecipe(
   currentUserId?: string
 ): Recipe {
   const belongsToCurrentUser = row.user_id === currentUserId
+  const dbId = parseDbRecipeId(row.id)
+
+  if (dbId === null) {
+    console.error('mapDbRecipeToUiRecipe: missing or invalid Supabase id', row)
+  }
 
   return {
-    id: row.id,
+    id: dbId ?? 0,
     title: row.title,
     image: row.image_url ?? '',
     imageFile: null,
@@ -103,8 +118,7 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
-    const [favoriteRecipeIds, setFavoriteRecipeIds] = useState<number[]>(() => {
-      // start empty; we'll load saved favorites from Supabase (and local sample favorites) in effect
+    const [cloudFavoriteRecipeIds, setCloudFavoriteRecipeIds] = useState<number[]>(() => {
       return []
     })
     const [sampleFavoriteIds, setSampleFavoriteIds] = useState<number[]>(() => {
@@ -130,6 +144,7 @@ export default function App() {
   const [formMessage, setFormMessage] = useState('')
   const [savingRecipe, setSavingRecipe] = useState(false)
   const [view, setView] = useState<'dashboard' | 'profile' | 'community'>('dashboard')
+  const favoritesFetchVersionRef = useRef(0)
 
   const displayName =
     profile?.display_name || getFallbackUserName(user?.email)
@@ -142,6 +157,11 @@ export default function App() {
       }
 
       const fallbackName = getFallbackUserName(user.email)
+      const profileData = {
+        id: user.id,
+        display_name: fallbackName,
+        username: fallbackName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+      }
 
       try {
         const { data: existingProfile, error: profileError } =
@@ -158,19 +178,33 @@ export default function App() {
           return
         }
 
-        const { data: newProfile, error: insertError } = await supabase
+        const { data: upsertedProfile, error: upsertError } = await supabase
           .from('profiles')
-          .insert({
-            id: user.id,
-            display_name: fallbackName,
-            username: fallbackName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
-          })
+          .upsert(profileData, { onConflict: 'id' })
           .select()
           .single()
 
-        if (insertError) throw insertError
+        if (upsertError) {
+          const conflictCode =
+            (upsertError as { code?: string }).code ??
+            (upsertError as { status?: number }).status
 
-        setProfile(newProfile as Profile)
+          if (conflictCode === '23505' || conflictCode === 409) {
+            const { data: racedProfile, error: racedError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .single()
+
+            if (racedError) throw racedError
+            setProfile(racedProfile as Profile)
+            return
+          }
+
+          throw upsertError
+        }
+
+        setProfile(upsertedProfile as Profile)
       } catch (error) {
         console.error('Failed to load profile:', error)
         setProfile({
@@ -245,14 +279,7 @@ export default function App() {
         }))
 
         setLikedRecipeIds(likedIds)
-          setRecipeList(enriched)
-          // Load saved favorites for current user from Supabase
-          const savedIds: number[] = []
-
-          // Merge with local sample favorites (only for sample recipes that can't be saved server-side)
-          const mergedFavorites = Array.from(new Set([...savedIds, ...sampleFavoriteIds]))
-
-          setFavoriteRecipeIds(mergedFavorites)
+        setRecipeList(enriched)
       } catch (error) {
         console.error('Failed to load recipes from Supabase:', error)
 
@@ -269,11 +296,42 @@ export default function App() {
     }
 
     void loadRecipes()
-  }, [user, sampleFavoriteIds])
+  }, [user])
 
   useEffect(() => {
-    localStorage.setItem('favoriteRecipeIds', JSON.stringify(favoriteRecipeIds))
-  }, [favoriteRecipeIds])
+    if (!user) {
+      favoritesFetchVersionRef.current += 1
+      setCloudFavoriteRecipeIds([])
+      return
+    }
+
+    const fetchVersion = favoritesFetchVersionRef.current + 1
+    favoritesFetchVersionRef.current = fetchVersion
+
+    async function loadCloudFavorites() {
+      try {
+        const savedIds = await getSavedRecipeIdsByUser(user.id)
+        if (fetchVersion !== favoritesFetchVersionRef.current) return
+        setCloudFavoriteRecipeIds(savedIds)
+      } catch (err) {
+        console.error('Failed to load saved favorites from Supabase:', err)
+        if (fetchVersion !== favoritesFetchVersionRef.current) return
+        setCloudFavoriteRecipeIds([])
+      }
+    }
+
+    void loadCloudFavorites()
+  }, [user])
+
+  useEffect(() => {
+    localStorage.setItem(
+      'favoriteRecipeIds',
+      JSON.stringify([
+        ...cloudFavoriteRecipeIds.map((id) => `db:${id}`),
+        ...sampleFavoriteIds.map((id) => `sample:${id}`),
+      ])
+    )
+  }, [cloudFavoriteRecipeIds, sampleFavoriteIds])
 
   useEffect(() => {
     localStorage.setItem('theme', theme)
@@ -302,7 +360,8 @@ export default function App() {
       selectedCategory === 'All' || recipe.category === selectedCategory
 
     const matchesFavorites =
-      !showFavoritesOnly || favoriteRecipeIds.includes(recipe.id)
+      !showFavoritesOnly ||
+      isRecipeFavorited(recipe, sampleFavoriteIds, cloudFavoriteRecipeIds)
 
     return matchesSearch && matchesCategory && matchesFavorites
   })
@@ -358,7 +417,7 @@ export default function App() {
           return
         }
 
-        const updatedRow = (await updateRecipeById(recipeBeingEdited.id, {
+        const updatedRow = (await updateRecipeById(recipeBeingEdited.id, user.id, {
           title: recipeData.title,
           description: recipeData.description,
           ingredients: recipeData.ingredients,
@@ -379,6 +438,7 @@ export default function App() {
             is_public: recipeBeingEdited.isPublic ?? true,
           })
           .eq('id', recipeBeingEdited.id)
+          .eq('user_id', user.id)
 
         const updatedRecipe = mapDbRecipeToUiRecipe(
           {
@@ -412,22 +472,50 @@ export default function App() {
           is_public: recipeData.isPublic,
         })) as DbRecipeRow
 
+        const createdDbId = parseDbRecipeId(createdRow.id)
+        if (createdDbId === null) {
+          console.error('Create recipe did not return a valid Supabase id:', createdRow)
+          throw new Error('Recipe saved without a valid database id')
+        }
+
         await supabase
           .from('recipes')
           .update({
             author_name: displayName,
             is_public: recipeData.isPublic,
           })
-          .eq('id', createdRow.id)
+          .eq('id', createdDbId)
+          .eq('user_id', user.id)
 
-        const createdRecipe = mapDbRecipeToUiRecipe(
-          {
-            ...createdRow,
-            author_name: displayName,
-            is_public: true,
-          },
-          user.id
-        )
+        const { data: freshRow, error: fetchCreatedError } = await supabase
+          .from('recipes')
+          .select('*')
+          .eq('id', createdDbId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (fetchCreatedError || !freshRow) {
+          console.error(
+            'Failed to refetch created recipe from Supabase:',
+            fetchCreatedError
+          )
+          throw fetchCreatedError ?? new Error('Failed to refetch created recipe')
+        }
+
+        const createdRecipe: Recipe = {
+          ...mapDbRecipeToUiRecipe(freshRow as DbRecipeRow, user.id),
+          source: 'user',
+          likeCount: 0,
+          liked: false,
+        }
+
+        if (getSupabaseRecipeId(createdRecipe) === null) {
+          console.error(
+            'Created recipe is missing a favoritable Supabase id:',
+            createdRecipe
+          )
+          throw new Error('Created recipe is missing a valid database id')
+        }
 
         setRecipeList((currentRecipes) => [createdRecipe, ...currentRecipes])
         setFormMessage('Recipe added successfully.')
@@ -451,6 +539,7 @@ export default function App() {
   function handleStartCreateRecipe() {
     if (!user) return
 
+    setView('dashboard')
     setRecipeBeingEdited(null)
     setShowRecipeForm(true)
     setSelectedRecipe(null)
@@ -495,13 +584,13 @@ export default function App() {
     if (!confirmed) return
 
     try {
-      await deleteRecipeById(recipeId)
+      await deleteRecipeById(recipeId, user.id)
 
       setRecipeList((currentRecipes) =>
         currentRecipes.filter((recipe) => recipe.id !== recipeId)
       )
 
-      setFavoriteRecipeIds((currentIds) =>
+      setCloudFavoriteRecipeIds((currentIds) =>
         currentIds.filter((id) => id !== recipeId)
       )
 
@@ -567,63 +656,73 @@ export default function App() {
     setShowFavoritesOnly(false)
   }
 
-  function handleToggleFavorite(recipeId: number) {
-      const recipe = recipeList.find((r) => r.id === recipeId)
-      if (!recipe) return
+  async function refreshCloudFavorites(userId: string) {
+    if (!user || userId !== user.id) {
+      console.error('refreshCloudFavorites called with mismatched user id:', userId)
+      return
+    }
 
-      // Sample recipes are not stored in Supabase; keep favorites locally for them
-      if (recipe.source === 'sample') {
-        setSampleFavoriteIds((current) => {
-          const next = current.includes(recipeId)
-            ? current.filter((id) => id !== recipeId)
-            : [...current, recipeId]
-          try {
-            localStorage.setItem('favoriteSampleRecipeIds', JSON.stringify(next))
-          } catch (err) {
-            console.error('Failed to persist sample favorites:', err)
-          }
-          // Update combined favoriteRecipeIds
-          setFavoriteRecipeIds((existing) => {
-            const without = existing.filter((id) => id !== recipeId)
-            if (next.includes(recipeId)) return Array.from(new Set([...without, recipeId]))
-            return without
-          })
+    const fetchVersion = favoritesFetchVersionRef.current + 1
+    favoritesFetchVersionRef.current = fetchVersion
 
-          return next
-        })
+    try {
+      const savedIds = await getSavedRecipeIdsByUser(userId)
+      if (fetchVersion !== favoritesFetchVersionRef.current) return
+      setCloudFavoriteRecipeIds(savedIds)
+    } catch (err) {
+      console.error('Failed to refresh saved favorites from Supabase:', err)
+      if (fetchVersion !== favoritesFetchVersionRef.current) return
+      setFormMessage('Failed to update favorites. Please try again.')
+    }
+  }
 
-        return
+  async function handleToggleFavorite(recipe: Recipe) {
+    const resolvedRecipe =
+      recipeList.find((r) => getRecipeListKey(r) === getRecipeListKey(recipe)) ??
+      recipe
+
+    if (isSampleRecipe(resolvedRecipe)) {
+      const recipeId = resolvedRecipe.id
+      const next = sampleFavoriteIds.includes(recipeId)
+        ? sampleFavoriteIds.filter((id) => id !== recipeId)
+        : [...sampleFavoriteIds, recipeId]
+
+      try {
+        localStorage.setItem('favoriteSampleRecipeIds', JSON.stringify(next))
+      } catch (err) {
+        console.error('Failed to persist sample favorites:', err)
       }
 
-      // For server-backed recipes, persist via Supabase with optimistic update
-      const currentlySaved = favoriteRecipeIds.includes(recipeId)
+      setSampleFavoriteIds(next)
+      return
+    }
 
-      const prevSaved = favoriteRecipeIds
-      const prevList = recipeList
+    if (!user) return
 
+    const supabaseRecipeId = getSupabaseRecipeId(resolvedRecipe)
+    if (supabaseRecipeId === null) {
+      console.error(
+        'Cannot favorite recipe without a valid Supabase id:',
+        resolvedRecipe
+      )
+      setFormMessage('This recipe cannot be saved to favorites yet. Try refreshing.')
+      return
+    }
+
+    const currentlySaved = cloudFavoriteRecipeIds.includes(supabaseRecipeId)
+
+    try {
       if (currentlySaved) {
-        // Unsave
-        setFavoriteRecipeIds((ids) => ids.filter((id) => id !== recipeId))
-        try {
-          // Cloud favorites not implemented yet
-        } catch (err) {
-          console.error('Failed to unsave recipe:', err)
-          setFormMessage('Failed to update favorites. Please try again.')
-          setFavoriteRecipeIds(prevSaved)
-          setRecipeList(prevList)
-        }
+        await unsaveRecipeForUser(user.id, supabaseRecipeId)
       } else {
-        // Save
-        setFavoriteRecipeIds((ids) => Array.from(new Set([...ids, recipeId])))
-        try {
-          // Cloud favorites not implemented yet
-        } catch (err) {
-          console.error('Failed to save recipe:', err)
-          setFormMessage('Failed to update favorites. Please try again.')
-          setFavoriteRecipeIds(prevSaved)
-          setRecipeList(prevList)
-        }
+        await saveRecipeForUser(user.id, supabaseRecipeId)
       }
+
+      await refreshCloudFavorites(user.id)
+    } catch (err) {
+      console.error('Failed to update favorite in Supabase:', err)
+      setFormMessage('Failed to update favorites. Please try again.')
+    }
   }
 
   function handleToggleShowFavoritesOnly() {
@@ -727,10 +826,23 @@ export default function App() {
             email={user?.email}
             userInitial={getUserInitial(displayName || user?.email)}
             totalRecipes={allUserRecipes.length}
-            favoriteCount={favoriteRecipeIds.length}
+            favoriteCount={sampleFavoriteIds.length + cloudFavoriteRecipeIds.length}
             averageCalories={averageCalories}
             isLoggedIn={Boolean(user)}
           />
+
+          {formMessage ? (
+            <p className="form-message">{formMessage}</p>
+          ) : null}
+
+          {showRecipeForm ? (
+            <RecipeForm
+              key={recipeBeingEdited?.id ?? 'new'}
+              initialRecipe={recipeBeingEdited}
+              onSaveRecipe={handleAddRecipe}
+              onCancel={handleCancelRecipeForm}
+            />
+          ) : null}
 
           {view === 'profile' ? (
             <ProfilePage />
@@ -738,7 +850,8 @@ export default function App() {
             <CommunityFeedPage
               recipes={communityRecipes}
               sampleRecipes={sampleRecipes}
-              favoriteRecipeIds={favoriteRecipeIds}
+              sampleFavoriteIds={sampleFavoriteIds}
+              cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
               searchTerm={searchTerm}
               selectedCategory={selectedCategory}
               showFavoritesOnly={showFavoritesOnly}
@@ -753,19 +866,6 @@ export default function App() {
             />
           ) : (
             <>
-              {formMessage ? (
-                <p className="form-message">{formMessage}</p>
-              ) : null}
-
-              {showRecipeForm ? (
-                <RecipeForm
-                  key={recipeBeingEdited?.id ?? 'new'}
-                  initialRecipe={recipeBeingEdited}
-                  onSaveRecipe={handleAddRecipe}
-                  onCancel={handleCancelRecipeForm}
-                />
-              ) : null}
-
               <DiscoverPanel
                 searchTerm={searchTerm}
                 selectedCategory={selectedCategory}
@@ -781,7 +881,8 @@ export default function App() {
                 userRecipes={userRecipes}
                 communityRecipes={communityRecipes}
                 sampleRecipes={sampleRecipes}
-                favoriteRecipeIds={favoriteRecipeIds}
+                sampleFavoriteIds={sampleFavoriteIds}
+                cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
                 onToggleFavorite={handleToggleFavorite}
                 onSelectRecipe={handleSelectRecipe}
                 onStartCreateRecipe={handleStartCreateRecipe}

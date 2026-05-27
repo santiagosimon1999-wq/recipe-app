@@ -1,14 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Recipe } from '../types/Recipe'
+import type { Profile } from '../types/Profile'
 import { useAuth } from '../context/useAuth'
 import { supabase } from '../lib/supabaseClient'
-
-type Profile = {
-  id: string
-  display_name: string | null
-  username: string | null
-  avatar_url?: string | null
-}
 
 type DbRecipeRow = {
   id: number
@@ -26,6 +20,26 @@ type DbRecipeRow = {
   author_name?: string | null
   is_public?: boolean | null
   created_at?: string | null
+}
+
+function logSupabaseError(context: string, error: unknown) {
+  if (error && typeof error === 'object') {
+    const supabaseError = error as {
+      message?: string
+      details?: string
+      hint?: string
+      code?: string
+    }
+    console.error(`Supabase error [${context}]:`, {
+      message: supabaseError.message,
+      details: supabaseError.details,
+      hint: supabaseError.hint,
+      code: supabaseError.code,
+    })
+    return
+  }
+
+  console.error(`Supabase error [${context}]:`, error)
 }
 
 function getFallbackUserName(email: string | null | undefined) {
@@ -51,6 +65,8 @@ function mapRecipeRow(row: DbRecipeRow): Recipe {
     userId: row.user_id,
     authorName: row.author_name ?? 'You',
     isPublic: row.is_public ?? false,
+    likeCount: 0,
+    liked: false,
   }
 }
 
@@ -90,7 +106,11 @@ export default function ProfilePage() {
   )
 
   useEffect(() => {
-    if (!user) return
+    const userId = user?.id?.trim()
+    if (!userId) {
+      setLoading(false)
+      return
+    }
 
     async function loadProfile() {
       setLoading(true)
@@ -98,30 +118,33 @@ export default function ProfilePage() {
 
       try {
         const { data: profileData, error: profileError } = await supabase
-          .from<Profile>('profiles')
-          .select('id, display_name, username, avatar_url')
-          .eq('id', user.id)
+          .from('profiles')
+          .select('id, display_name, username, avatar_url, bio')
+          .eq('id', userId)
           .maybeSingle()
 
         if (profileError) {
+          logSupabaseError('loadProfile profiles', profileError)
           throw profileError
         }
 
         if (profileData) {
-          setProfile(profileData)
+          setProfile(profileData as Profile)
         }
 
         const countPromise = supabase
           .from('recipes')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
 
         const sharedPromise = supabase
-          .from<DbRecipeRow>('recipes')
-          .select('*')
-          .eq('user_id', user.id)
+          .from('recipes')
+          .select(
+            'id, user_id, title, image_url, description, category, calories, protein, carbs, fat, ingredients, instructions, author_name, is_public'
+          )
+          .eq('user_id', userId)
           .eq('is_public', true)
-          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
 
         const [countResult, sharedResult] = await Promise.all([
           countPromise,
@@ -129,12 +152,14 @@ export default function ProfilePage() {
         ])
 
         if (countResult.error) {
+          logSupabaseError('loadProfile recipe count', countResult.error)
           throw countResult.error
         }
 
         setRecipeCount(countResult.count ?? 0)
 
         if (sharedResult.error) {
+          logSupabaseError('loadProfile shared recipes', sharedResult.error)
           throw sharedResult.error
         }
 
@@ -142,6 +167,8 @@ export default function ProfilePage() {
       } catch (err) {
         console.error('Failed to load profile page data:', err)
         setError('Unable to load profile information. Please try again later.')
+        setRecipeCount(0)
+        setSharedRecipes([])
       } finally {
         setLoading(false)
       }
@@ -164,31 +191,44 @@ export default function ProfilePage() {
   }, [profile])
 
   async function handleSaveProfile() {
-    if (!user) return
+    const userId = user?.id?.trim()
+    if (!userId) return
 
     setSavingProfile(true)
     try {
       let avatar_url = profile?.avatar_url ?? null
 
       if (editAvatarFile) {
-        // Lazy import to avoid circulars
         const { uploadProfileImage } = await import('../lib/storageService')
-        avatar_url = await uploadProfileImage(user.id, editAvatarFile)
+        avatar_url = await uploadProfileImage(userId, editAvatarFile)
       }
 
       const { data, error } = await supabase
         .from('profiles')
-        .update({ display_name: editDisplayName || null, username: editUsername || null, avatar_url })
-        .eq('id', user.id)
-        .select()
+        .update({
+          display_name: editDisplayName || null,
+          username: editUsername.trim() || null,
+          avatar_url,
+        })
+        .eq('id', userId)
+        .select('id, display_name, username, avatar_url, bio')
         .maybeSingle()
 
-      if (error) throw error
+      if (error) {
+        logSupabaseError('saveProfile', error)
+        throw error
+      }
 
       if (data) {
         setProfile(data as Profile)
       } else {
-        setProfile((p) => ({ ...(p ?? {}), display_name: editDisplayName || null, username: editUsername || null, avatar_url }))
+        setProfile((current) => ({
+          id: userId,
+          display_name: editDisplayName || null,
+          username: editUsername.trim() || null,
+          avatar_url,
+          bio: current?.bio ?? null,
+        }))
       }
 
       setIsEditing(false)

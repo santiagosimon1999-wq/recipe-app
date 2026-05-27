@@ -16,11 +16,9 @@ export type Recipe = {
   source?: RecipeSource
   userId?: string
   authorName?: string
+  /** Profile username for linking to /users/:username (community/user recipes). */
+  authorUsername?: string
   isPublic?: boolean
-  // Number of likes this recipe has received. Optional because
-  // Number of likes this recipe has received.
   likeCount: number
-  // Whether the current signed-in user has liked this recipe.
-  // This is set at runtime.
   liked: boolean
 }

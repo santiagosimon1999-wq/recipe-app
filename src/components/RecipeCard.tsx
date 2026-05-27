@@ -4,7 +4,7 @@ import type { Recipe } from '../types/Recipe'
 type RecipeCardProps = {
   recipe: Recipe
   isFavorite: boolean
-  onToggleFavorite: (recipeId: number) => void
+  onToggleFavorite: (recipe: Recipe) => void
   onSelectRecipe: (recipe: Recipe) => void
   liked?: boolean
   likeCount?: number
@@ -34,7 +34,7 @@ function RecipeCard({
   function handleFavoriteClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
     event.stopPropagation()
-    onToggleFavorite(recipe.id)
+    onToggleFavorite(recipe)
   }
 
   return (
