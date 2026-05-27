@@ -29,7 +29,6 @@ import {
   saveRecipeForUser,
   unlikeRecipe,
   unsaveRecipeForUser,
-  type RecipeRowWithAuthor,
 } from './lib/recipeService'
 import { mapDbRowToRecipe } from './lib/recipeMappers'
 import { supabase } from './lib/supabaseClient'
@@ -357,37 +356,25 @@ export default function App() {
           return
         }
 
-        const updatedRow = (await updateRecipeById(recipeBeingEdited.id, user.id, {
-          title: recipeData.title,
-          description: recipeData.description,
-          ingredients: recipeData.ingredients,
-          instructions: recipeData.instructions,
-          category: recipeData.category,
-          image_url: imageUrl,
-          calories: nutrition.calories,
-          protein: nutrition.protein,
-          carbs: nutrition.carbs,
-          fat: nutrition.fat,
-          is_public: recipeData.isPublic,
-        })) as RecipeRowWithAuthor
-
-        await supabase
-          .from('recipes')
-          .update({
-            author_name: displayName,
-            is_public: recipeBeingEdited.isPublic ?? true,
-          })
-          .eq('id', recipeBeingEdited.id)
-          .eq('user_id', user.id)
-
-        const updatedRecipe = mapDbRowToRecipe(
+        const updatedRow = await updateRecipeById(
+          recipeBeingEdited.id,
+          user.id,
           {
-            ...updatedRow,
-            author_name: displayName,
-            is_public: recipeBeingEdited.isPublic ?? true,
-          },
-          user.id
+            title: recipeData.title,
+            description: recipeData.description,
+            ingredients: recipeData.ingredients,
+            instructions: recipeData.instructions,
+            category: recipeData.category,
+            image_url: imageUrl,
+            calories: nutrition.calories,
+            protein: nutrition.protein,
+            carbs: nutrition.carbs,
+            fat: nutrition.fat,
+            is_public: recipeData.isPublic,
+          }
         )
+
+        const updatedRecipe = mapDbRowToRecipe(updatedRow, user.id)
 
         setRecipeList((currentRecipes) =>
           currentRecipes.map((recipe) =>
@@ -398,7 +385,7 @@ export default function App() {
         setSelectedRecipe(updatedRecipe)
         setFormMessage('Recipe updated successfully.')
       } else {
-        const createdRow = (await createRecipe(user.id, {
+        const createdRow = await createRecipe(user.id, {
           title: recipeData.title,
           description: recipeData.description,
           ingredients: recipeData.ingredients,
@@ -410,44 +397,17 @@ export default function App() {
           carbs: nutrition.carbs,
           fat: nutrition.fat,
           is_public: recipeData.isPublic,
-        })) as RecipeRowWithAuthor
+        })
 
-        const createdDbId = parseDbRecipeId(createdRow.id)
-        if (createdDbId === null) {
-          console.error('Create recipe did not return a valid Supabase id:', createdRow)
+        if (parseDbRecipeId(createdRow.id) === null) {
+          console.error(
+            'Create recipe did not return a valid Supabase id:',
+            createdRow
+          )
           throw new Error('Recipe saved without a valid database id')
         }
 
-        await supabase
-          .from('recipes')
-          .update({
-            author_name: displayName,
-            is_public: recipeData.isPublic,
-          })
-          .eq('id', createdDbId)
-          .eq('user_id', user.id)
-
-        const { data: freshRow, error: fetchCreatedError } = await supabase
-          .from('recipes')
-          .select('*')
-          .eq('id', createdDbId)
-          .eq('user_id', user.id)
-          .single()
-
-        if (fetchCreatedError || !freshRow) {
-          console.error(
-            'Failed to refetch created recipe from Supabase:',
-            fetchCreatedError
-          )
-          throw fetchCreatedError ?? new Error('Failed to refetch created recipe')
-        }
-
-        const createdRecipe: Recipe = {
-          ...mapDbRowToRecipe(freshRow as RecipeRowWithAuthor, user.id),
-          source: 'user',
-          likeCount: 0,
-          liked: false,
-        }
+        const createdRecipe = mapDbRowToRecipe(createdRow, user.id)
 
         if (getSupabaseRecipeId(createdRecipe) === null) {
           console.error(
@@ -556,20 +516,11 @@ export default function App() {
     const nextIsPublic = !recipe.isPublic
 
     try {
-      const { data, error } = await supabase
-        .from('recipes')
-        .update({
-          is_public: nextIsPublic,
-          author_name: displayName,
-        })
-        .eq('id', recipe.id)
-        .eq('user_id', user.id)
-        .select()
-        .single()
+      const updatedRow = await updateRecipeById(recipe.id, user.id, {
+        is_public: nextIsPublic,
+      })
 
-      if (error) throw error
-
-      const updatedRecipe = mapDbRowToRecipe(data as RecipeRowWithAuthor, user.id)
+      const updatedRecipe = mapDbRowToRecipe(updatedRow, user.id)
 
       setRecipeList((currentRecipes) =>
         currentRecipes.map((currentRecipe) =>

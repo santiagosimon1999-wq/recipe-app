@@ -1,25 +1,11 @@
 import { supabase } from './supabaseClient'
 import type { Profile, PublicProfile } from '../types/Profile'
+import {
+  RECIPES_WITH_AUTHOR_SELECT,
+  type RecipeRowWithAuthor,
+} from './recipeService'
 
-export type PublicRecipeRow = {
-  id: number
-  user_id: string
-  title: string
-  image_url: string | null
-  description: string
-  category: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-  ingredients: string[]
-  instructions: string
-  author_name: string | null
-  is_public: boolean
-  created_at?: string | null
-}
-
-function logSupabaseError(context: string, error: unknown) {
+export function logSupabaseError(context: string, error: unknown) {
   if (error && typeof error === 'object') {
     const e = error as {
       message?: string
@@ -77,22 +63,36 @@ export async function getProfileByUsername(
 
 export async function getPublicRecipesByUserId(
   userId: string
-): Promise<PublicRecipeRow[]> {
+): Promise<RecipeRowWithAuthor[]> {
   if (!userId) return []
 
   const { data, error } = await supabase
     .from('recipes')
-    .select(
-      'id, user_id, title, image_url, description, category, calories, protein, carbs, fat, ingredients, instructions, author_name, is_public'
-    )
+    .select(RECIPES_WITH_AUTHOR_SELECT)
     .eq('user_id', userId)
     .eq('is_public', true)
-    .order('id', { ascending: false })
+    .order('created_at', { ascending: false })
 
   if (error) {
     logSupabaseError('getPublicRecipesByUserId', error)
     throw error
   }
 
-  return (data ?? []) as PublicRecipeRow[]
+  return (data ?? []) as RecipeRowWithAuthor[]
+}
+
+export async function getRecipeCountByUserId(userId: string): Promise<number> {
+  if (!userId) return 0
+
+  const { count, error } = await supabase
+    .from('recipes')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+
+  if (error) {
+    logSupabaseError('getRecipeCountByUserId', error)
+    throw error
+  }
+
+  return count ?? 0
 }

@@ -3,44 +3,13 @@ import type { Recipe } from '../types/Recipe'
 import type { Profile } from '../types/Profile'
 import { useAuth } from '../context/useAuth'
 import { supabase } from '../lib/supabaseClient'
-
-type DbRecipeRow = {
-  id: number
-  user_id: string
-  title: string
-  image_url: string | null
-  description: string
-  category: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-  ingredients: string[]
-  instructions: string
-  author_name?: string | null
-  is_public?: boolean | null
-  created_at?: string | null
-}
-
-function logSupabaseError(context: string, error: unknown) {
-  if (error && typeof error === 'object') {
-    const supabaseError = error as {
-      message?: string
-      details?: string
-      hint?: string
-      code?: string
-    }
-    console.error(`Supabase error [${context}]:`, {
-      message: supabaseError.message,
-      details: supabaseError.details,
-      hint: supabaseError.hint,
-      code: supabaseError.code,
-    })
-    return
-  }
-
-  console.error(`Supabase error [${context}]:`, error)
-}
+import {
+  getProfileById,
+  getPublicRecipesByUserId,
+  getRecipeCountByUserId,
+  logSupabaseError,
+} from '../lib/profileService'
+import { mapDbRowToRecipe } from '../lib/recipeMappers'
 
 function getFallbackUserName(email: string | null | undefined) {
   if (!email) return 'Savora'
@@ -59,29 +28,6 @@ function getAvatarInitials(
     return (parts[0][0] + parts[1][0]).toUpperCase()
   }
   return source.slice(0, 2).toUpperCase()
-}
-
-function mapRecipeRow(row: DbRecipeRow): Recipe {
-  return {
-    id: row.id,
-    title: row.title,
-    image: row.image_url ?? '',
-    imageFile: null,
-    description: row.description,
-    category: row.category,
-    calories: row.calories,
-    protein: row.protein,
-    carbs: row.carbs,
-    fat: row.fat,
-    ingredients: row.ingredients,
-    instructions: row.instructions,
-    source: 'user',
-    userId: row.user_id,
-    authorName: row.author_name ?? 'You',
-    isPublic: row.is_public ?? false,
-    likeCount: 0,
-    liked: false,
-  }
 }
 
 const FALLBACK_THUMB =
@@ -134,58 +80,25 @@ export default function ProfilePage() {
       return
     }
 
-    async function loadProfile() {
+    async function loadProfile(currentUserId: string) {
       setLoading(true)
       setError(null)
 
       try {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, display_name, username, avatar_url, bio')
-          .eq('id', userId)
-          .maybeSingle()
-
-        if (profileError) {
-          logSupabaseError('loadProfile profiles', profileError)
-          throw profileError
-        }
-
-        if (profileData) {
-          setProfile(profileData as Profile)
-        }
-
-        const countPromise = supabase
-          .from('recipes')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', userId)
-
-        const sharedPromise = supabase
-          .from('recipes')
-          .select(
-            'id, user_id, title, image_url, description, category, calories, protein, carbs, fat, ingredients, instructions, author_name, is_public'
-          )
-          .eq('user_id', userId)
-          .eq('is_public', true)
-          .order('id', { ascending: false })
-
-        const [countResult, sharedResult] = await Promise.all([
-          countPromise,
-          sharedPromise,
+        const [profileData, count, sharedRows] = await Promise.all([
+          getProfileById(currentUserId),
+          getRecipeCountByUserId(currentUserId),
+          getPublicRecipesByUserId(currentUserId),
         ])
 
-        if (countResult.error) {
-          logSupabaseError('loadProfile recipe count', countResult.error)
-          throw countResult.error
+        if (profileData) {
+          setProfile(profileData)
         }
 
-        setRecipeCount(countResult.count ?? 0)
-
-        if (sharedResult.error) {
-          logSupabaseError('loadProfile shared recipes', sharedResult.error)
-          throw sharedResult.error
-        }
-
-        setSharedRecipes((sharedResult.data ?? []).map(mapRecipeRow))
+        setRecipeCount(count)
+        setSharedRecipes(
+          sharedRows.map((row) => mapDbRowToRecipe(row, currentUserId))
+        )
       } catch (err) {
         console.error('Failed to load profile page data:', err)
         setError('Unable to load profile information. Please try again later.')
@@ -202,7 +115,7 @@ export default function ProfilePage() {
       : []
 
     setFavoritesCount(Array.isArray(favoriteIds) ? favoriteIds.length : 0)
-    void loadProfile()
+    void loadProfile(userId)
   }, [user])
 
   useEffect(() => {

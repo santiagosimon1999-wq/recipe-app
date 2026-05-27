@@ -4,23 +4,25 @@ import { normalizeSupabaseRecipeId } from '../utils/favorites'
 
 type RecipeRow = Database['public']['Tables']['recipes']['Row']
 
+type AuthorJoin = {
+  username: string | null
+  display_name: string | null
+}
+
 /**
  * A recipes row plus the joined `author` shape returned by
- *   .select('*, author:profiles!recipes_user_id_fkey(username)')
+ *   .select('*, author:profiles!recipes_user_id_fkey(username, display_name)')
  *
  * Supabase returns the join as a single object when the FK is unique and as an
  * array when it isn't, so we accept both. `author` is optional because plain
  * inserts/updates/refetches that don't request the join still satisfy this type.
  */
 export type RecipeRowWithAuthor = RecipeRow & {
-  author?:
-    | { username: string | null }
-    | { username: string | null }[]
-    | null
+  author?: AuthorJoin | AuthorJoin[] | null
 }
 
-const RECIPES_WITH_AUTHOR_SELECT =
-  '*, author:profiles!recipes_user_id_fkey(username)'
+export const RECIPES_WITH_AUTHOR_SELECT =
+  '*, author:profiles!recipes_user_id_fkey(username, display_name)'
 
 export type RecipeCreateInput = {
   title: string
@@ -86,7 +88,7 @@ export async function getCommunityRecipes(
 export async function createRecipe(
   userId: string,
   recipe: RecipeCreateInput
-): Promise<RecipeRow> {
+): Promise<RecipeRowWithAuthor> {
   if (!userId) {
     throw new Error('createRecipe requires an authenticated user id')
   }
@@ -107,21 +109,21 @@ export async function createRecipe(
       fat: recipe.fat ?? 0,
       is_public: recipe.is_public ?? true,
     })
-    .select()
+    .select(RECIPES_WITH_AUTHOR_SELECT)
     .single()
 
   if (error) {
     throw error
   }
 
-  return data
+  return data as unknown as RecipeRowWithAuthor
 }
 
 export async function updateRecipe(
   recipeId: number,
   userId: string,
   updates: RecipeUpdateInput
-): Promise<RecipeRow> {
+): Promise<RecipeRowWithAuthor> {
   if (!userId) {
     throw new Error('updateRecipe requires an authenticated user id')
   }
@@ -151,14 +153,14 @@ export async function updateRecipe(
     .update(payload)
     .eq('id', recipeId)
     .eq('user_id', userId)
-    .select()
+    .select(RECIPES_WITH_AUTHOR_SELECT)
     .single()
 
   if (error) {
     throw error
   }
 
-  return data
+  return data as unknown as RecipeRowWithAuthor
 }
 
 export async function deleteRecipe(recipeId: number, userId: string): Promise<void> {
@@ -193,21 +195,27 @@ export async function getLikesCountsForRecipeIds(
   recipeIds: number[]
 ): Promise<Record<number, number>> {
   if (recipeIds.length === 0) return {}
-  // Fetch all likes for the given recipe IDs and compute counts per recipe.
+
+  // Reads from the aggregated `recipe_like_counts` view (Phase 4.1) so the
+  // client never has to count rows itself. One row returned per liked recipe.
+  // Recipes with zero likes are absent from the view; we seed them to 0 below.
   const { data, error } = await supabase
-    .from('recipe_likes')
-    .select('recipe_id')
+    .from('recipe_like_counts')
+    .select('recipe_id, like_count')
     .in('recipe_id', recipeIds)
 
   if (error) throw error
 
-  const rows = data ?? []
   const counts: Record<number, number> = {}
   for (const id of recipeIds) counts[id] = 0
-  ;(rows as any[]).forEach((r) => {
-    const id = r.recipe_id as number
-    counts[id] = (counts[id] ?? 0) + 1
-  })
+
+  for (const row of data ?? []) {
+    const recipeId = Number((row as { recipe_id: number }).recipe_id)
+    const likeCount = Number((row as { like_count: number }).like_count)
+    if (Number.isFinite(recipeId) && Number.isFinite(likeCount)) {
+      counts[recipeId] = likeCount
+    }
+  }
 
   return counts
 }
@@ -222,7 +230,9 @@ export async function getLikedRecipeIdsByUser(userId: string): Promise<number[]>
 
   if (error) throw error
 
-  return (data ?? []).map((r: any) => Number(r.recipe_id))
+  return (data ?? [])
+    .map((row) => Number((row as { recipe_id: number }).recipe_id))
+    .filter((id) => Number.isFinite(id) && id > 0)
 }
 
 export async function likeRecipe(

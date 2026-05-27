@@ -4,21 +4,28 @@ import type { RecipeRowWithAuthor } from './recipeService'
 
 /**
  * Single source of truth for transforming a database `recipes` row (optionally
- * including the joined `author.username`) into the UI `Recipe` shape.
+ * including the joined `author.{username, display_name}`) into the UI `Recipe`.
  *
  * The joined `author` field may come back from PostgREST as either a single
  * object or an array (depending on the FK shape), so we normalize both cases
  * here in one place.
  */
+function getAuthorRecord(row: RecipeRowWithAuthor) {
+  const author = row.author
+  if (!author) return null
+  return Array.isArray(author) ? (author[0] ?? null) : author
+}
+
 export function extractAuthorUsername(
   row: RecipeRowWithAuthor
 ): string | undefined {
-  const author = row.author
-  if (!author) return undefined
-  if (Array.isArray(author)) {
-    return author[0]?.username ?? undefined
-  }
-  return author.username ?? undefined
+  return getAuthorRecord(row)?.username ?? undefined
+}
+
+export function extractAuthorDisplayName(
+  row: RecipeRowWithAuthor
+): string | undefined {
+  return getAuthorRecord(row)?.display_name ?? undefined
 }
 
 /**
@@ -60,7 +67,13 @@ export function mapDbRowToRecipe(
     instructions: row.instructions,
     source: belongsToCurrentUser ? 'user' : 'community',
     userId: row.user_id,
-    authorName: row.author_name ?? 'Savora Chef',
+    // Display name precedence: joined profile.display_name → joined username →
+    // final literal fallback. The legacy `recipes.author_name` denormalized
+    // column was dropped in Phase 4.1 (db/migrations/006_phase4_hardening.sql).
+    authorName:
+      extractAuthorDisplayName(row) ??
+      extractAuthorUsername(row) ??
+      'Savora Chef',
     authorUsername: extractAuthorUsername(row),
     isPublic: row.is_public ?? true,
     likeCount: 0,

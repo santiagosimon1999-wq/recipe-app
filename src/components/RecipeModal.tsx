@@ -40,7 +40,7 @@ function RecipeModal({
         : 'Sample recipe'
 
   const showAuthorLink =
-    Boolean(recipe.authorUsername) && recipe.source !== 'sample'
+    Boolean(recipe.authorUsername) && recipe.source === 'community'
 
   function handleAuthorClick() {
     if (recipe.authorUsername) {

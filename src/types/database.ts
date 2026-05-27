@@ -55,7 +55,6 @@ export type Database = {
           protein: number
           carbs: number
           fat: number
-          author_name: string | null
           is_public: boolean
           created_at: string
           updated_at: string
@@ -73,7 +72,6 @@ export type Database = {
           protein?: number
           carbs?: number
           fat?: number
-          author_name?: string | null
           is_public?: boolean
           created_at?: string
           updated_at?: string
@@ -91,7 +89,6 @@ export type Database = {
           protein?: number
           carbs?: number
           fat?: number
-          author_name?: string | null
           is_public?: boolean
           created_at?: string
           updated_at?: string
@@ -172,7 +169,23 @@ export type Database = {
         ]
       }
     }
-    Views: Record<string, never>
+    Views: {
+      recipe_like_counts: {
+        Row: {
+          recipe_id: number
+          like_count: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'recipe_likes_recipe_id_fkey'
+            columns: ['recipe_id']
+            isOneToOne: false
+            referencedRelation: 'recipes'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+    }
     Functions: Record<string, never>
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

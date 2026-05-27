@@ -5,8 +5,8 @@ import type { PublicProfile } from '../types/Profile'
 import {
   getProfileByUsername,
   getPublicRecipesByUserId,
-  type PublicRecipeRow,
 } from '../lib/profileService'
+import { mapDbRowToRecipe } from '../lib/recipeMappers'
 
 const FALLBACK_THUMB =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=70'
@@ -20,30 +20,6 @@ function getAvatarInitials(name: string | null | undefined): string {
     return (parts[0][0] + parts[1][0]).toUpperCase()
   }
   return source.slice(0, 2).toUpperCase()
-}
-
-function mapPublicRecipeRow(row: PublicRecipeRow, profileUsername: string | null): Recipe {
-  return {
-    id: row.id,
-    title: row.title,
-    image: row.image_url ?? '',
-    imageFile: null,
-    description: row.description,
-    category: row.category,
-    calories: row.calories,
-    protein: row.protein,
-    carbs: row.carbs,
-    fat: row.fat,
-    ingredients: row.ingredients,
-    instructions: row.instructions,
-    source: 'community',
-    userId: row.user_id,
-    authorName: row.author_name ?? 'Savora Chef',
-    authorUsername: profileUsername ?? undefined,
-    isPublic: row.is_public,
-    likeCount: 0,
-    liked: false,
-  }
 }
 
 export default function PublicProfilePage() {
@@ -97,11 +73,7 @@ export default function PublicProfilePage() {
         const publicRows = await getPublicRecipesByUserId(foundProfile.id)
         if (cancelled) return
 
-        setRecipes(
-          publicRows.map((row) =>
-            mapPublicRecipeRow(row, foundProfile.username)
-          )
-        )
+        setRecipes(publicRows.map((row) => mapDbRowToRecipe(row)))
       } catch (err) {
         console.error('Failed to load public profile:', err)
         if (cancelled) return
