@@ -15,26 +15,43 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let isMounted = true
 
-    async function getInitialSession() {
+    async function bootstrapAuth() {
       const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession()
+        data: { user: validatedUser },
+        error: userError,
+      } = await supabase.auth.getUser()
 
-      if (error) {
-        console.error('Failed to get session:', error.message)
+      if (userError) {
+        console.error('Failed to validate session:', userError.message)
+        await supabase.auth.signOut()
       }
 
       if (!isMounted) {
         return
       }
 
+      if (userError || !validatedUser) {
+        setSession(null)
+        setUser(null)
+        setLoading(false)
+        return
+      }
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error('Failed to get session:', sessionError.message)
+      }
+
+      setUser(validatedUser)
       setSession(session)
-      setUser(session?.user ?? null)
       setLoading(false)
     }
 
-    void getInitialSession()
+    void bootstrapAuth()
 
     const {
       data: { subscription },

@@ -71,22 +71,22 @@ export async function getFollowingIds(userId: string): Promise<string[]> {
 }
 
 export async function getFollowCounts(userId: string): Promise<FollowCounts> {
-  const [followersResult, followingResult] = await Promise.all([
-    supabase
-      .from('follows')
-      .select('id', { count: 'exact', head: true })
-      .eq('following_id', userId),
-    supabase
-      .from('follows')
-      .select('id', { count: 'exact', head: true })
-      .eq('follower_id', userId),
-  ])
+  const { data, error } = await supabase.rpc('get_follow_counts', {
+    p_profile_id: userId,
+  })
 
-  if (followersResult.error) throw followersResult.error
-  if (followingResult.error) throw followingResult.error
+  if (error) throw error
+
+  const row = Array.isArray(data) ? data[0] : data
+
+  if (!row || typeof row !== 'object') {
+    return { followers: 0, following: 0 }
+  }
+
+  const record = row as { followers?: number; following?: number }
 
   return {
-    followers: followersResult.count ?? 0,
-    following: followingResult.count ?? 0,
+    followers: record.followers ?? 0,
+    following: record.following ?? 0,
   }
 }

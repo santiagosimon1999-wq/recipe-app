@@ -1,0 +1,29 @@
+-- ============================================================================
+-- 011 — Seed sample recipes (Phase 5 — optional, manual)
+-- ============================================================================
+-- Savora starter recipes still ship from src/data/starterRecipes.ts for
+-- instant offline demos. To move them into Postgres as a system account:
+--
+-- 1. Create auth user savora-team in Supabase Auth (or use an existing system user).
+-- 2. Ensure profiles row exists for that user's uuid.
+-- 3. INSERT public recipes with is_public = true for that user_id.
+--
+-- Example (replace :user_id with the real uuid):
+--
+-- INSERT INTO public.recipes (
+--   user_id, title, description, ingredients, instructions, category,
+--   image_url, calories, protein, carbs, fat, is_public
+-- ) VALUES (
+--   :user_id,
+--   'Sample title',
+--   'Description',
+--   ARRAY['ingredient'],
+--   'Step one',
+--   'Breakfast',
+--   NULL,
+--   300, 20, 30, 10,
+--   true
+-- );
+--
+-- After seeding, you can remove starterRecipes from the client bundle in a
+-- follow-up change once production data is verified.

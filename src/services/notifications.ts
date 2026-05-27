@@ -16,19 +16,23 @@ export async function createNotification(input: {
   userId: string
   type: NotificationType
   actorId?: string | null
-  recipeId?: number | null
+  recipeId?: number
   message: string
 }): Promise<void> {
-  const { error } = await supabase.from('notifications').insert({
-    user_id: input.userId,
-    type: input.type,
-    actor_id: input.actorId ?? null,
-    recipe_id: input.recipeId ?? null,
-    message: input.message,
+  void input.actorId
+
+  const { error } = await supabase.rpc('create_notification_safe', {
+    p_user_id: input.userId,
+    p_type: input.type,
+    p_message: input.message,
+    p_recipe_id: input.recipeId,
   })
 
   if (error) {
     console.error('createNotification failed:', error)
+    if (import.meta.env.DEV) {
+      throw error
+    }
   }
 }
 
