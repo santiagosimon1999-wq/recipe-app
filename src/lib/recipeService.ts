@@ -4,6 +4,24 @@ import { normalizeSupabaseRecipeId } from '../utils/favorites'
 
 type RecipeRow = Database['public']['Tables']['recipes']['Row']
 
+/**
+ * A recipes row plus the joined `author` shape returned by
+ *   .select('*, author:profiles!recipes_user_id_fkey(username)')
+ *
+ * Supabase returns the join as a single object when the FK is unique and as an
+ * array when it isn't, so we accept both. `author` is optional because plain
+ * inserts/updates/refetches that don't request the join still satisfy this type.
+ */
+export type RecipeRowWithAuthor = RecipeRow & {
+  author?:
+    | { username: string | null }
+    | { username: string | null }[]
+    | null
+}
+
+const RECIPES_WITH_AUTHOR_SELECT =
+  '*, author:profiles!recipes_user_id_fkey(username)'
+
 export type RecipeCreateInput = {
   title: string
   description?: string
@@ -20,14 +38,16 @@ export type RecipeCreateInput = {
 
 export type RecipeUpdateInput = Partial<RecipeCreateInput>
 
-export async function getRecipes(userId: string): Promise<RecipeRow[]> {
+export async function getRecipes(
+  userId: string
+): Promise<RecipeRowWithAuthor[]> {
   if (!userId) {
     throw new Error('getRecipes requires an authenticated user id')
   }
 
   const { data, error } = await supabase
     .from('recipes')
-    .select('*, author:profiles!recipes_user_id_fkey(username)')
+    .select(RECIPES_WITH_AUTHOR_SELECT)
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -35,7 +55,32 @@ export async function getRecipes(userId: string): Promise<RecipeRow[]> {
     throw error
   }
 
-  return data as RecipeRow[]
+  return (data ?? []) as unknown as RecipeRowWithAuthor[]
+}
+
+/**
+ * Fetch public ("community") recipes, optionally excluding rows owned by the
+ * current user. Includes the author's profile username via the joined select.
+ */
+export async function getCommunityRecipes(
+  excludeUserId?: string
+): Promise<RecipeRowWithAuthor[]> {
+  let query = supabase
+    .from('recipes')
+    .select(RECIPES_WITH_AUTHOR_SELECT)
+    .eq('is_public', true)
+
+  if (excludeUserId) {
+    query = query.neq('user_id', excludeUserId)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false })
+
+  if (error) {
+    throw error
+  }
+
+  return (data ?? []) as unknown as RecipeRowWithAuthor[]
 }
 
 export async function createRecipe(

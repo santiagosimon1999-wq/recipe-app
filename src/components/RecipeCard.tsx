@@ -48,7 +48,7 @@ function RecipeCard({
   }
 
   const showAuthor =
-    Boolean(recipe.authorUsername) && recipe.source !== 'sample'
+    Boolean(recipe.authorUsername) && recipe.source === 'community'
 
   return (
     <article className="recipe-card">

@@ -7,6 +7,7 @@ import AppHeader from './components/AppHeader'
 import DiscoverPanel from './components/DiscoverPanel'
 import RecipeDashboard from './components/RecipeDashboard'
 import RecipeForm from './components/RecipeForm'
+import RecipeModal from './components/RecipeModal'
 import CommunityFeedPage from './pages/CommunityFeedPage'
 import ProfilePage from './pages/ProfilePage'
 import PublicProfilePage from './pages/PublicProfilePage'
@@ -18,6 +19,7 @@ import {
 import {
   createRecipe,
   deleteRecipe as deleteRecipeById,
+  getCommunityRecipes,
   getRecipes,
   updateRecipe as updateRecipeById,
   getLikedRecipeIdsByUser,
@@ -27,7 +29,9 @@ import {
   saveRecipeForUser,
   unlikeRecipe,
   unsaveRecipeForUser,
+  type RecipeRowWithAuthor,
 } from './lib/recipeService'
+import { mapDbRowToRecipe } from './lib/recipeMappers'
 import { supabase } from './lib/supabaseClient'
 import { uploadRecipeImage } from './lib/storageService'
 import type { Recipe } from './types/Recipe'
@@ -38,35 +42,6 @@ import {
   isSampleRecipe,
   parseDbRecipeId,
 } from './utils/favorites'
-
-type DbRecipeRow = {
-  id: number
-  user_id: string
-  title: string
-  image_url: string | null
-  description: string
-  category: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-  ingredients: string[]
-  instructions: string
-  author_name?: string | null
-  is_public?: boolean | null
-  author?: { username: string | null } | { username: string | null }[] | null
-}
-
-function getJoinedAuthorUsername(
-  row: DbRecipeRow
-): string | undefined {
-  const author = row.author
-  if (!author) return undefined
-  if (Array.isArray(author)) {
-    return author[0]?.username ?? undefined
-  }
-  return author.username ?? undefined
-}
 
 type Profile = {
   id: string
@@ -82,40 +57,6 @@ const starterRecipes: Recipe[] = initialRecipes.map((recipe) => ({
   likeCount: 0,
   liked: false,
 }))
-
-function mapDbRecipeToUiRecipe(
-  row: DbRecipeRow,
-  currentUserId?: string
-): Recipe {
-  const belongsToCurrentUser = row.user_id === currentUserId
-  const dbId = parseDbRecipeId(row.id)
-
-  if (dbId === null) {
-    console.error('mapDbRecipeToUiRecipe: missing or invalid Supabase id', row)
-  }
-
-  return {
-    id: dbId ?? 0,
-    title: row.title,
-    image: row.image_url ?? '',
-    imageFile: null,
-    description: row.description,
-    category: row.category,
-    calories: row.calories,
-    protein: row.protein,
-    carbs: row.carbs,
-    fat: row.fat,
-    ingredients: row.ingredients,
-    instructions: row.instructions,
-    source: belongsToCurrentUser ? 'user' : 'community',
-    userId: row.user_id,
-    authorName: row.author_name ?? 'Savora Chef',
-    authorUsername: getJoinedAuthorUsername(row),
-    isPublic: row.is_public ?? true,
-    likeCount: 0,
-    liked: false,
-  }
-}
 
 function getUserInitial(nameOrEmail: string | undefined) {
   if (!nameOrEmail) return 'P'
@@ -239,17 +180,8 @@ export default function App() {
     async function loadRecipes() {
       if (!user) {
         try {
-          const { data: publicRows, error: publicError } = await supabase
-            .from('recipes')
-            .select('*, author:profiles!recipes_user_id_fkey(username)')
-            .eq('is_public', true)
-            .order('created_at', { ascending: false })
-
-          if (publicError) throw publicError
-
-          const publicRecipes = ((publicRows ?? []) as DbRecipeRow[]).map(
-            (row) => mapDbRecipeToUiRecipe(row)
-          )
+          const publicRows = await getCommunityRecipes()
+          const publicRecipes = publicRows.map((row) => mapDbRowToRecipe(row))
 
           setRecipeList([...publicRecipes, ...starterRecipes])
         } catch (error) {
@@ -261,23 +193,13 @@ export default function App() {
       }
 
       try {
-        const ownRows = (await getRecipes(user.id)) as DbRecipeRow[]
+        const ownRows = await getRecipes(user.id)
+        const communityRows = await getCommunityRecipes(user.id)
 
-        const { data: communityRows, error: communityError } = await supabase
-          .from('recipes')
-          .select('*, author:profiles!recipes_user_id_fkey(username)')
-          .eq('is_public', true)
-          .neq('user_id', user.id)
-          .order('created_at', { ascending: false })
+        const ownRecipes = ownRows.map((row) => mapDbRowToRecipe(row, user.id))
 
-        if (communityError) throw communityError
-
-        const ownRecipes = ownRows.map((row) =>
-          mapDbRecipeToUiRecipe(row, user.id)
-        )
-
-        const communityRecipes = ((communityRows ?? []) as DbRecipeRow[]).map(
-          (row) => mapDbRecipeToUiRecipe(row, user.id)
+        const communityRecipes = communityRows.map((row) =>
+          mapDbRowToRecipe(row, user.id)
         )
 
         // Combine and then fetch like counts and liked ids for the current user
@@ -301,9 +223,9 @@ export default function App() {
         console.error('Failed to load recipes from Supabase:', error)
 
         try {
-          const rows = (await getRecipes(user.id)) as DbRecipeRow[]
+          const rows = await getRecipes(user.id)
           const mappedRecipes = rows.map((row) =>
-            mapDbRecipeToUiRecipe(row, user.id)
+            mapDbRowToRecipe(row, user.id)
           )
           setRecipeList([...mappedRecipes, ...starterRecipes])
         } catch {
@@ -447,7 +369,7 @@ export default function App() {
           carbs: nutrition.carbs,
           fat: nutrition.fat,
           is_public: recipeData.isPublic,
-        })) as DbRecipeRow
+        })) as RecipeRowWithAuthor
 
         await supabase
           .from('recipes')
@@ -458,7 +380,7 @@ export default function App() {
           .eq('id', recipeBeingEdited.id)
           .eq('user_id', user.id)
 
-        const updatedRecipe = mapDbRecipeToUiRecipe(
+        const updatedRecipe = mapDbRowToRecipe(
           {
             ...updatedRow,
             author_name: displayName,
@@ -488,7 +410,7 @@ export default function App() {
           carbs: nutrition.carbs,
           fat: nutrition.fat,
           is_public: recipeData.isPublic,
-        })) as DbRecipeRow
+        })) as RecipeRowWithAuthor
 
         const createdDbId = parseDbRecipeId(createdRow.id)
         if (createdDbId === null) {
@@ -521,7 +443,7 @@ export default function App() {
         }
 
         const createdRecipe: Recipe = {
-          ...mapDbRecipeToUiRecipe(freshRow as DbRecipeRow, user.id),
+          ...mapDbRowToRecipe(freshRow as RecipeRowWithAuthor, user.id),
           source: 'user',
           likeCount: 0,
           liked: false,
@@ -647,7 +569,7 @@ export default function App() {
 
       if (error) throw error
 
-      const updatedRecipe = mapDbRecipeToUiRecipe(data as DbRecipeRow, user.id)
+      const updatedRecipe = mapDbRowToRecipe(data as RecipeRowWithAuthor, user.id)
 
       setRecipeList((currentRecipes) =>
         currentRecipes.map((currentRecipe) =>
@@ -920,18 +842,27 @@ export default function App() {
                     onStartCreateRecipe={handleStartCreateRecipe}
                     onToggleLike={handleToggleLike}
                     onViewAuthor={handleViewAuthor}
-                    selectedRecipe={selectedRecipe}
-                    canManageSelectedRecipe={canManageSelectedRecipe}
-                    onCloseModal={handleCloseModal}
-                    onEditRecipe={handleStartEditRecipe}
-                    onDeleteRecipe={handleDeleteRecipe}
-                    onTogglePublic={handleToggleRecipePublic}
                   />
                 </>
               }
             />
             <Route path="*" element={<NotFoundRoute />} />
           </Routes>
+
+          {selectedRecipe ? (
+            <RecipeModal
+              recipe={selectedRecipe}
+              onClose={handleCloseModal}
+              onEdit={handleStartEditRecipe}
+              onDelete={handleDeleteRecipe}
+              onTogglePublic={handleToggleRecipePublic}
+              canManage={canManageSelectedRecipe}
+              liked={Boolean(selectedRecipe.liked)}
+              likeCount={selectedRecipe.likeCount ?? 0}
+              onToggleLike={handleToggleLike}
+              onViewAuthor={handleViewAuthor}
+            />
+          ) : null}
         </div>
       </main>
     </AuthGate>

@@ -1,6 +1,5 @@
 import type { Recipe } from '../types/Recipe'
 import RecipeSection from './RecipeSection'
-import RecipeModal from './RecipeModal'
 
 type RecipeDashboardProps = {
   userRecipes: Recipe[]
@@ -13,12 +12,6 @@ type RecipeDashboardProps = {
   onStartCreateRecipe: () => void
   onToggleLike?: (recipeId: number) => void
   onViewAuthor?: (username: string) => void
-  selectedRecipe: Recipe | null
-  canManageSelectedRecipe: boolean
-  onCloseModal: () => void
-  onEditRecipe: (recipe: Recipe) => void
-  onDeleteRecipe: (recipeId: number) => Promise<void>
-  onTogglePublic: (recipe: Recipe) => Promise<void>
 }
 
 export default function RecipeDashboard({
@@ -32,12 +25,6 @@ export default function RecipeDashboard({
   onStartCreateRecipe,
   onToggleLike,
   onViewAuthor,
-  selectedRecipe,
-  canManageSelectedRecipe,
-  onCloseModal,
-  onEditRecipe,
-  onDeleteRecipe,
-  onTogglePublic,
 }: RecipeDashboardProps) {
   return (
     <>
@@ -92,21 +79,6 @@ export default function RecipeDashboard({
         onToggleLike={onToggleLike}
         onViewAuthor={onViewAuthor}
       />
-
-      {selectedRecipe ? (
-        <RecipeModal
-          recipe={selectedRecipe}
-          onClose={onCloseModal}
-          onEdit={onEditRecipe}
-          onDelete={onDeleteRecipe}
-          onTogglePublic={onTogglePublic}
-          canManage={canManageSelectedRecipe}
-          liked={Boolean(selectedRecipe.liked)}
-          likeCount={selectedRecipe.likeCount ?? 0}
-          onToggleLike={onToggleLike}
-          onViewAuthor={onViewAuthor}
-        />
-      ) : null}
     </>
   )
 }
