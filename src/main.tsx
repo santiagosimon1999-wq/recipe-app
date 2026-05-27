@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router'
 import App from './App'
 import './index.css'
 import { AuthProvider } from './context/AuthContext'
+import { ConfirmProvider } from './context/ConfirmProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { captureBoundaryError, initSentry } from './lib/sentry'
 
@@ -18,7 +19,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     >
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <ConfirmProvider>
+            <App />
+          </ConfirmProvider>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

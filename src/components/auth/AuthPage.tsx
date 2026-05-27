@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import savoraLogo from '../../assets/savora-logo.PNG'
+import { SavoraLogo } from '../brand/SavoraLogo'
 import { AuthTabs, type AuthTabId } from './AuthTabs'
 import { LoginForm } from './LoginForm'
 import { SignupForm } from './SignupForm'
@@ -30,11 +30,7 @@ export function AuthPage({ theme, onToggleTheme }: AuthPageProps) {
 
         <div className="auth-card">
           <header className="auth-brand">
-            <img
-              src={savoraLogo}
-              alt="Savora logo"
-              className="auth-brand__logo"
-            />
+            <SavoraLogo />
             <p className="auth-brand__eyebrow">Welcome</p>
             <h1 className="auth-brand__title">Savora</h1>
             <p className="auth-brand__subtitle">

@@ -43,6 +43,29 @@ export type RecipeCreateInput = {
 
 export type RecipeUpdateInput = Partial<RecipeCreateInput>
 
+export type CommunityRecipesOptions = {
+  excludeUserId?: string
+  /** Max rows to return. Default 20. */
+  limit?: number
+  /** Fetch rows with `created_at` strictly before this ISO timestamp (cursor pagination). */
+  cursor?: string
+}
+
+const DEFAULT_COMMUNITY_PAGE_SIZE = 20
+
+export const COMMUNITY_PAGE_SIZE = DEFAULT_COMMUNITY_PAGE_SIZE
+
+function getPostgresErrorCode(error: unknown): string | number | undefined {
+  if (!error || typeof error !== 'object') return undefined
+  const record = error as { code?: string; status?: number }
+  return record.code ?? record.status
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  const code = getPostgresErrorCode(error)
+  return code === '23505' || code === 409
+}
+
 export async function getRecipes(
   userId: string
 ): Promise<RecipeRowWithAuthor[]> {
@@ -65,21 +88,29 @@ export async function getRecipes(
 
 /**
  * Fetch public ("community") recipes, optionally excluding rows owned by the
- * current user. Includes the author's profile username via the joined select.
+ * current user. Supports cursor pagination via `created_at`.
  */
 export async function getCommunityRecipes(
-  excludeUserId?: string
+  options?: CommunityRecipesOptions
 ): Promise<RecipeRowWithAuthor[]> {
+  const limit = options?.limit ?? DEFAULT_COMMUNITY_PAGE_SIZE
+
   let query = supabase
     .from('recipes')
     .select(RECIPES_WITH_AUTHOR_SELECT)
     .eq('is_public', true)
 
-  if (excludeUserId) {
-    query = query.neq('user_id', excludeUserId)
+  if (options?.excludeUserId) {
+    query = query.neq('user_id', options.excludeUserId)
   }
 
-  const { data, error } = await query.order('created_at', { ascending: false })
+  if (options?.cursor) {
+    query = query.lt('created_at', options.cursor)
+  }
+
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .limit(limit)
 
   if (error) {
     throw error
@@ -248,11 +279,8 @@ export async function likeRecipe(
       .insert({ user_id: userId, recipe_id: recipeId })
 
     if (error) {
-      // Log full error for debugging
       console.error('Supabase likeRecipe error:', error)
-      // If unique violation (already liked), treat as success
-      const code = (error as any)?.code ?? (error as any)?.status
-      if (code === '23505' || code === 409) return
+      if (isUniqueViolation(error)) return
       throw error
     }
 
@@ -315,8 +343,7 @@ export async function saveRecipeForUser(userId: string, recipeId: number): Promi
         recipeId: dbRecipeId,
         error,
       })
-      const code = (error as any)?.code ?? (error as any)?.status
-      if (code === '23505' || code === 409) return
+      if (isUniqueViolation(error)) return
       throw error
     }
 

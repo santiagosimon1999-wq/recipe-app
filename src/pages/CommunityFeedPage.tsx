@@ -19,6 +19,9 @@ type CommunityFeedPageProps = {
   onToggleLike?: (recipeId: number) => void
   onSelectRecipe: (recipe: Recipe) => void
   onViewAuthor?: (username: string) => void
+  hasMore?: boolean
+  loadingMore?: boolean
+  onLoadMore?: () => void
 }
 
 export default function CommunityFeedPage({
@@ -38,9 +41,14 @@ export default function CommunityFeedPage({
   onToggleLike,
   onSelectRecipe,
   onViewAuthor,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }: CommunityFeedPageProps) {
   const showFallback = recipes.length === 0 && sampleRecipes.length > 0
   const feedRecipes = recipes.length > 0 ? recipes : sampleRecipes
+  const showLoadMore =
+    Boolean(onLoadMore) && recipes.length > 0 && hasMore && !showFallback
 
   return (
     <section className="recipe-section community-feed-page">
@@ -83,6 +91,20 @@ export default function CommunityFeedPage({
           No community recipes have been shared yet, so we're showing sample
           inspiration for now.
         </p>
+      ) : null}
+
+      {showLoadMore ? (
+        <div className="community-feed__load-more">
+          <button
+            type="button"
+            className="profile-page__edit-profile-button"
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            aria-busy={loadingMore}
+          >
+            {loadingMore ? 'Loading…' : 'Load more recipes'}
+          </button>
+        </div>
       ) : null}
     </section>
   )

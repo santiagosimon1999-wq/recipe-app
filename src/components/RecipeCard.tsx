@@ -1,4 +1,13 @@
 import type { MouseEvent, SyntheticEvent } from 'react'
+import {
+  Drumstick,
+  Flame,
+  Globe,
+  Heart,
+  ThumbsUp,
+  User,
+  Wheat,
+} from 'lucide-react'
 import type { Recipe } from '../types/Recipe'
 
 type RecipeCardProps = {
@@ -50,6 +59,8 @@ function RecipeCard({
   const showAuthor =
     Boolean(recipe.authorUsername) && recipe.source === 'community'
 
+  const isOwnRecipe = recipe.source === 'user'
+
   return (
     <article className="recipe-card">
       <button
@@ -62,6 +73,7 @@ function RecipeCard({
           src={recipe.image || fallbackImage}
           alt={recipe.title}
           className="recipe-card__image"
+          loading="lazy"
           onError={handleImageError}
         />
 
@@ -69,11 +81,24 @@ function RecipeCard({
           <div className="recipe-card__meta">
             <p className="recipe-card__category">{recipe.category}</p>
 
-            {recipe.source === 'sample' ? (
-              <span className="recipe-card__badge">🌎 Community</span>
-            ) : (
-              <span className="recipe-card__badge">👤 Yours</span>
-            )}
+            <span className="recipe-card__badge recipe-card__badge--with-icon">
+              {recipe.source === 'sample' ? (
+                <>
+                  <Globe size={14} aria-hidden="true" />
+                  <span>Community</span>
+                </>
+              ) : isOwnRecipe ? (
+                <>
+                  <User size={14} aria-hidden="true" />
+                  <span>Yours</span>
+                </>
+              ) : (
+                <>
+                  <Globe size={14} aria-hidden="true" />
+                  <span>Community</span>
+                </>
+              )}
+            </span>
           </div>
 
           <h3 className="recipe-card__title">{recipe.title}</h3>
@@ -81,10 +106,22 @@ function RecipeCard({
           <p className="recipe-card__description">{recipe.description}</p>
 
           <div className="recipe-card__nutrition">
-            <span>🔥 {recipe.calories}</span>
-            <span>🥩 {recipe.protein}g</span>
-            <span>🍚 {recipe.carbs}g</span>
-            <span>🥑 {recipe.fat}g</span>
+            <span className="recipe-card__nutrition-item">
+              <Flame size={14} aria-hidden="true" />
+              {recipe.calories}
+            </span>
+            <span className="recipe-card__nutrition-item">
+              <Drumstick size={14} aria-hidden="true" />
+              {recipe.protein}g
+            </span>
+            <span className="recipe-card__nutrition-item">
+              <Wheat size={14} aria-hidden="true" />
+              {recipe.carbs}g
+            </span>
+            <span className="recipe-card__nutrition-item">
+              <Heart size={14} aria-hidden="true" />
+              {recipe.fat}g
+            </span>
           </div>
         </div>
       </button>
@@ -109,8 +146,14 @@ function RecipeCard({
               : 'favorite-button'
           }
           onClick={handleFavoriteClick}
+          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
         >
-          {isFavorite ? '❤️ Favorited' : '🤍 Favorite'}
+          <Heart
+            size={16}
+            aria-hidden="true"
+            fill={isFavorite ? 'currentColor' : 'none'}
+          />
+          <span>{isFavorite ? 'Favorited' : 'Favorite'}</span>
         </button>
         {recipe.source !== 'sample' && (
           <button
@@ -121,8 +164,14 @@ function RecipeCard({
               e.stopPropagation()
               onToggleLike?.(recipe.id)
             }}
+            aria-label={liked ? 'Unlike recipe' : 'Like recipe'}
           >
-            {liked ? `💚 ${likeCount ?? 0}` : `🤍 ${likeCount ?? 0}`}
+            <ThumbsUp
+              size={16}
+              aria-hidden="true"
+              fill={liked ? 'currentColor' : 'none'}
+            />
+            <span>{likeCount ?? 0}</span>
           </button>
         )}
       </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import type { Recipe } from '../types/Recipe'
 import type { Profile } from '../types/Profile'
 import { useAuth } from '../context/useAuth'
+import { useConfirm } from '../context/ConfirmProvider'
 import { supabase } from '../lib/supabaseClient'
 import {
   getProfileById,
@@ -11,31 +12,16 @@ import {
   logSupabaseError,
 } from '../lib/profileService'
 import { mapDbRowToRecipe } from '../lib/recipeMappers'
-
-function getFallbackUserName(email: string | null | undefined) {
-  if (!email) return 'Savora'
-  return email.split('@')[0]
-}
-
-function getAvatarInitials(
-  name: string | null | undefined,
-  email: string | null | undefined
-): string {
-  const source = (name?.trim() || email?.trim() || '').replace(/[^a-zA-Z\s]/g, ' ')
-  if (!source) return 'S'
-
-  const parts = source.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase()
-  }
-  return source.slice(0, 2).toUpperCase()
-}
+import { ProfilePageSkeleton } from '../components/ui/ProfilePageSkeleton'
+import { notify } from '../lib/toast'
+import { getAvatarInitials, getFallbackUserName } from '../lib/userUtils'
 
 const FALLBACK_THUMB =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=70'
 
 export default function ProfilePage() {
   const { user, logout } = useAuth()
+  const confirm = useConfirm()
   const navigate = useNavigate()
   const [isEditing, setIsEditing] = useState(false)
   const [formDisplayName, setFormDisplayName] = useState('')
@@ -183,6 +169,7 @@ export default function ProfilePage() {
           username: current?.username ?? null,
           avatar_url,
           bio: trimmedBio || null,
+          created_at: current?.created_at ?? null,
           deleted_at: current?.deleted_at ?? null,
         }))
       }
@@ -200,12 +187,14 @@ export default function ProfilePage() {
   async function handleDeleteAccount() {
     if (!user || deletingAccount) return
 
-    const confirmed = window.confirm(
-      'Delete your Savora account?\n\n' +
-        'Your profile will be anonymized, your favorites and likes will be removed, ' +
-        'and your shared recipes will be made private. This cannot be undone from the app.\n\n' +
-        'Type OK to continue.'
-    )
+    const confirmed = await confirm({
+      title: 'Delete your account?',
+      message:
+        'Your profile will be anonymized, your favorites and likes removed, and your shared recipes made private. This cannot be undone from the app.',
+      confirmLabel: 'Delete account',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    })
     if (!confirmed) return
 
     setDeletingAccount(true)
@@ -219,10 +208,11 @@ export default function ProfilePage() {
       }
 
       await logout()
+      notify.success('Your account has been deleted.')
       navigate('/', { replace: true })
     } catch (err) {
       console.error('Failed to delete account:', err)
-      setError('Could not delete your account. Please try again or contact support.')
+      notify.error('Could not delete your account. Please try again or contact support.')
       setDeletingAccount(false)
     }
   }
@@ -236,11 +226,7 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return (
-      <section className="profile-page__state-screen">
-        <p>Loading profile…</p>
-      </section>
-    )
+    return <ProfilePageSkeleton />
   }
 
   return (

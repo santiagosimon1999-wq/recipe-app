@@ -1,3 +1,4 @@
+import { Globe, Moon, Salad, Share2, Sun } from 'lucide-react'
 import { NavLink } from 'react-router'
 import ProfileCard from './ProfileCard'
 
@@ -47,13 +48,23 @@ export default function AppHeader({
         <div className="app-nav__actions">
           <button
             type="button"
-            className="theme-toggle-button"
+            className="theme-toggle-button theme-toggle-button--with-icon"
             onClick={onToggleTheme}
             aria-label={
               theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
             }
           >
-            {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+            {theme === 'light' ? (
+              <>
+                <Moon size={16} aria-hidden="true" />
+                <span>Dark</span>
+              </>
+            ) : (
+              <>
+                <Sun size={16} aria-hidden="true" />
+                <span>Light</span>
+              </>
+            )}
           </button>
 
           <NavLink to="/" end className={navLinkClass}>
@@ -95,9 +106,18 @@ export default function AppHeader({
           </p>
 
           <div className="hero-tags">
-            <span>📸 Social recipe sharing</span>
-            <span>🥗 Macro tracking</span>
-            <span>🌎 Community feed</span>
+            <span className="hero-tags__item">
+              <Share2 size={14} aria-hidden="true" />
+              Social recipe sharing
+            </span>
+            <span className="hero-tags__item">
+              <Salad size={14} aria-hidden="true" />
+              Macro tracking
+            </span>
+            <span className="hero-tags__item">
+              <Globe size={14} aria-hidden="true" />
+              Community feed
+            </span>
           </div>
         </div>
 

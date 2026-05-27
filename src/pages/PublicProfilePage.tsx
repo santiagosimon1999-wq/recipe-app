@@ -7,20 +7,11 @@ import {
   getPublicRecipesByUserId,
 } from '../lib/profileService'
 import { mapDbRowToRecipe } from '../lib/recipeMappers'
+import { ProfilePageSkeleton } from '../components/ui/ProfilePageSkeleton'
+import { getAvatarInitials } from '../lib/userUtils'
 
 const FALLBACK_THUMB =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=70'
-
-function getAvatarInitials(name: string | null | undefined): string {
-  const source = (name?.trim() || '').replace(/[^a-zA-Z\s]/g, ' ')
-  if (!source) return 'S'
-
-  const parts = source.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase()
-  }
-  return source.slice(0, 2).toUpperCase()
-}
 
 export default function PublicProfilePage() {
   const params = useParams<{ username: string }>()
@@ -91,11 +82,7 @@ export default function PublicProfilePage() {
   }, [username])
 
   if (loading) {
-    return (
-      <section className="profile-page__state-screen">
-        <p>Loading profile…</p>
-      </section>
-    )
+    return <ProfilePageSkeleton />
   }
 
   if (notFound) {

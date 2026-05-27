@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import type { Recipe } from '../types/Recipe'
 import { RECIPE_CATEGORIES } from '../utils/categories'
 
@@ -55,6 +55,14 @@ function RecipeForm({ initialRecipe, onSaveRecipe, onCancel }: RecipeFormProps) 
     initialRecipe?.image ?? ''
   )
 
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreviewUrl)
+      }
+    }
+  }, [imagePreviewUrl])
+
   function updateField<K extends keyof RecipeFormState>(
     field: K,
     value: RecipeFormState[K]
@@ -70,14 +78,37 @@ function RecipeForm({ initialRecipe, onSaveRecipe, onCancel }: RecipeFormProps) 
 
     if (!file) {
       updateField('imageFile', null)
-      setImagePreviewUrl(initialRecipe?.image ?? '')
+      setImagePreviewUrl((current) => {
+        if (current.startsWith('blob:')) {
+          URL.revokeObjectURL(current)
+        }
+        return initialRecipe?.image ?? ''
+      })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage('Image must be 5 MB or smaller.')
+      event.target.value = ''
+      return
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      setErrorMessage('Please upload a JPEG, PNG, WebP, or GIF image.')
+      event.target.value = ''
       return
     }
 
     updateField('imageFile', file)
+    setErrorMessage('')
 
-    const previewUrl = URL.createObjectURL(file)
-    setImagePreviewUrl(previewUrl)
+    setImagePreviewUrl((current) => {
+      if (current.startsWith('blob:')) {
+        URL.revokeObjectURL(current)
+      }
+      return URL.createObjectURL(file)
+    })
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {

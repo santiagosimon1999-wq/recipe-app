@@ -20,7 +20,7 @@ Each file is idempotent (`CREATE … IF NOT EXISTS`, `DROP POLICY IF EXISTS`, et
 ## Fresh DB bring-up
 
 ```bash
-# In the Supabase SQL Editor, paste files in order: 001 → 006.
+# In the Supabase SQL Editor, paste files in order: 001 → 007.
 # Each is a self-contained script.
 ```
 
@@ -32,11 +32,28 @@ If you add or remove columns, restart the PostgREST schema cache:
 NOTIFY pgrst, 'reload schema';
 ```
 
-## Future work (Phase 4.6)
+## Supabase CLI (Phase 4.6)
 
-Adopt the Supabase CLI (`supabase init`, `supabase migration new …`) so:
-- Migrations live in `supabase/migrations/<timestamp>_name.sql`
-- Local dev DB can be reset with `supabase db reset`
-- TypeScript types are generated from the schema with `supabase gen types typescript`
+The repo includes Supabase CLI scaffolding:
 
-For now, the manual numbered files above are the source of truth.
+- `supabase/config.toml` — local CLI config
+- `supabase/migrations/` — copies of `db/migrations/` with timestamp prefixes (for `supabase db reset` locally)
+
+### Regenerate TypeScript types from your remote project
+
+```bash
+supabase login          # one-time, opens browser
+npm run gen:types       # writes src/types/database.ts
+```
+
+The script reads your project ref from `VITE_SUPABASE_URL` in `.env`, or you can set `SUPABASE_PROJECT_REF` explicitly.
+
+### Local dev database (optional)
+
+```bash
+supabase start
+supabase db reset       # applies supabase/migrations/
+supabase gen types typescript --local > src/types/database.ts
+```
+
+For production, the manual `db/migrations/` files remain the source of truth until you fully adopt linked remote migrations via the CLI.

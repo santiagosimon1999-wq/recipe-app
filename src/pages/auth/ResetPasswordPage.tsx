@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
-import savoraLogo from '../../assets/savora-logo.PNG'
+import { SavoraLogo } from '../../components/brand/SavoraLogo'
 import { supabase } from '../../lib/supabaseClient'
 import { mapAuthError } from '../../lib/mapAuthError'
 import { AuthAlert } from '../../components/auth/AuthAlert'
@@ -95,11 +95,7 @@ export default function ResetPasswordPage() {
       <div className="auth-page__inner">
         <div className="auth-card">
           <header className="auth-brand">
-            <img
-              src={savoraLogo}
-              alt="Savora logo"
-              className="auth-brand__logo"
-            />
+            <SavoraLogo />
             <p className="auth-brand__eyebrow">Choose a new password</p>
             <h1 className="auth-brand__title">Reset password</h1>
             <p className="auth-brand__subtitle">
