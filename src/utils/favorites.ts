@@ -32,6 +32,27 @@ export function isRecipeFavorited(
 
 /** Parse a Postgres/Supabase recipe primary key (bigint may arrive as string). */
 export function parseDbRecipeId(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (typeof value === 'bigint') {
+    const asNumber = Number(value)
+    if (!Number.isSafeInteger(asNumber) || asNumber <= 0) {
+      return null
+    }
+    return asNumber
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!/^\d+$/.test(trimmed)) {
+      return null
+    }
+    const id = Number.parseInt(trimmed, 10)
+    return id > 0 ? id : null
+  }
+
   const id = Math.trunc(Number(value))
 
   if (!Number.isFinite(id) || id <= 0) {

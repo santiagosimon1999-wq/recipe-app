@@ -49,6 +49,8 @@ export type CommunityRecipesOptions = {
   limit?: number
   /** Fetch rows with `created_at` strictly before this ISO timestamp (cursor pagination). */
   cursor?: string
+  /** Only recipes from these user ids (e.g. people you follow). */
+  authorUserIds?: string[]
 }
 
 const DEFAULT_COMMUNITY_PAGE_SIZE = 20
@@ -108,6 +110,13 @@ export async function getCommunityRecipes(
     query = query.lt('created_at', options.cursor)
   }
 
+  if (options?.authorUserIds) {
+    if (options.authorUserIds.length === 0) {
+      return []
+    }
+    query = query.in('user_id', options.authorUserIds)
+  }
+
   const { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -115,6 +124,65 @@ export async function getCommunityRecipes(
   if (error) {
     throw error
   }
+
+  return (data ?? []) as unknown as RecipeRowWithAuthor[]
+}
+
+/**
+ * Fetch a single recipe by id. Returns null if not found or not visible
+ * (must be public, or owned by `viewerUserId` when provided).
+ */
+export async function getRecipeById(
+  recipeId: number,
+  viewerUserId?: string
+): Promise<RecipeRowWithAuthor | null> {
+  if (!Number.isFinite(recipeId) || recipeId <= 0) return null
+
+  const { data, error } = await supabase
+    .from('recipes')
+    .select(RECIPES_WITH_AUTHOR_SELECT)
+    .eq('id', recipeId)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+
+  const row = data as unknown as RecipeRowWithAuthor
+  const isOwner = Boolean(viewerUserId && row.user_id === viewerUserId)
+  const isPublic = row.is_public ?? false
+
+  if (!isPublic && !isOwner) {
+    return null
+  }
+
+  return row
+}
+
+export async function searchPublicRecipes(
+  searchTerm: string,
+  options?: { limit?: number; excludeUserId?: string }
+): Promise<RecipeRowWithAuthor[]> {
+  const trimmed = searchTerm.trim()
+  if (!trimmed) return []
+
+  const limit = options?.limit ?? 40
+  const pattern = `%${trimmed.replace(/[%_]/g, '')}%`
+
+  let query = supabase
+    .from('recipes')
+    .select(RECIPES_WITH_AUTHOR_SELECT)
+    .eq('is_public', true)
+    .or(`title.ilike.${pattern},description.ilike.${pattern},category.ilike.${pattern}`)
+
+  if (options?.excludeUserId) {
+    query = query.neq('user_id', options.excludeUserId)
+  }
+
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
 
   return (data ?? []) as unknown as RecipeRowWithAuthor[]
 }
@@ -131,6 +199,7 @@ export async function createRecipe(
     .from('recipes')
     .insert({
       user_id: userId,
+      author_id: userId,
       title: recipe.title,
       description: recipe.description ?? '',
       ingredients: recipe.ingredients ?? [],

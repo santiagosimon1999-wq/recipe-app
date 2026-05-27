@@ -2,7 +2,6 @@ import { useId } from 'react'
 import {
   Drumstick,
   Flame,
-  Globe,
   Heart,
   ThumbsUp,
   User,
@@ -11,6 +10,8 @@ import {
 import type { Recipe } from '../types/Recipe'
 import { ErrorBoundary } from './ErrorBoundary'
 import { Modal } from './ui/Modal'
+import SaveToCollectionButton from './SaveToCollectionButton'
+import ShareRecipeButton from './ShareRecipeButton'
 import RecipeComments from './RecipeComments'
 
 type RecipeModalProps = {
@@ -40,7 +41,7 @@ function RecipeModal({
 }: RecipeModalProps) {
   const titleId = useId()
 
-  const instructions = recipe.instructions
+  const instructions = (recipe.instructions ?? '')
     .split('\n')
     .map((step) => step.trim())
     .filter((step) => step !== '')
@@ -54,8 +55,15 @@ function RecipeModal({
           : 'Your private recipe'
         : 'Sample recipe'
 
-  const showAuthorLink =
-    Boolean(recipe.authorUsername) && recipe.source === 'community'
+  const showAuthor =
+    recipe.source !== 'sample' &&
+    Boolean(recipe.authorUsername || recipe.authorName)
+
+  const showAuthorLink = Boolean(recipe.authorUsername)
+
+  const authorLabel = recipe.authorUsername
+    ? `@${recipe.authorUsername}`
+    : recipe.authorName
 
   function handleAuthorClick() {
     if (recipe.authorUsername) {
@@ -87,6 +95,8 @@ function RecipeModal({
                   <span>{likeCount}</span>
                 </button>
               )}
+              <ShareRecipeButton recipe={recipe} />
+              <SaveToCollectionButton recipe={recipe} />
               {canManage ? (
                 <>
                   <button
@@ -136,12 +146,7 @@ function RecipeModal({
           <div className="recipe-modal__badges">
             <p className="recipe-card__category">{recipe.category}</p>
             <p className="recipe-card__badge recipe-card__badge--with-icon">
-              {recipe.source === 'sample' ? (
-                <>
-                  <Globe size={14} aria-hidden="true" />
-                  <span>Community</span>
-                </>
-              ) : recipe.source === 'user' ? (
+              {recipe.source === 'user' ? (
                 <>
                   <User size={14} aria-hidden="true" />
                   <span>{recipeStatusLabel}</span>
@@ -150,15 +155,19 @@ function RecipeModal({
                 <span>{recipeStatusLabel}</span>
               )}
             </p>
-            {showAuthorLink ? (
-              <button
-                type="button"
-                className="recipe-modal__author-link"
-                onClick={handleAuthorClick}
-                aria-label={`View profile of ${recipe.authorUsername}`}
-              >
-                @{recipe.authorUsername}
-              </button>
+            {showAuthor ? (
+              showAuthorLink ? (
+                <button
+                  type="button"
+                  className="recipe-modal__author-link"
+                  onClick={handleAuthorClick}
+                  aria-label={`View profile of ${recipe.authorUsername}`}
+                >
+                  {authorLabel}
+                </button>
+              ) : (
+                <span className="recipe-modal__author-name">{authorLabel}</span>
+              )
             ) : null}
           </div>
 
@@ -209,7 +218,7 @@ function RecipeModal({
           <div className="recipe-modal__section">
             <h3>Ingredients</h3>
             <ul className="recipe-modal__ingredients-list">
-              {recipe.ingredients.map((ingredient, index) => (
+              {(recipe.ingredients ?? []).map((ingredient, index) => (
                 <li key={`${index}-${ingredient}`}>{ingredient}</li>
               ))}
             </ul>
@@ -224,11 +233,6 @@ function RecipeModal({
             </ol>
           </div>
 
-          {!canManage && recipe.source === 'sample' ? (
-            <p className="recipe-modal__description">
-              Sample recipes are view-only.
-            </p>
-          ) : null}
         </div>
 
         <div className="recipe-modal__comments-panel">

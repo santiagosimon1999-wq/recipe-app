@@ -33,7 +33,8 @@ describe('parseDbRecipeId', () => {
   it('parses positive integers from numbers and numeric strings', () => {
     expect(parseDbRecipeId(42)).toBe(42)
     expect(parseDbRecipeId('42')).toBe(42)
-    expect(parseDbRecipeId('42.9')).toBe(42)
+    expect(parseDbRecipeId('42.9')).toBeNull()
+    expect(parseDbRecipeId(42n)).toBe(42)
   })
 
   it('rejects invalid ids', () => {

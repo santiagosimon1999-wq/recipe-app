@@ -1,0 +1,199 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Bookmark, BookmarkCheck } from 'lucide-react'
+import { useAuth } from '../context/useAuth'
+import { notify } from '../lib/toast'
+import {
+  addRecipeToCollection,
+  createCollection,
+  getCollectionsContainingRecipe,
+  getCollectionsForUser,
+  type CollectionSummary,
+} from '../services/collections'
+import { getSupabaseRecipeId } from '../utils/favorites'
+import type { Recipe } from '../types/Recipe'
+
+const DEFAULT_COLLECTION_NAME = 'Saved recipes'
+
+type SaveToCollectionButtonProps = {
+  recipe: Recipe
+}
+
+export default function SaveToCollectionButton({
+  recipe,
+}: SaveToCollectionButtonProps) {
+  const { user } = useAuth()
+  const [collections, setCollections] = useState<CollectionSummary[]>([])
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const recipeId = getSupabaseRecipeId(recipe)
+
+  const loadCollections = useCallback(async () => {
+    if (!user) return []
+    const rows = await getCollectionsForUser(user.id)
+    setCollections(rows)
+    return rows
+  }, [user])
+
+  useEffect(() => {
+    if (!user || recipeId === null) return
+    void loadCollections()
+  }, [user, recipeId, loadCollections])
+
+  const savedCollections = useMemo(() => {
+    if (recipeId === null) return []
+    return getCollectionsContainingRecipe(collections, recipeId)
+  }, [collections, recipeId])
+
+  const isSaved = savedCollections.length > 0
+
+  if (!user || recipeId === null || recipe.source === 'sample') {
+    return null
+  }
+
+  async function persistToCollection(
+    collectionId: string,
+    collectionName: string
+  ) {
+    if (!user || recipeId === null) return
+
+    const alreadyInList = collections.some(
+      (collection) =>
+        collection.id === collectionId &&
+        collection.recipeIds.includes(recipeId)
+    )
+
+    if (alreadyInList) {
+      notify.success(`Already in “${collectionName}”.`)
+      setOpen(false)
+      return
+    }
+
+    await addRecipeToCollection(user.id, collectionId, recipeId)
+    notify.success(`Recipe saved to “${collectionName}”.`)
+    setOpen(false)
+    await loadCollections()
+  }
+
+  async function handleSaveClick() {
+    if (!user || recipeId === null || busy) return
+
+    if (open) {
+      setOpen(false)
+      return
+    }
+
+    setBusy(true)
+    try {
+      const rows = await loadCollections()
+      const containing = getCollectionsContainingRecipe(rows, recipeId)
+
+      if (rows.length === 0) {
+        const created = await createCollection(user.id, DEFAULT_COLLECTION_NAME)
+        await persistToCollection(created.id, created.name)
+        return
+      }
+
+      if (rows.length === 1) {
+        if (containing.length > 0) {
+          notify.success(`Saved in “${rows[0].name}”.`)
+          return
+        }
+        await persistToCollection(rows[0].id, rows[0].name)
+        return
+      }
+
+      setOpen(true)
+    } catch (error) {
+      console.error('Save to collection failed:', error)
+      notify.error(
+        'Could not save to your list. If this keeps happening, run migration 010 in Supabase.'
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handlePickCollection(collectionId: string, name: string) {
+    if (busy) return
+
+    setBusy(true)
+    try {
+      await persistToCollection(collectionId, name)
+    } catch (error) {
+      console.error('Save to collection failed:', error)
+      notify.error('Could not save to that list.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const savedLabel =
+    savedCollections.length === 1
+      ? `Saved · ${savedCollections[0].name}`
+      : savedCollections.length > 1
+        ? `Saved · ${savedCollections.length} lists`
+        : 'Saved to list'
+
+  return (
+    <div className="save-to-collection">
+      <button
+        type="button"
+        className={
+          isSaved
+            ? 'recipe-modal__edit-button save-to-collection__toggle save-to-collection__toggle--saved'
+            : 'recipe-modal__edit-button save-to-collection__toggle'
+        }
+        onClick={() => void handleSaveClick()}
+        aria-expanded={open}
+        aria-pressed={isSaved}
+        aria-haspopup={collections.length > 1 ? 'menu' : undefined}
+        disabled={busy}
+        aria-label={
+          isSaved ? 'Recipe saved to your lists' : 'Save recipe to a list'
+        }
+      >
+        {isSaved ? (
+          <BookmarkCheck size={16} aria-hidden="true" />
+        ) : (
+          <Bookmark size={16} aria-hidden="true" />
+        )}
+        {busy ? 'Saving…' : isSaved ? savedLabel : 'Save to list'}
+      </button>
+
+      {open && collections.length > 1 ? (
+        <div className="save-to-collection__menu" role="menu">
+          {collections.map((collection) => {
+            const inList = collection.recipeIds.includes(recipeId)
+
+            return (
+              <button
+                key={collection.id}
+                type="button"
+                className={
+                  inList
+                    ? 'save-to-collection__option save-to-collection__option--saved'
+                    : 'save-to-collection__option'
+                }
+                onClick={() =>
+                  void handlePickCollection(collection.id, collection.name)
+                }
+                disabled={busy}
+                role="menuitem"
+              >
+                <span>{collection.name}</span>
+                {inList ? (
+                  <span className="save-to-collection__badge">Saved</span>
+                ) : collection.recipeCount > 0 ? (
+                  <span className="save-to-collection__count">
+                    {collection.recipeCount}
+                  </span>
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
+  )
+}

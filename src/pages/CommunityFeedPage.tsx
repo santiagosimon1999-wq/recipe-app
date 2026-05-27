@@ -1,10 +1,10 @@
+import type { CommunityFeedMode } from '../hooks/useRecipes'
 import type { Recipe } from '../types/Recipe'
 import DiscoverPanel from '../components/DiscoverPanel'
 import RecipeGrid from '../components/RecipeGrid'
 
 type CommunityFeedPageProps = {
   recipes: Recipe[]
-  sampleRecipes: Recipe[]
   sampleFavoriteIds: number[]
   cloudFavoriteRecipeIds: number[]
   searchTerm: string
@@ -22,11 +22,13 @@ type CommunityFeedPageProps = {
   hasMore?: boolean
   loadingMore?: boolean
   onLoadMore?: () => void
+  communityFeedMode?: CommunityFeedMode
+  onCommunityFeedModeChange?: (mode: CommunityFeedMode) => void
+  isLoggedIn?: boolean
 }
 
 export default function CommunityFeedPage({
   recipes,
-  sampleRecipes,
   sampleFavoriteIds,
   cloudFavoriteRecipeIds,
   searchTerm,
@@ -44,11 +46,11 @@ export default function CommunityFeedPage({
   hasMore = false,
   loadingMore = false,
   onLoadMore,
+  communityFeedMode = 'all',
+  onCommunityFeedModeChange,
+  isLoggedIn = false,
 }: CommunityFeedPageProps) {
-  const showFallback = recipes.length === 0 && sampleRecipes.length > 0
-  const feedRecipes = recipes.length > 0 ? recipes : sampleRecipes
-  const showLoadMore =
-    Boolean(onLoadMore) && recipes.length > 0 && hasMore && !showFallback
+  const showLoadMore = Boolean(onLoadMore) && recipes.length > 0 && hasMore
 
   return (
     <section className="recipe-section community-feed-page">
@@ -57,13 +59,50 @@ export default function CommunityFeedPage({
           <p className="app-eyebrow">Community feed</p>
           <h2>Public recipes from the community</h2>
         </div>
-        <span>{feedRecipes.length} items</span>
+        <span>{recipes.length} items</span>
       </div>
 
       <p className="community-feed__intro">
         Browse recipes that people have shared publicly. Sign in to share your own
         recipes and help the community discover new meal ideas.
       </p>
+
+      {isLoggedIn && onCommunityFeedModeChange ? (
+        <div
+          className="community-feed__mode-toggle"
+          role="group"
+          aria-label="Community feed filter"
+        >
+          <button
+            type="button"
+            className={
+              communityFeedMode === 'all'
+                ? 'community-feed__mode-button community-feed__mode-button--active'
+                : 'community-feed__mode-button'
+            }
+            onClick={() => onCommunityFeedModeChange('all')}
+          >
+            Everyone
+          </button>
+          <button
+            type="button"
+            className={
+              communityFeedMode === 'following'
+                ? 'community-feed__mode-button community-feed__mode-button--active'
+                : 'community-feed__mode-button'
+            }
+            onClick={() => onCommunityFeedModeChange('following')}
+          >
+            Following
+          </button>
+        </div>
+      ) : null}
+
+      {communityFeedMode === 'following' && isLoggedIn && recipes.length === 0 ? (
+        <p className="community-feed__hint">
+          Follow chefs from their public profiles to see their recipes here.
+        </p>
+      ) : null}
 
       <DiscoverPanel
         searchTerm={searchTerm}
@@ -76,8 +115,15 @@ export default function CommunityFeedPage({
         onClearFilters={onClearFilters}
       />
 
+      {recipes.length === 0 ? (
+        <p className="community-feed__hint">
+          No community recipes have been shared yet. Publish a public recipe or
+          ask your admin to seed @savora-team inspiration recipes.
+        </p>
+      ) : null}
+
       <RecipeGrid
-        recipes={feedRecipes}
+        recipes={recipes}
         sampleFavoriteIds={sampleFavoriteIds}
         cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
         onToggleFavorite={onToggleFavorite}
@@ -85,13 +131,6 @@ export default function CommunityFeedPage({
         onToggleLike={onToggleLike}
         onViewAuthor={onViewAuthor}
       />
-
-      {showFallback ? (
-        <p className="community-feed__hint">
-          No community recipes have been shared yet, so we're showing sample
-          inspiration for now.
-        </p>
-      ) : null}
 
       {showLoadMore ? (
         <div className="community-feed__load-more">

@@ -9,6 +9,7 @@ import {
   Wheat,
 } from 'lucide-react'
 import type { Recipe } from '../types/Recipe'
+import ShareRecipeButton from './ShareRecipeButton'
 
 type RecipeCardProps = {
   recipe: Recipe
@@ -57,7 +58,12 @@ function RecipeCard({
   }
 
   const showAuthor =
-    Boolean(recipe.authorUsername) && recipe.source === 'community'
+    recipe.source !== 'sample' &&
+    Boolean(recipe.authorUsername || recipe.authorName)
+
+  const authorLabel = recipe.authorUsername
+    ? `@${recipe.authorUsername}`
+    : recipe.authorName
 
   const isOwnRecipe = recipe.source === 'user'
 
@@ -82,12 +88,7 @@ function RecipeCard({
             <p className="recipe-card__category">{recipe.category}</p>
 
             <span className="recipe-card__badge recipe-card__badge--with-icon">
-              {recipe.source === 'sample' ? (
-                <>
-                  <Globe size={14} aria-hidden="true" />
-                  <span>Community</span>
-                </>
-              ) : isOwnRecipe ? (
+              {isOwnRecipe ? (
                 <>
                   <User size={14} aria-hidden="true" />
                   <span>Yours</span>
@@ -128,15 +129,24 @@ function RecipeCard({
 
       <div className="recipe-card__footer">
         {showAuthor ? (
-          <button
-            type="button"
-            className="recipe-card__author-link"
-            onClick={handleAuthorClick}
-            aria-label={`View profile of ${recipe.authorUsername}`}
-          >
-            @{recipe.authorUsername}
-          </button>
+          recipe.authorUsername ? (
+            <button
+              type="button"
+              className="recipe-card__author-link"
+              onClick={handleAuthorClick}
+              aria-label={`View profile of ${recipe.authorUsername}`}
+            >
+              {authorLabel}
+            </button>
+          ) : (
+            <span className="recipe-card__author-name">{authorLabel}</span>
+          )
         ) : null}
+
+        <ShareRecipeButton
+          recipe={recipe}
+          className="recipe-card__share-button"
+        />
 
         <button
           type="button"

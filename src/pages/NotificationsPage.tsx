@@ -1,0 +1,150 @@
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
+import { useAuth } from '../context/useAuth'
+import { notify } from '../lib/toast'
+import {
+  getNotificationsForUser,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type AppNotification,
+} from '../services/notifications'
+import { ProfilePageSkeleton } from '../components/ui/ProfilePageSkeleton'
+
+export default function NotificationsPage() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [items, setItems] = useState<AppNotification[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      const rows = await getNotificationsForUser(user.id)
+      setItems(rows)
+    } catch (error) {
+      console.error('Failed to load notifications:', error)
+      notify.error('Could not load notifications.')
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  async function handleMarkAllRead() {
+    if (!user) return
+
+    try {
+      await markAllNotificationsRead(user.id)
+      setItems((current) =>
+        current.map((item) => ({
+          ...item,
+          readAt: item.readAt ?? new Date().toISOString(),
+        }))
+      )
+    } catch (error) {
+      console.error('Failed to mark notifications read:', error)
+      notify.error('Could not update notifications.')
+    }
+  }
+
+  async function handleOpenNotification(item: AppNotification) {
+    if (!user) return
+
+    if (!item.readAt) {
+      try {
+        await markNotificationRead(user.id, item.id)
+        setItems((current) =>
+          current.map((row) =>
+            row.id === item.id
+              ? { ...row, readAt: new Date().toISOString() }
+              : row
+          )
+        )
+      } catch (error) {
+        console.error('Failed to mark notification read:', error)
+      }
+    }
+
+    if (item.recipeId) {
+      navigate(`/recipes/${item.recipeId}`)
+      return
+    }
+
+    if (item.type === 'follow') {
+      navigate('/following')
+    }
+  }
+
+  if (!user) {
+    return (
+      <section className="profile-page__state-screen">
+        <p>Sign in to see notifications about your recipes and followers.</p>
+      </section>
+    )
+  }
+
+  if (loading) {
+    return <ProfilePageSkeleton />
+  }
+
+  const unreadCount = items.filter((item) => !item.readAt).length
+
+  return (
+    <section className="notifications-page profile-page">
+      <div className="profile-page__main">
+        <div className="profile-page__recipes-header">
+          <div>
+            <p className="profile-page__stat-label">Inbox</p>
+            <h1 className="profile-page__recipes-title">Notifications</h1>
+          </div>
+          {unreadCount > 0 ? (
+            <button
+              type="button"
+              className="profile-page__edit-profile-button"
+              onClick={() => void handleMarkAllRead()}
+            >
+              Mark all read
+            </button>
+          ) : null}
+        </div>
+
+        {items.length === 0 ? (
+          <div className="profile-page__empty">
+            <p className="profile-page__empty-heading">You are all caught up.</p>
+            <p>
+              Likes, comments, and new followers will appear here as your
+              recipes get attention.
+            </p>
+          </div>
+        ) : (
+          <ul className="notifications-page__list">
+            {items.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className={`notifications-page__item ${
+                    item.readAt ? '' : 'notifications-page__item--unread'
+                  }`}
+                  onClick={() => void handleOpenNotification(item)}
+                >
+                  <span className="notifications-page__type">{item.type}</span>
+                  <span className="notifications-page__message">
+                    {item.message}
+                  </span>
+                  <time className="notifications-page__time" dateTime={item.createdAt}>
+                    {new Date(item.createdAt).toLocaleString()}
+                  </time>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  )
+}

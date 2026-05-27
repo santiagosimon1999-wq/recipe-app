@@ -17,6 +17,10 @@ Each file is idempotent (`CREATE … IF NOT EXISTS`, `DROP POLICY IF EXISTS`, et
 | 006 | `006_phase4_hardening.sql` | **Phase 4.1:** indexes, FKs, length CHECKs, like-counts view, restricted like-rows RLS, drop dead `author_name` column |
 | 007 | `007_account_deletion.sql` | **Phase 4.2:** `profiles.deleted_at` + `delete_user_account()` RPC for in-app account deactivation |
 | 008 | `008_create_comments.sql` | **Phase 5.1:** `comments` table, indexes, RLS (read all / create & delete own) |
+| 009 | `009_create_follows.sql` | **Phase 5.2:** `follows` table, indexes, RLS |
+| 010 | `010_collections_notifications.sql` | **Phase 5.8:** `collections`, `collection_recipes`, `notifications` |
+| 011 | `011_seed_savora_team_readme.sql` | Legacy notes (superseded by 012) |
+| 012 | `012_seed_savora_team_recipes.sql` | **Seed** 20 public inspiration recipes for `@savora-team` (idempotent) |
 
 ## Fresh DB bring-up
 

@@ -15,6 +15,7 @@ type AppHeaderProps = {
   favoriteCount: number
   averageCalories: number
   isLoggedIn: boolean
+  unreadNotifications?: number
 }
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
@@ -36,6 +37,7 @@ export default function AppHeader({
   favoriteCount,
   averageCalories,
   isLoggedIn,
+  unreadNotifications = 0,
 }: AppHeaderProps) {
   return (
     <header className="app-hero">
@@ -75,10 +77,30 @@ export default function AppHeader({
             Community
           </NavLink>
 
+          <NavLink to="/search" className={navLinkClass}>
+            Search
+          </NavLink>
+
           {isLoggedIn ? (
-            <NavLink to="/profile" className={navLinkClass}>
-              Profile
-            </NavLink>
+            <>
+              <NavLink to="/following" className={navLinkClass}>
+                Following
+              </NavLink>
+              <NavLink to="/collections" className={navLinkClass}>
+                Collections
+              </NavLink>
+              <NavLink to="/notifications" className={navLinkClass}>
+                <span className="app-nav__notifications-label">
+                  Alerts
+                  {unreadNotifications > 0 ? (
+                    <span className="app-nav__badge">{unreadNotifications}</span>
+                  ) : null}
+                </span>
+              </NavLink>
+              <NavLink to="/profile" className={navLinkClass}>
+                Profile
+              </NavLink>
+            </>
           ) : null}
 
           {isLoggedIn ? (

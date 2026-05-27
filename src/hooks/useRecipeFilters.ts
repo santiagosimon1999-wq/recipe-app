@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { isSavoraTeamRecipe } from '../lib/savoraTeam'
 import type { Recipe } from '../types/Recipe'
 import { isRecipeFavorited } from '../utils/favorites'
 
@@ -39,18 +40,25 @@ export function useRecipeFilters(
     cloudFavoriteRecipeIds,
   ])
 
+  const savoraInspirationRecipes = useMemo(
+    () => filteredRecipes.filter((recipe) => isSavoraTeamRecipe(recipe)),
+    [filteredRecipes]
+  )
+
   const userRecipes = useMemo(
-    () => filteredRecipes.filter((recipe) => recipe.source === 'user'),
+    () =>
+      filteredRecipes.filter(
+        (recipe) => recipe.source === 'user' && !isSavoraTeamRecipe(recipe)
+      ),
     [filteredRecipes]
   )
 
   const communityRecipes = useMemo(
-    () => filteredRecipes.filter((recipe) => recipe.source === 'community'),
-    [filteredRecipes]
-  )
-
-  const sampleRecipes = useMemo(
-    () => filteredRecipes.filter((recipe) => recipe.source === 'sample'),
+    () =>
+      filteredRecipes.filter(
+        (recipe) =>
+          recipe.source === 'community' && !isSavoraTeamRecipe(recipe)
+      ),
     [filteredRecipes]
   )
 
@@ -90,7 +98,7 @@ export function useRecipeFilters(
     filteredRecipes,
     userRecipes,
     communityRecipes,
-    sampleRecipes,
+    savoraInspirationRecipes,
     allUserRecipes,
     averageCalories,
     showClearFiltersButton,

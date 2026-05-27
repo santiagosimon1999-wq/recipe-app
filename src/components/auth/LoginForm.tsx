@@ -5,6 +5,7 @@ import { mapAuthError } from '../../lib/mapAuthError'
 import { AuthAlert } from './AuthAlert'
 import { AuthButton } from './AuthButton'
 import { AuthField } from './AuthField'
+import { OAuthButtons } from './OAuthButtons'
 
 type LoginFormProps = {
   isActive?: boolean
@@ -76,6 +77,8 @@ export function LoginForm({ isActive = true }: LoginFormProps) {
       <AuthButton loading={loading} loadingLabel="Logging in…">
         Log in
       </AuthButton>
+
+      <OAuthButtons disabled={loading} />
     </form>
   )
 }

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import type { Recipe } from '../types/Recipe'
 import type { PublicProfile } from '../types/Profile'
+import FollowButton from '../components/FollowButton'
+import ProfileRecipeGrid from '../components/ProfileRecipeGrid'
 import {
   getProfileByUsername,
   getPublicRecipesByUserId,
@@ -9,17 +11,25 @@ import {
 import { mapDbRowToRecipe } from '../lib/recipeMappers'
 import { ProfilePageSkeleton } from '../components/ui/ProfilePageSkeleton'
 import { getAvatarInitials } from '../lib/userUtils'
+import { getFollowCounts, type FollowCounts } from '../services/follows'
 
-const FALLBACK_THUMB =
-  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=70'
+type PublicProfilePageProps = {
+  onSelectRecipe: (recipe: Recipe) => void
+}
 
-export default function PublicProfilePage() {
+export default function PublicProfilePage({
+  onSelectRecipe,
+}: PublicProfilePageProps) {
   const params = useParams<{ username: string }>()
   const navigate = useNavigate()
   const username = params.username ?? ''
 
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [recipes, setRecipes] = useState<Recipe[]>([])
+  const [followCounts, setFollowCounts] = useState<FollowCounts>({
+    followers: 0,
+    following: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -61,10 +71,15 @@ export default function PublicProfilePage() {
 
         setProfile(foundProfile)
 
-        const publicRows = await getPublicRecipesByUserId(foundProfile.id)
+        const [publicRows, counts] = await Promise.all([
+          getPublicRecipesByUserId(foundProfile.id),
+          getFollowCounts(foundProfile.id),
+        ])
+
         if (cancelled) return
 
         setRecipes(publicRows.map((row) => mapDbRowToRecipe(row)))
+        setFollowCounts(counts)
       } catch (err) {
         console.error('Failed to load public profile:', err)
         if (cancelled) return
@@ -153,6 +168,12 @@ export default function PublicProfilePage() {
             {profile.bio ? (
               <p className="profile-page__bio">{profile.bio}</p>
             ) : null}
+
+            <FollowButton
+              targetUserId={profile.id}
+              targetDisplayName={displayName}
+              className="public-profile__follow-button"
+            />
           </div>
         </aside>
 
@@ -161,6 +182,14 @@ export default function PublicProfilePage() {
             <div className="profile-page__stat-card">
               <p className="profile-page__stat-label">Public recipes</p>
               <p className="profile-page__stat-value">{recipes.length}</p>
+            </div>
+            <div className="profile-page__stat-card">
+              <p className="profile-page__stat-label">Followers</p>
+              <p className="profile-page__stat-value">{followCounts.followers}</p>
+            </div>
+            <div className="profile-page__stat-card">
+              <p className="profile-page__stat-label">Following</p>
+              <p className="profile-page__stat-value">{followCounts.following}</p>
             </div>
           </div>
 
@@ -174,45 +203,12 @@ export default function PublicProfilePage() {
               </div>
             </div>
 
-            {recipes.length === 0 ? (
-              <div className="profile-page__empty">
-                <p className="profile-page__empty-heading">
-                  No public recipes yet.
-                </p>
-                <p>
-                  {displayName} hasn't shared any public recipes yet. Check back
-                  soon.
-                </p>
-              </div>
-            ) : (
-              <div className="profile-page__recipe-grid">
-                {recipes.map((recipe) => (
-                  <article
-                    key={recipe.id}
-                    className="profile-page__recipe-card"
-                  >
-                    <div className="profile-page__recipe-thumb">
-                      <img
-                        src={recipe.image || FALLBACK_THUMB}
-                        alt={recipe.title}
-                        className="profile-page__recipe-thumb-img"
-                      />
-                    </div>
-                    <div className="profile-page__recipe-body">
-                      <span className="profile-page__recipe-category">
-                        {recipe.category}
-                      </span>
-                      <h3 className="profile-page__recipe-title">
-                        {recipe.title}
-                      </h3>
-                      <p className="profile-page__recipe-description">
-                        {recipe.description}
-                      </p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
+            <ProfileRecipeGrid
+              recipes={recipes}
+              onSelectRecipe={onSelectRecipe}
+              emptyHeading="No public recipes yet."
+              emptyBody={`${displayName} hasn't shared any public recipes yet. Check back soon.`}
+            />
           </section>
 
           {error ? <p className="profile-page__error">{error}</p> : null}

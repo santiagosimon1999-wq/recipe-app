@@ -1,3 +1,4 @@
+import { notifyRecipeOwner } from '../lib/notifyRecipeOwner'
 import { supabase } from '../lib/supabaseClient'
 import type { Database } from '../types/database'
 import type { RecipeComment } from '../types/Comment'
@@ -115,7 +116,16 @@ export async function createComment(
     throw error
   }
 
-  return mapRowToComment(data as unknown as CommentRowWithAuthor)
+  const comment = mapRowToComment(data as unknown as CommentRowWithAuthor)
+
+  void notifyRecipeOwner(
+    recipeId,
+    user.id,
+    'comment',
+    'Someone commented on your recipe.'
+  )
+
+  return comment
 }
 
 /**

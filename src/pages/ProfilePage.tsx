@@ -12,14 +12,17 @@ import {
   logSupabaseError,
 } from '../lib/profileService'
 import { mapDbRowToRecipe } from '../lib/recipeMappers'
+import ProfileRecipeGrid from '../components/ProfileRecipeGrid'
 import { ProfilePageSkeleton } from '../components/ui/ProfilePageSkeleton'
 import { notify } from '../lib/toast'
 import { getAvatarInitials, getFallbackUserName } from '../lib/userUtils'
+import { getFollowCounts, type FollowCounts } from '../services/follows'
 
-const FALLBACK_THUMB =
-  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=70'
+type ProfilePageProps = {
+  onSelectRecipe: (recipe: Recipe) => void
+}
 
-export default function ProfilePage() {
+export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
   const { user, logout } = useAuth()
   const confirm = useConfirm()
   const navigate = useNavigate()
@@ -35,6 +38,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingAccount, setDeletingAccount] = useState(false)
+  const [followCounts, setFollowCounts] = useState<FollowCounts>({
+    followers: 0,
+    following: 0,
+  })
 
   const displayName = useMemo(
     () => profile?.display_name || getFallbackUserName(user?.email),
@@ -74,10 +81,11 @@ export default function ProfilePage() {
       setError(null)
 
       try {
-        const [profileData, count, sharedRows] = await Promise.all([
+        const [profileData, count, sharedRows, counts] = await Promise.all([
           getProfileById(currentUserId),
           getRecipeCountByUserId(currentUserId),
           getPublicRecipesByUserId(currentUserId),
+          getFollowCounts(currentUserId),
         ])
 
         if (profileData) {
@@ -88,6 +96,7 @@ export default function ProfilePage() {
         setSharedRecipes(
           sharedRows.map((row) => mapDbRowToRecipe(row, currentUserId))
         )
+        setFollowCounts(counts)
       } catch (err) {
         console.error('Failed to load profile page data:', err)
         setError('Unable to load profile information. Please try again later.')
@@ -370,6 +379,16 @@ export default function ProfilePage() {
               <p className="profile-page__stat-label">Shared</p>
               <p className="profile-page__stat-value">{sharedRecipes.length}</p>
             </div>
+
+            <div className="profile-page__stat-card">
+              <p className="profile-page__stat-label">Followers</p>
+              <p className="profile-page__stat-value">{followCounts.followers}</p>
+            </div>
+
+            <div className="profile-page__stat-card">
+              <p className="profile-page__stat-label">Following</p>
+              <p className="profile-page__stat-value">{followCounts.following}</p>
+            </div>
           </div>
 
           <section className="profile-page__recipes-section">
@@ -386,45 +405,12 @@ export default function ProfilePage() {
               </p>
             </div>
 
-            {sharedRecipes.length === 0 ? (
-              <div className="profile-page__empty">
-                <p className="profile-page__empty-heading">
-                  No shared recipes yet.
-                </p>
-                <p>
-                  Create a recipe and choose to share it publicly to populate
-                  your shared recipes list.
-                </p>
-              </div>
-            ) : (
-              <div className="profile-page__recipe-grid">
-                {sharedRecipes.map((recipe) => (
-                  <article
-                    key={recipe.id}
-                    className="profile-page__recipe-card"
-                  >
-                    <div className="profile-page__recipe-thumb">
-                      <img
-                        src={recipe.image || FALLBACK_THUMB}
-                        alt={recipe.title}
-                        className="profile-page__recipe-thumb-img"
-                      />
-                    </div>
-                    <div className="profile-page__recipe-body">
-                      <span className="profile-page__recipe-category">
-                        {recipe.category}
-                      </span>
-                      <h3 className="profile-page__recipe-title">
-                        {recipe.title}
-                      </h3>
-                      <p className="profile-page__recipe-description">
-                        {recipe.description}
-                      </p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
+            <ProfileRecipeGrid
+              recipes={sharedRecipes}
+              onSelectRecipe={onSelectRecipe}
+              emptyHeading="No shared recipes yet."
+              emptyBody="Create a recipe and choose to share it publicly to populate your shared recipes list."
+            />
           </section>
 
           {error ? <p className="profile-page__error">{error}</p> : null}

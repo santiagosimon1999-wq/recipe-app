@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { Recipe } from '../types/Recipe'
+import { notifyRecipeOwner } from '../lib/notifyRecipeOwner'
 import { likeRecipe, unlikeRecipe } from '../lib/recipeService'
 import { notify } from '../lib/toast'
 
@@ -88,6 +89,12 @@ export function useLikes({
 
         try {
           await likeRecipe(user.id, recipeId)
+          void notifyRecipeOwner(
+            recipeId,
+            user.id,
+            'like',
+            'Someone liked your recipe.'
+          )
         } catch (err) {
           console.error('Failed to like:', err)
           notify.error('Failed to like recipe. Please try again.')

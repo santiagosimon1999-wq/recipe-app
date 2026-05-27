@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { starterRecipes } from '../data/starterRecipes'
 import {
   calculateNutrition,
   debugParseIngredients,
 } from '../lib/nutritionService'
 import { mapDbRowToRecipe } from '../lib/recipeMappers'
+import { getFollowingIds } from '../services/follows'
 import {
   COMMUNITY_PAGE_SIZE,
   createRecipe,
@@ -16,6 +16,8 @@ import {
   getRecipes,
   updateRecipe as updateRecipeById,
 } from '../lib/recipeService'
+
+export type CommunityFeedMode = 'all' | 'following'
 import { notify } from '../lib/toast'
 import { uploadRecipeImage } from '../lib/storageService'
 import type { Recipe } from '../types/Recipe'
@@ -59,18 +61,42 @@ async function enrichRecipesWithLikes(
   return { enriched, likedIds }
 }
 
-export function useRecipes(user: User | null) {
+export function useRecipes(
+  user: User | null,
+  communityFeedMode: CommunityFeedMode = 'all'
+) {
   const [recipeList, setRecipeList] = useState<Recipe[]>([])
   const [likedRecipeIds, setLikedRecipeIds] = useState<number[]>([])
   const [hasMoreCommunity, setHasMoreCommunity] = useState(false)
   const [loadingMoreCommunity, setLoadingMoreCommunity] = useState(false)
+  const [followingFeedRecipes, setFollowingFeedRecipes] = useState<Recipe[]>([])
   const communityCursorRef = useRef<string | null>(null)
+  const followingIdsRef = useRef<string[]>([])
 
   useEffect(() => {
     communityCursorRef.current = null
     setHasMoreCommunity(false)
 
     async function loadRecipes() {
+      let followingIds: string[] = []
+
+      if (user) {
+        try {
+          followingIds = await getFollowingIds(user.id)
+        } catch (error) {
+          console.error('Failed to load following ids:', error)
+        }
+      }
+
+      followingIdsRef.current = followingIds
+
+      const communityOptions = {
+        limit: COMMUNITY_PAGE_SIZE,
+        ...(communityFeedMode === 'following' && user
+          ? { authorUserIds: followingIds }
+          : {}),
+      }
+
       if (!user) {
         try {
           const publicRows = await getCommunityRecipes({ limit: COMMUNITY_PAGE_SIZE })
@@ -82,16 +108,15 @@ export function useRecipes(user: User | null) {
               : null
           setHasMoreCommunity(publicRows.length >= COMMUNITY_PAGE_SIZE)
 
-          const { enriched } = await enrichRecipesWithLikes(
-            [...publicRecipes, ...starterRecipes],
-            undefined
-          )
+          const { enriched } = await enrichRecipesWithLikes(publicRecipes, undefined)
           setLikedRecipeIds([])
           setRecipeList(enriched)
+          setFollowingFeedRecipes([])
         } catch (error) {
           console.error('Failed to load public community recipes:', error)
-          setRecipeList(starterRecipes)
+          setRecipeList([])
           setLikedRecipeIds([])
+          setFollowingFeedRecipes([])
         }
 
         return
@@ -101,8 +126,16 @@ export function useRecipes(user: User | null) {
         const ownRows = await getRecipes(user.id)
         const communityRows = await getCommunityRecipes({
           excludeUserId: user.id,
-          limit: COMMUNITY_PAGE_SIZE,
+          ...communityOptions,
         })
+
+        const followingRows =
+          followingIds.length > 0
+            ? await getCommunityRecipes({
+                authorUserIds: followingIds,
+                limit: COMMUNITY_PAGE_SIZE,
+              })
+            : []
 
         const ownRecipes = ownRows.map((row) => mapDbRowToRecipe(row, user.id))
         const communityRecipes = communityRows.map((row) =>
@@ -115,12 +148,22 @@ export function useRecipes(user: User | null) {
             : null
         setHasMoreCommunity(communityRows.length >= COMMUNITY_PAGE_SIZE)
 
-        const combined = [...ownRecipes, ...communityRecipes, ...starterRecipes]
+        const followingMapped = followingRows.map((row) =>
+          mapDbRowToRecipe(row, user.id)
+        )
+
+        const combined = [...ownRecipes, ...communityRecipes]
         const { enriched, likedIds } = await enrichRecipesWithLikes(
           combined,
           user.id
         )
 
+        const { enriched: enrichedFollowing } = await enrichRecipesWithLikes(
+          followingMapped,
+          user.id
+        )
+
+        setFollowingFeedRecipes(enrichedFollowing)
         setLikedRecipeIds(likedIds)
         setRecipeList(enriched)
       } catch (error) {
@@ -129,15 +172,15 @@ export function useRecipes(user: User | null) {
         try {
           const rows = await getRecipes(user.id)
           const mappedRecipes = rows.map((row) => mapDbRowToRecipe(row, user.id))
-          setRecipeList([...mappedRecipes, ...starterRecipes])
+          setRecipeList(mappedRecipes)
         } catch {
-          setRecipeList(starterRecipes)
+          setRecipeList([])
         }
       }
     }
 
     void loadRecipes()
-  }, [user])
+  }, [user, communityFeedMode])
 
   const loadMoreCommunity = useCallback(async () => {
     if (loadingMoreCommunity || !hasMoreCommunity) return
@@ -152,6 +195,9 @@ export function useRecipes(user: User | null) {
         excludeUserId: user?.id,
         limit: COMMUNITY_PAGE_SIZE,
         cursor,
+        ...(communityFeedMode === 'following' && user
+          ? { authorUserIds: followingIdsRef.current }
+          : {}),
       })
 
       if (communityRows.length === 0) {
@@ -194,7 +240,7 @@ export function useRecipes(user: User | null) {
     } finally {
       setLoadingMoreCommunity(false)
     }
-  }, [user, loadingMoreCommunity, hasMoreCommunity])
+  }, [user, loadingMoreCommunity, hasMoreCommunity, communityFeedMode])
 
   return {
     recipeList,
@@ -204,6 +250,7 @@ export function useRecipes(user: User | null) {
     hasMoreCommunity,
     loadingMoreCommunity,
     loadMoreCommunity,
+    followingFeedRecipes,
   }
 }
 

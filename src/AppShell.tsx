@@ -1,5 +1,8 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import { Routes, Route, useLocation, useNavigate } from 'react-router'
+import { RecipeShellProvider } from './context/RecipeShellContext'
+import ProfilePage from './pages/ProfilePage'
+import PublicProfilePage from './pages/PublicProfilePage'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { captureBoundaryError } from './lib/sentry'
 import { useConfirm } from './context/ConfirmProvider'
@@ -15,15 +18,24 @@ import { useFavorites } from './hooks/useFavorites'
 import { useLikes } from './hooks/useLikes'
 import { useProfile } from './hooks/useProfile'
 import { useRecipeFilters } from './hooks/useRecipeFilters'
-import { useRecipeMutations, useRecipes } from './hooks/useRecipes'
+import {
+  type CommunityFeedMode,
+  useRecipeMutations,
+  useRecipes,
+} from './hooks/useRecipes'
+import { useUnreadNotifications } from './hooks/useUnreadNotifications'
+import RecipeDetailRoute from './components/RecipeDetailRoute'
+import { normalizeRecipeForUi } from './lib/recipeMappers'
 import { getUserInitial } from './lib/userUtils'
 import { notify } from './lib/toast'
 import type { Recipe } from './types/Recipe'
 import type { Theme } from './hooks/useTheme'
 
 const CommunityFeedPage = lazy(() => import('./pages/CommunityFeedPage'))
-const ProfilePage = lazy(() => import('./pages/ProfilePage'))
-const PublicProfilePage = lazy(() => import('./pages/PublicProfilePage'))
+const ActivityFeedPage = lazy(() => import('./pages/ActivityFeedPage'))
+const SearchPage = lazy(() => import('./pages/SearchPage'))
+const CollectionsPage = lazy(() => import('./pages/CollectionsPage'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 
 type AppShellProps = {
   theme: Theme
@@ -37,7 +49,11 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
   const location = useLocation()
   const isPublicProfileRoute = location.pathname.startsWith('/users/')
 
+  const [communityFeedMode, setCommunityFeedMode] =
+    useState<CommunityFeedMode>('all')
+
   const { displayName } = useProfile(user)
+  const unreadNotifications = useUnreadNotifications(user)
   const {
     recipeList,
     setRecipeList,
@@ -46,7 +62,8 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     hasMoreCommunity,
     loadingMoreCommunity,
     loadMoreCommunity,
-  } = useRecipes(user)
+    followingFeedRecipes,
+  } = useRecipes(user, communityFeedMode)
 
   const {
     cloudFavoriteRecipeIds,
@@ -64,7 +81,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     showFavoritesOnly,
     userRecipes,
     communityRecipes,
-    sampleRecipes,
+    savoraInspirationRecipes,
     allUserRecipes,
     averageCalories,
     showClearFiltersButton,
@@ -170,13 +187,43 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     await toggleRecipePublic(recipe, setSelectedRecipe)
   }
 
-  function handleSelectRecipe(recipe: Recipe) {
-    setSelectedRecipe(recipe)
-  }
+  const handleSelectRecipe = useCallback(
+    (recipe: Recipe) => {
+      const normalized = normalizeRecipeForUi(recipe)
+
+      const fromList =
+        normalized.id > 0
+          ? recipeList.find(
+              (item) =>
+                item.id > 0 &&
+                item.id === normalized.id &&
+                (item.source === normalized.source ||
+                  (normalized.userId && item.userId === normalized.userId))
+            )
+          : null
+
+      setSelectedRecipe(
+        normalizeRecipeForUi({
+          ...normalized,
+          likeCount: fromList?.likeCount ?? normalized.likeCount,
+          liked: fromList?.liked ?? normalized.liked,
+        })
+      )
+    },
+    [recipeList]
+  )
 
   function handleCloseModal() {
     setSelectedRecipe(null)
+
+    if (location.pathname.startsWith('/recipes/')) {
+      navigate('/community')
+    }
   }
+
+  const handleRecipeFromDeepLink = useCallback((recipe: Recipe) => {
+    setSelectedRecipe(recipe)
+  }, [])
 
   function handleViewAuthor(username: string) {
     const trimmed = username?.trim()
@@ -186,23 +233,30 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     navigate(`/users/${encodeURIComponent(trimmed)}`)
   }
 
+  const shellContextValue = {
+    onSelectRecipe: handleSelectRecipe,
+    onViewAuthor: handleViewAuthor,
+  }
+
   return (
-    <main className={`app app--${theme}`}>
-      <div className="app__container">
-        <AppHeader
-          theme={theme}
-          onToggleTheme={onToggleTheme}
-          onLogout={() => void logout()}
-          onStartCreateRecipe={handleStartCreateRecipe}
-          savingRecipe={savingRecipe}
-          displayName={displayName}
-          email={user?.email}
-          userInitial={getUserInitial(displayName || user?.email)}
-          totalRecipes={allUserRecipes.length}
-          favoriteCount={favoriteCount}
-          averageCalories={averageCalories}
-          isLoggedIn={Boolean(user)}
-        />
+    <RecipeShellProvider value={shellContextValue}>
+      <main className={`app app--${theme}`}>
+        <div className="app__container">
+          <AppHeader
+            theme={theme}
+            onToggleTheme={onToggleTheme}
+            onLogout={() => void logout()}
+            onStartCreateRecipe={handleStartCreateRecipe}
+            savingRecipe={savingRecipe}
+            displayName={displayName}
+            email={user?.email}
+            userInitial={getUserInitial(displayName || user?.email)}
+            totalRecipes={allUserRecipes.length}
+            favoriteCount={favoriteCount}
+            averageCalories={averageCalories}
+            isLoggedIn={Boolean(user)}
+            unreadNotifications={unreadNotifications}
+          />
 
         {showRecipeForm && !isPublicProfileRoute ? (
           <RecipeForm
@@ -221,14 +275,65 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
         >
           <Suspense fallback={<RouteFallback pathname={location.pathname} />}>
             <Routes>
-              <Route path="/users/:username" element={<PublicProfilePage />} />
-              <Route path="/profile" element={<ProfilePage />} />
+              <Route
+                path="/recipes/:recipeId"
+                element={
+                  <RecipeDetailRoute
+                    userId={user?.id}
+                    onRecipeReady={handleRecipeFromDeepLink}
+                  />
+                }
+              />
+              <Route
+                path="/users/:username"
+                element={
+                  <PublicProfilePage onSelectRecipe={handleSelectRecipe} />
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProfilePage onSelectRecipe={handleSelectRecipe} />
+                }
+              />
+              <Route path="/following" element={
+                <ActivityFeedPage
+                  recipes={followingFeedRecipes}
+                  sampleFavoriteIds={sampleFavoriteIds}
+                  cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
+                  onToggleFavorite={toggleFavorite}
+                  onSelectRecipe={handleSelectRecipe}
+                  onToggleLike={toggleLike}
+                  onViewAuthor={handleViewAuthor}
+                  isLoggedIn={Boolean(user)}
+                />
+              } />
+              <Route
+                path="/search"
+                element={
+                  <SearchPage
+                    userId={user?.id}
+                    sampleFavoriteIds={sampleFavoriteIds}
+                    cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
+                    onToggleFavorite={toggleFavorite}
+                    onSelectRecipe={handleSelectRecipe}
+                    onToggleLike={toggleLike}
+                    onViewAuthor={handleViewAuthor}
+                  />
+                }
+              />
+              <Route
+                path="/collections"
+                element={
+                  <CollectionsPage onSelectRecipe={handleSelectRecipe} />
+                }
+              />
+              <Route path="/notifications" element={<NotificationsPage />} />
               <Route
                 path="/community"
                 element={
                   <CommunityFeedPage
                     recipes={communityRecipes}
-                    sampleRecipes={sampleRecipes}
                     sampleFavoriteIds={sampleFavoriteIds}
                     cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
                     searchTerm={searchTerm}
@@ -246,6 +351,9 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                     hasMore={hasMoreCommunity}
                     loadingMore={loadingMoreCommunity}
                     onLoadMore={() => void loadMoreCommunity()}
+                    communityFeedMode={communityFeedMode}
+                    onCommunityFeedModeChange={setCommunityFeedMode}
+                    isLoggedIn={Boolean(user)}
                   />
                 }
               />
@@ -267,7 +375,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                     <RecipeDashboard
                       userRecipes={userRecipes}
                       communityRecipes={communityRecipes}
-                      sampleRecipes={sampleRecipes}
+                      savoraInspirationRecipes={savoraInspirationRecipes}
                       sampleFavoriteIds={sampleFavoriteIds}
                       cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
                       onToggleFavorite={toggleFavorite}
@@ -298,8 +406,9 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
             onViewAuthor={handleViewAuthor}
           />
         ) : null}
-      </div>
-    </main>
+        </div>
+      </main>
+    </RecipeShellProvider>
   )
 }
 
@@ -308,8 +417,21 @@ function RouteFallback({ pathname }: { pathname: string }) {
     return <ProfilePageSkeleton />
   }
 
-  if (pathname === '/community' || pathname === '/') {
+  if (
+    pathname === '/community' ||
+    pathname === '/following' ||
+    pathname === '/search' ||
+    pathname === '/'
+  ) {
     return <RecipeGridSkeleton count={6} />
+  }
+
+  if (pathname.startsWith('/recipes/')) {
+    return (
+      <section className="profile-page__state-screen" aria-busy="true">
+        <p>Opening recipe…</p>
+      </section>
+    )
   }
 
   return (

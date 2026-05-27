@@ -57,14 +57,14 @@ export function mapDbRowToRecipe(
     title: row.title,
     image: row.image_url ?? '',
     imageFile: null,
-    description: row.description,
-    category: row.category,
-    calories: row.calories,
-    protein: row.protein,
-    carbs: row.carbs,
-    fat: row.fat,
-    ingredients: row.ingredients,
-    instructions: row.instructions,
+    description: row.description ?? '',
+    category: row.category ?? 'Other',
+    calories: row.calories ?? 0,
+    protein: row.protein ?? 0,
+    carbs: row.carbs ?? 0,
+    fat: row.fat ?? 0,
+    ingredients: row.ingredients ?? [],
+    instructions: row.instructions ?? '',
     source: belongsToCurrentUser ? 'user' : 'community',
     userId: row.user_id,
     // Display name precedence: joined profile.display_name → joined username →
@@ -78,5 +78,25 @@ export function mapDbRowToRecipe(
     isPublic: row.is_public ?? true,
     likeCount: 0,
     liked: false,
+  }
+}
+
+/** Ensure in-memory recipe objects are safe to render in RecipeModal/RecipeCard. */
+export function normalizeRecipeForUi(recipe: Recipe): Recipe {
+  const id = parseDbRecipeId(recipe.id) ?? recipe.id
+
+  return {
+    ...recipe,
+    id,
+    description: recipe.description ?? '',
+    category: recipe.category ?? 'Other',
+    calories: recipe.calories ?? 0,
+    protein: recipe.protein ?? 0,
+    carbs: recipe.carbs ?? 0,
+    fat: recipe.fat ?? 0,
+    ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : [],
+    instructions: recipe.instructions ?? '',
+    likeCount: recipe.likeCount ?? 0,
+    liked: recipe.liked ?? false,
   }
 }

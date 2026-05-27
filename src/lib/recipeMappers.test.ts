@@ -4,6 +4,7 @@ import {
   extractAuthorDisplayName,
   extractAuthorUsername,
   mapDbRowToRecipe,
+  normalizeRecipeForUi,
 } from './recipeMappers'
 
 function makeRow(
@@ -102,5 +103,23 @@ describe('mapDbRowToRecipe', () => {
     const recipe = mapDbRowToRecipe(makeRow())
     expect(recipe.likeCount).toBe(0)
     expect(recipe.liked).toBe(false)
+  })
+})
+
+describe('normalizeRecipeForUi', () => {
+  it('fills nullish fields so RecipeModal can render safely', () => {
+    const recipe = normalizeRecipeForUi(
+      mapDbRowToRecipe(
+        makeRow({
+          description: null as unknown as string,
+          ingredients: null as unknown as string[],
+          instructions: null as unknown as string,
+        })
+      )
+    )
+
+    expect(recipe.description).toBe('')
+    expect(recipe.ingredients).toEqual([])
+    expect(recipe.instructions).toBe('')
   })
 })

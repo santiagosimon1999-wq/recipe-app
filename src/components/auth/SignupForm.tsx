@@ -4,6 +4,7 @@ import { mapAuthError } from '../../lib/mapAuthError'
 import { AuthAlert } from './AuthAlert'
 import { AuthButton } from './AuthButton'
 import { AuthField } from './AuthField'
+import { OAuthButtons } from './OAuthButtons'
 
 type SignupFormProps = {
   isActive?: boolean
@@ -121,6 +122,8 @@ export function SignupForm({ isActive = true, onSuccess }: SignupFormProps) {
       <AuthButton loading={loading} loadingLabel="Creating account…">
         Create account
       </AuthButton>
+
+      <OAuthButtons disabled={loading} />
     </form>
   )
 }

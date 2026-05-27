@@ -4,7 +4,7 @@ import RecipeSection from './RecipeSection'
 type RecipeDashboardProps = {
   userRecipes: Recipe[]
   communityRecipes: Recipe[]
-  sampleRecipes: Recipe[]
+  savoraInspirationRecipes: Recipe[]
   sampleFavoriteIds: number[]
   cloudFavoriteRecipeIds: number[]
   onToggleFavorite: (recipe: Recipe) => void
@@ -17,7 +17,7 @@ type RecipeDashboardProps = {
 export default function RecipeDashboard({
   userRecipes,
   communityRecipes,
-  sampleRecipes,
+  savoraInspirationRecipes,
   sampleFavoriteIds,
   cloudFavoriteRecipeIds,
   onToggleFavorite,
@@ -67,18 +67,20 @@ export default function RecipeDashboard({
         onViewAuthor={onViewAuthor}
       />
 
-      <RecipeSection
-        eyebrow="Community inspiration"
-        title="Explore Recipes"
-        countLabel="ideas"
-        recipes={sampleRecipes}
-        sampleFavoriteIds={sampleFavoriteIds}
-        cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-        onToggleFavorite={onToggleFavorite}
-        onSelectRecipe={onSelectRecipe}
-        onToggleLike={onToggleLike}
-        onViewAuthor={onViewAuthor}
-      />
+      {savoraInspirationRecipes.length > 0 ? (
+        <RecipeSection
+          eyebrow="Savora inspiration"
+          title="Explore Recipes"
+          countLabel="ideas"
+          recipes={savoraInspirationRecipes}
+          sampleFavoriteIds={sampleFavoriteIds}
+          cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
+          onToggleFavorite={onToggleFavorite}
+          onSelectRecipe={onSelectRecipe}
+          onToggleLike={onToggleLike}
+          onViewAuthor={onViewAuthor}
+        />
+      ) : null}
     </>
   )
 }

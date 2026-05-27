@@ -10,12 +10,15 @@ export type SignupResult = {
   needsEmailConfirmation: boolean
 }
 
+export type OAuthProvider = 'google' | 'github'
+
 export type AuthContextValue = {
   user: User | null
   session: Session | null
   loading: boolean
   signup: (email: string, password: string) => Promise<SignupResult>
   login: (email: string, password: string) => Promise<void>
+  signInWithOAuth: (provider: OAuthProvider) => Promise<void>
   logout: () => Promise<void>
 }
 

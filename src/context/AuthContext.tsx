@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState, type PropsWithChildren } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
-import { AuthContext, type AuthContextValue } from './auth-context'
+import {
+  AuthContext,
+  type AuthContextValue,
+  type OAuthProvider,
+} from './auth-context'
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null)
@@ -60,6 +64,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
       login: async (email: string, password: string) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
+      },
+      signInWithOAuth: async (provider: OAuthProvider) => {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: `${window.location.origin}/`,
+          },
+        })
         if (error) throw error
       },
       logout: async () => {

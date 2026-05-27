@@ -1,5 +1,10 @@
 import type { Recipe } from '../types/Recipe'
 
+/**
+ * Legacy bundled recipe content used only to generate
+ * `db/migrations/012_seed_savora_team_recipes.sql` (npm run seed:generate-sql).
+ * The app loads these from Supabase as public recipes by @savora-team.
+ */
 export const recipes: Recipe[] = [
   {
     id: 1,
