@@ -1,12 +1,9 @@
+import { NavLink } from 'react-router'
 import ProfileCard from './ProfileCard'
-
-type AppView = 'dashboard' | 'profile' | 'community' | 'public-profile'
 
 type AppHeaderProps = {
   theme: 'light' | 'dark'
   onToggleTheme: () => void
-  view: AppView
-  onChangeView: (view: AppView) => void
   onLogout: () => void
   onStartCreateRecipe: () => void
   savingRecipe: boolean
@@ -19,8 +16,8 @@ type AppHeaderProps = {
   isLoggedIn: boolean
 }
 
-function navClass(current: AppView, target: AppView) {
-  return current === target
+function navLinkClass({ isActive }: { isActive: boolean }) {
+  return isActive
     ? 'theme-toggle-button nav-btn--active'
     : 'theme-toggle-button'
 }
@@ -28,8 +25,6 @@ function navClass(current: AppView, target: AppView) {
 export default function AppHeader({
   theme,
   onToggleTheme,
-  view,
-  onChangeView,
   onLogout,
   onStartCreateRecipe,
   savingRecipe,
@@ -61,33 +56,18 @@ export default function AppHeader({
             {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
           </button>
 
-          <button
-            type="button"
-            className={navClass(view, 'dashboard')}
-            onClick={() => onChangeView('dashboard')}
-            aria-current={view === 'dashboard' ? 'page' : undefined}
-          >
+          <NavLink to="/" end className={navLinkClass}>
             Recipes
-          </button>
+          </NavLink>
 
-          <button
-            type="button"
-            className={navClass(view, 'community')}
-            onClick={() => onChangeView('community')}
-            aria-current={view === 'community' ? 'page' : undefined}
-          >
+          <NavLink to="/community" className={navLinkClass}>
             Community
-          </button>
+          </NavLink>
 
           {isLoggedIn ? (
-            <button
-              type="button"
-              className={navClass(view, 'profile')}
-              onClick={() => onChangeView('profile')}
-              aria-current={view === 'profile' ? 'page' : undefined}
-            >
+            <NavLink to="/profile" className={navLinkClass}>
               Profile
-            </button>
+            </NavLink>
           ) : null}
 
           {isLoggedIn ? (

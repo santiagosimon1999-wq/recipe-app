@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router'
 import type { Recipe } from '../types/Recipe'
 import type { PublicProfile } from '../types/Profile'
 import {
@@ -6,11 +7,6 @@ import {
   getPublicRecipesByUserId,
   type PublicRecipeRow,
 } from '../lib/profileService'
-
-type PublicProfilePageProps = {
-  username: string
-  onBack: () => void
-}
 
 const FALLBACK_THUMB =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=70'
@@ -50,15 +46,20 @@ function mapPublicRecipeRow(row: PublicRecipeRow, profileUsername: string | null
   }
 }
 
-export default function PublicProfilePage({
-  username,
-  onBack,
-}: PublicProfilePageProps) {
+export default function PublicProfilePage() {
+  const params = useParams<{ username: string }>()
+  const navigate = useNavigate()
+  const username = params.username ?? ''
+
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  function handleBack() {
+    navigate(-1)
+  }
 
   const displayName = useMemo(
     () => profile?.display_name || profile?.username || username,
@@ -134,7 +135,7 @@ export default function PublicProfilePage({
         <button
           type="button"
           className="profile-page__edit-profile-button"
-          onClick={onBack}
+          onClick={handleBack}
         >
           Go back
         </button>
@@ -152,7 +153,7 @@ export default function PublicProfilePage({
         <button
           type="button"
           className="public-profile__back-button"
-          onClick={onBack}
+          onClick={handleBack}
         >
           ← Back
         </button>

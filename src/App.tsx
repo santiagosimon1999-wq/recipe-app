@@ -1,4 +1,5 @@
 ﻿import { useEffect, useRef, useState } from 'react'
+import { Routes, Route, useLocation, useNavigate } from 'react-router'
 import './index.css'
 import { AuthGate } from './components/auth/AuthGate'
 import { useAuth } from './context/useAuth'
@@ -157,13 +158,9 @@ export default function App() {
   const [recipeBeingEdited, setRecipeBeingEdited] = useState<Recipe | null>(null)
   const [formMessage, setFormMessage] = useState('')
   const [savingRecipe, setSavingRecipe] = useState(false)
-  const [view, setView] = useState<
-    'dashboard' | 'profile' | 'community' | 'public-profile'
-  >('dashboard')
-  const [publicProfileUsername, setPublicProfileUsername] = useState<string | null>(null)
-  const [publicProfileReturnView, setPublicProfileReturnView] = useState<
-    'dashboard' | 'community'
-  >('community')
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isPublicProfileRoute = location.pathname.startsWith('/users/')
   const favoritesFetchVersionRef = useRef(0)
 
   const displayName =
@@ -560,7 +557,7 @@ export default function App() {
   function handleStartCreateRecipe() {
     if (!user) return
 
-    setView('dashboard')
+    navigate('/')
     setRecipeBeingEdited(null)
     setShowRecipeForm(true)
     setSelectedRecipe(null)
@@ -835,26 +832,8 @@ export default function App() {
     const trimmed = username?.trim()
     if (!trimmed) return
 
-    setPublicProfileReturnView(
-      view === 'dashboard' || view === 'community' ? view : 'community'
-    )
     setSelectedRecipe(null)
-    setPublicProfileUsername(trimmed)
-    setView('public-profile')
-  }
-
-  function handleLeavePublicProfile() {
-    setPublicProfileUsername(null)
-    setView(publicProfileReturnView)
-  }
-
-  function handleChangeView(
-    nextView: 'dashboard' | 'profile' | 'community' | 'public-profile'
-  ) {
-    if (nextView !== 'public-profile') {
-      setPublicProfileUsername(null)
-    }
-    setView(nextView)
+    navigate(`/users/${encodeURIComponent(trimmed)}`)
   }
 
   return (
@@ -864,8 +843,6 @@ export default function App() {
           <AppHeader
             theme={theme}
             onToggleTheme={handleToggleTheme}
-            onChangeView={handleChangeView}
-            view={view}
             onLogout={() => void logout()}
             onStartCreateRecipe={handleStartCreateRecipe}
             savingRecipe={savingRecipe}
@@ -882,7 +859,7 @@ export default function App() {
             <p className="form-message">{formMessage}</p>
           ) : null}
 
-          {showRecipeForm && view !== 'public-profile' ? (
+          {showRecipeForm && !isPublicProfileRoute ? (
             <RecipeForm
               key={recipeBeingEdited?.id ?? 'new'}
               initialRecipe={recipeBeingEdited}
@@ -891,67 +868,88 @@ export default function App() {
             />
           ) : null}
 
-          {view === 'public-profile' && publicProfileUsername ? (
-            <PublicProfilePage
-              username={publicProfileUsername}
-              onBack={handleLeavePublicProfile}
+          <Routes>
+            <Route path="/users/:username" element={<PublicProfilePage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route
+              path="/community"
+              element={
+                <CommunityFeedPage
+                  recipes={communityRecipes}
+                  sampleRecipes={sampleRecipes}
+                  sampleFavoriteIds={sampleFavoriteIds}
+                  cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
+                  searchTerm={searchTerm}
+                  selectedCategory={selectedCategory}
+                  showFavoritesOnly={showFavoritesOnly}
+                  showClearFiltersButton={showClearFiltersButton}
+                  onSearchChange={setSearchTerm}
+                  onCategoryChange={setSelectedCategory}
+                  onToggleShowFavoritesOnly={handleToggleShowFavoritesOnly}
+                  onClearFilters={handleClearFilters}
+                  onToggleFavorite={handleToggleFavorite}
+                  onSelectRecipe={handleSelectRecipe}
+                  onToggleLike={handleToggleLike}
+                  onViewAuthor={handleViewAuthor}
+                />
+              }
             />
-          ) : view === 'profile' ? (
-            <ProfilePage />
-          ) : view === 'community' ? (
-            <CommunityFeedPage
-              recipes={communityRecipes}
-              sampleRecipes={sampleRecipes}
-              sampleFavoriteIds={sampleFavoriteIds}
-              cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-              searchTerm={searchTerm}
-              selectedCategory={selectedCategory}
-              showFavoritesOnly={showFavoritesOnly}
-              showClearFiltersButton={showClearFiltersButton}
-              onSearchChange={setSearchTerm}
-              onCategoryChange={setSelectedCategory}
-              onToggleShowFavoritesOnly={handleToggleShowFavoritesOnly}
-              onClearFilters={handleClearFilters}
-              onToggleFavorite={handleToggleFavorite}
-              onSelectRecipe={handleSelectRecipe}
-              onToggleLike={handleToggleLike}
-              onViewAuthor={handleViewAuthor}
-            />
-          ) : (
-            <>
-              <DiscoverPanel
-                searchTerm={searchTerm}
-                selectedCategory={selectedCategory}
-                showFavoritesOnly={showFavoritesOnly}
-                showClearFiltersButton={showClearFiltersButton}
-                onSearchChange={setSearchTerm}
-                onCategoryChange={setSelectedCategory}
-                onToggleShowFavoritesOnly={handleToggleShowFavoritesOnly}
-                onClearFilters={handleClearFilters}
-              />
+            <Route
+              path="/"
+              element={
+                <>
+                  <DiscoverPanel
+                    searchTerm={searchTerm}
+                    selectedCategory={selectedCategory}
+                    showFavoritesOnly={showFavoritesOnly}
+                    showClearFiltersButton={showClearFiltersButton}
+                    onSearchChange={setSearchTerm}
+                    onCategoryChange={setSelectedCategory}
+                    onToggleShowFavoritesOnly={handleToggleShowFavoritesOnly}
+                    onClearFilters={handleClearFilters}
+                  />
 
-              <RecipeDashboard
-                userRecipes={userRecipes}
-                communityRecipes={communityRecipes}
-                sampleRecipes={sampleRecipes}
-                sampleFavoriteIds={sampleFavoriteIds}
-                cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-                onToggleFavorite={handleToggleFavorite}
-                onSelectRecipe={handleSelectRecipe}
-                onStartCreateRecipe={handleStartCreateRecipe}
-                onToggleLike={handleToggleLike}
-                onViewAuthor={handleViewAuthor}
-                selectedRecipe={selectedRecipe}
-                canManageSelectedRecipe={canManageSelectedRecipe}
-                onCloseModal={handleCloseModal}
-                onEditRecipe={handleStartEditRecipe}
-                onDeleteRecipe={handleDeleteRecipe}
-                onTogglePublic={handleToggleRecipePublic}
-              />
-            </>
-          )}
+                  <RecipeDashboard
+                    userRecipes={userRecipes}
+                    communityRecipes={communityRecipes}
+                    sampleRecipes={sampleRecipes}
+                    sampleFavoriteIds={sampleFavoriteIds}
+                    cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
+                    onToggleFavorite={handleToggleFavorite}
+                    onSelectRecipe={handleSelectRecipe}
+                    onStartCreateRecipe={handleStartCreateRecipe}
+                    onToggleLike={handleToggleLike}
+                    onViewAuthor={handleViewAuthor}
+                    selectedRecipe={selectedRecipe}
+                    canManageSelectedRecipe={canManageSelectedRecipe}
+                    onCloseModal={handleCloseModal}
+                    onEditRecipe={handleStartEditRecipe}
+                    onDeleteRecipe={handleDeleteRecipe}
+                    onTogglePublic={handleToggleRecipePublic}
+                  />
+                </>
+              }
+            />
+            <Route path="*" element={<NotFoundRoute />} />
+          </Routes>
         </div>
       </main>
     </AuthGate>
+  )
+}
+
+function NotFoundRoute() {
+  const navigate = useNavigate()
+  return (
+    <section className="profile-page__state-screen">
+      <p>This page could not be found.</p>
+      <button
+        type="button"
+        className="profile-page__edit-profile-button"
+        onClick={() => navigate('/')}
+      >
+        Back to recipes
+      </button>
+    </section>
   )
 }
