@@ -38,7 +38,7 @@ export default function AppHeader({
       <nav className="app-nav">
         <div>
           <p className="app-eyebrow">Recipe social tracker</p>
-          <h1 className="app__title">Panda Recipes</h1>
+          <h1 className="app__title">Savora</h1>
         </div>
 
         <div className="app-nav__actions">

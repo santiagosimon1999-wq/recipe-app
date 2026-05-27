@@ -1,13 +1,27 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../../context/useAuth'
+import { mapAuthError } from '../../lib/mapAuthError'
+import { AuthAlert } from './AuthAlert'
+import { AuthButton } from './AuthButton'
+import { AuthField } from './AuthField'
 
-export function LoginForm() {
+type LoginFormProps = {
+  isActive?: boolean
+}
+
+export function LoginForm({ isActive = true }: LoginFormProps) {
   const { login } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!isActive) {
+      setError('')
+    }
+  }, [isActive])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -19,45 +33,42 @@ export function LoginForm() {
       setEmail('')
       setPassword('')
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'No se pudo iniciar sesión'
-      setError(message)
+      setError(mapAuthError(err, 'login'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Log in</h2>
+    <form className="auth-form" onSubmit={handleSubmit} aria-busy={loading}>
+      <AuthField
+        id="login-email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        inputMode="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        required
+        disabled={loading}
+      />
 
-      <div>
-        <label htmlFor="login-email">Email</label>
-        <input
-          id="login-email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-        />
-      </div>
+      <AuthField
+        id="login-password"
+        label="Password"
+        type="password"
+        autoComplete="current-password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        required
+        disabled={loading}
+      />
 
-      <div>
-        <label htmlFor="login-password">Password</label>
-        <input
-          id="login-password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-        />
-      </div>
+      {error ? <AuthAlert variant="error">{error}</AuthAlert> : null}
 
-      <button type="submit" disabled={loading}>
-        {loading ? 'Logging in...' : 'Log in'}
-      </button>
-
-      {error ? <p>{error}</p> : null}
+      <AuthButton loading={loading} loadingLabel="Logging in…">
+        Log in
+      </AuthButton>
     </form>
   )
 }

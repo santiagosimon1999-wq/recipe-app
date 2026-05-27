@@ -811,7 +811,7 @@ export default function App() {
   }
 
   return (
-    <AuthGate>
+    <AuthGate theme={theme} onToggleTheme={handleToggleTheme}>
       <main className={`app app--${theme}`}>
         <div className="app__container">
           <AppHeader

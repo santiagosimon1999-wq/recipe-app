@@ -1,14 +1,39 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useAuth } from '../../context/useAuth'
+import { mapAuthError } from '../../lib/mapAuthError'
+import { AuthAlert } from './AuthAlert'
+import { AuthButton } from './AuthButton'
+import { AuthField } from './AuthField'
 
-export function SignupForm() {
+type SignupFormProps = {
+  isActive?: boolean
+  onSuccess?: () => void
+}
+
+export function SignupForm({ isActive = true, onSuccess }: SignupFormProps) {
   const { signup } = useAuth()
+  const successTimeoutRef = useRef<number | null>(null)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!isActive) {
+      setError('')
+      setMessage('')
+    }
+  }, [isActive])
+
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current !== null) {
+        window.clearTimeout(successTimeoutRef.current)
+      }
+    }
+  }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -18,51 +43,57 @@ export function SignupForm() {
 
     try {
       await signup(email, password)
-      setMessage('Cuenta creada. Revisa tu correo si Supabase pide confirmación.')
+      setMessage(
+        'Account created. Check your email if Supabase requires confirmation.'
+      )
       setEmail('')
       setPassword('')
+
+      if (onSuccess) {
+        successTimeoutRef.current = window.setTimeout(() => {
+          onSuccess()
+        }, 3000)
+      }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'No se pudo crear la cuenta'
-      setError(message)
+      setError(mapAuthError(err, 'signup'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Sign up</h2>
+    <form className="auth-form" onSubmit={handleSubmit} aria-busy={loading}>
+      <AuthField
+        id="signup-email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        inputMode="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        required
+        disabled={loading}
+      />
 
-      <div>
-        <label htmlFor="signup-email">Email</label>
-        <input
-          id="signup-email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-        />
-      </div>
+      <AuthField
+        id="signup-password"
+        label="Password"
+        type="password"
+        autoComplete="new-password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        required
+        minLength={6}
+        hint="At least 6 characters"
+        disabled={loading}
+      />
 
-      <div>
-        <label htmlFor="signup-password">Password</label>
-        <input
-          id="signup-password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          minLength={6}
-        />
-      </div>
+      {message ? <AuthAlert variant="success">{message}</AuthAlert> : null}
+      {error ? <AuthAlert variant="error">{error}</AuthAlert> : null}
 
-      <button type="submit" disabled={loading}>
-        {loading ? 'Creating account...' : 'Create account'}
-      </button>
-
-      {message ? <p>{message}</p> : null}
-      {error ? <p>{error}</p> : null}
+      <AuthButton loading={loading} loadingLabel="Creating account…">
+        Create account
+      </AuthButton>
     </form>
   )
 }

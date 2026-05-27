@@ -1,31 +1,32 @@
 import type { ReactNode } from 'react'
-import { LoginForm } from './LoginForm'
-import { SignupForm } from './SignupForm'
+import { AuthPage } from './AuthPage'
 import { useAuth } from '../../context/useAuth'
 
 type AuthGateProps = {
   children: ReactNode
+  theme: 'light' | 'dark'
+  onToggleTheme: () => void
 }
 
-export function AuthGate({ children }: AuthGateProps) {
+export function AuthGate({ children, theme, onToggleTheme }: AuthGateProps) {
   const { user, loading } = useAuth()
 
   if (loading) {
-    return <p>Loading...</p>
+    return (
+      <div className={`auth-page app app--${theme}`}>
+        <div className="auth-page__inner">
+          <div className="auth-loading" role="status" aria-live="polite" aria-busy="true">
+            <span className="auth-loading__spinner" aria-hidden="true" />
+            <p className="auth-loading__text">Loading your session…</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  return (
-    <>
-      {!user ? (
-        <div>
-          <LoginForm />
-          <hr />
-          <SignupForm />
-          <hr />
-        </div>
-      ) : null}
+  if (!user) {
+    return <AuthPage theme={theme} onToggleTheme={onToggleTheme} />
+  }
 
-      {children}
-    </>
-  )
+  return <>{children}</>
 }
