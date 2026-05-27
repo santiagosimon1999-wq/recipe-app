@@ -12,6 +12,7 @@ type RecipeDashboardProps = {
   onSelectRecipe: (recipe: Recipe) => void
   onStartCreateRecipe: () => void
   onToggleLike?: (recipeId: number) => void
+  onViewAuthor?: (username: string) => void
   selectedRecipe: Recipe | null
   canManageSelectedRecipe: boolean
   onCloseModal: () => void
@@ -30,6 +31,7 @@ export default function RecipeDashboard({
   onSelectRecipe,
   onStartCreateRecipe,
   onToggleLike,
+  onViewAuthor,
   selectedRecipe,
   canManageSelectedRecipe,
   onCloseModal,
@@ -50,6 +52,7 @@ export default function RecipeDashboard({
           onToggleFavorite={onToggleFavorite}
           onSelectRecipe={onSelectRecipe}
           onToggleLike={onToggleLike}
+          onViewAuthor={onViewAuthor}
         />
       ) : (
         <section className="empty-profile-state">
@@ -74,6 +77,7 @@ export default function RecipeDashboard({
         onToggleFavorite={onToggleFavorite}
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}
+        onViewAuthor={onViewAuthor}
       />
 
       <RecipeSection
@@ -86,6 +90,7 @@ export default function RecipeDashboard({
         onToggleFavorite={onToggleFavorite}
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}
+        onViewAuthor={onViewAuthor}
       />
 
       {selectedRecipe ? (
@@ -99,6 +104,7 @@ export default function RecipeDashboard({
           liked={Boolean(selectedRecipe.liked)}
           likeCount={selectedRecipe.likeCount ?? 0}
           onToggleLike={onToggleLike}
+          onViewAuthor={onViewAuthor}
         />
       ) : null}
     </>

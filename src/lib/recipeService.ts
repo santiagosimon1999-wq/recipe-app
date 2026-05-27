@@ -27,7 +27,7 @@ export async function getRecipes(userId: string): Promise<RecipeRow[]> {
 
   const { data, error } = await supabase
     .from('recipes')
-    .select('*')
+    .select('*, author:profiles!recipes_user_id_fkey(username)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -35,7 +35,7 @@ export async function getRecipes(userId: string): Promise<RecipeRow[]> {
     throw error
   }
 
-  return data
+  return data as RecipeRow[]
 }
 
 export async function createRecipe(
@@ -134,7 +134,7 @@ export async function deleteRecipe(recipeId: number, userId: string): Promise<vo
 
 // Likes API
 export async function getLikesCount(recipeId: number): Promise<number> {
-  const { data, error, count } = await supabase
+  const { error, count } = await supabase
     .from('recipe_likes')
     .select('id', { count: 'exact', head: true })
     .eq('recipe_id', recipeId)
@@ -185,7 +185,7 @@ export async function likeRecipe(
   recipeId: number
 ): Promise<void> {
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('recipe_likes')
       .insert({ user_id: userId, recipe_id: recipeId })
 

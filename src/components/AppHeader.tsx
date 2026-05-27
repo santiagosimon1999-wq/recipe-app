@@ -1,10 +1,12 @@
 import ProfileCard from './ProfileCard'
 
+type AppView = 'dashboard' | 'profile' | 'community' | 'public-profile'
+
 type AppHeaderProps = {
   theme: 'light' | 'dark'
   onToggleTheme: () => void
-  view: 'dashboard' | 'profile' | 'community'
-  onChangeView: (view: 'dashboard' | 'profile' | 'community') => void
+  view: AppView
+  onChangeView: (view: AppView) => void
   onLogout: () => void
   onStartCreateRecipe: () => void
   savingRecipe: boolean
@@ -15,6 +17,12 @@ type AppHeaderProps = {
   favoriteCount: number
   averageCalories: number
   isLoggedIn: boolean
+}
+
+function navClass(current: AppView, target: AppView) {
+  return current === target
+    ? 'theme-toggle-button nav-btn--active'
+    : 'theme-toggle-button'
 }
 
 export default function AppHeader({
@@ -46,31 +54,37 @@ export default function AppHeader({
             type="button"
             className="theme-toggle-button"
             onClick={onToggleTheme}
+            aria-label={
+              theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
+            }
           >
             {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
           </button>
 
           <button
             type="button"
-            className="theme-toggle-button"
+            className={navClass(view, 'dashboard')}
             onClick={() => onChangeView('dashboard')}
+            aria-current={view === 'dashboard' ? 'page' : undefined}
           >
             Recipes
           </button>
 
           <button
             type="button"
-            className="theme-toggle-button"
+            className={navClass(view, 'community')}
             onClick={() => onChangeView('community')}
+            aria-current={view === 'community' ? 'page' : undefined}
           >
-            {view === 'community' ? 'Community feed' : 'Community'}
+            Community
           </button>
 
           {isLoggedIn ? (
             <button
               type="button"
-              className="theme-toggle-button"
+              className={navClass(view, 'profile')}
               onClick={() => onChangeView('profile')}
+              aria-current={view === 'profile' ? 'page' : undefined}
             >
               Profile
             </button>

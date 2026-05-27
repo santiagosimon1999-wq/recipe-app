@@ -9,6 +9,7 @@ type RecipeCardProps = {
   liked?: boolean
   likeCount?: number
   onToggleLike?: (recipeId: number) => void
+  onViewAuthor?: (username: string) => void
 }
 
 function RecipeCard({
@@ -19,6 +20,7 @@ function RecipeCard({
   liked,
   likeCount = 0,
   onToggleLike,
+  onViewAuthor,
 }: RecipeCardProps) {
   const fallbackImage =
     'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&q=80&auto=format&fit=crop'
@@ -36,6 +38,17 @@ function RecipeCard({
     event.stopPropagation()
     onToggleFavorite(recipe)
   }
+
+  function handleAuthorClick(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    if (recipe.authorUsername) {
+      onViewAuthor?.(recipe.authorUsername)
+    }
+  }
+
+  const showAuthor =
+    Boolean(recipe.authorUsername) && recipe.source !== 'sample'
 
   return (
     <article className="recipe-card">
@@ -77,6 +90,17 @@ function RecipeCard({
       </button>
 
       <div className="recipe-card__footer">
+        {showAuthor ? (
+          <button
+            type="button"
+            className="recipe-card__author-link"
+            onClick={handleAuthorClick}
+            aria-label={`View profile of ${recipe.authorUsername}`}
+          >
+            @{recipe.authorUsername}
+          </button>
+        ) : null}
+
         <button
           type="button"
           className={

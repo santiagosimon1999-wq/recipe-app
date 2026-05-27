@@ -760,10 +760,6 @@ img {
   cursor: pointer;
 }
 
-.recipe-card__footer {
-  padding: 0 17px 17px;
-}
-
 .recipe-card__meta {
   display: flex;
   align-items: center;
@@ -794,6 +790,542 @@ img {
   color: var(--text-main);
   font-size: 0.82rem;
   font-weight: 900;
+}
+
+/* ── Nav active state ── */
+.nav-btn--active {
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Author byline (RecipeCard + RecipeModal) ── */
+.recipe-card__author-link {
+  margin-right: auto;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.recipe-card__author-link:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.recipe-card__author-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.recipe-modal__author-link {
+  padding: 7px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 800;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.recipe-modal__author-link:hover {
+  background-color: var(--accent);
+  color: var(--button-text);
+  transform: translateY(-1px);
+}
+
+.recipe-modal__author-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Public profile back button ── */
+.public-profile__back-row {
+  margin-bottom: 1rem;
+}
+
+.public-profile__back-button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background-color: var(--surface-solid);
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 800;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.public-profile__back-button:hover {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ── Like button (RecipeCard + RecipeModal) ── */
+.like-button {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background-color: var(--surface);
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.like-button--active {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ── RecipeCard footer layout (side-by-side buttons) ── */
+.recipe-card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 17px 17px;
+}
+
+/* ── RecipeModal badges row ── */
+.recipe-modal__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+/* ── Profile page ── */
+.profile-page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.profile-page__state-screen {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-soft);
+}
+
+.profile-page__layout {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  align-items: start;
+}
+
+.profile-page__sidebar {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  align-self: start;
+}
+
+.profile-page__main {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+  align-self: start;
+}
+
+.profile-page__avatar-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  background-color: var(--surface-soft);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.profile-page__avatar-wrapper--default {
+  background:
+    radial-gradient(
+      circle at 30% 25%,
+      rgba(201, 111, 67, 0.16),
+      transparent 60%
+    ),
+    linear-gradient(135deg, var(--surface-soft), #ece2d0);
+  border: 2px solid var(--accent-soft);
+}
+
+.profile-page__avatar-wrapper--default::after {
+  content: '';
+  position: absolute;
+  inset: auto -20% -45% auto;
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  background-color: rgba(47, 74, 56, 0.06);
+  pointer-events: none;
+}
+
+.profile-page__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-page__avatar-initial {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(2.5rem, 6vw, 3.4rem);
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--text-main);
+  text-transform: uppercase;
+}
+
+.profile-page__info-card {
+  padding: 1.25rem;
+  border-radius: 1.5rem;
+  background-color: var(--surface-solid);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.profile-page__handle {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.profile-page__display-name {
+  margin: 0.4rem 0 0;
+  font-size: 1.85rem;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.profile-page__email {
+  margin: 0.6rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  word-break: break-all;
+}
+
+.profile-page__bio {
+  margin: 0.75rem 0 0;
+  color: var(--text-main);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.profile-page__edit-actions {
+  margin-top: 14px;
+}
+
+.profile-page__edit-form {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-page__field-label {
+  margin-top: 6px;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.profile-page__field-label:first-child {
+  margin-top: 0;
+}
+
+.profile-page__input,
+.profile-page__textarea {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background-color: var(--surface-solid);
+  color: var(--text-main);
+  font-size: 0.92rem;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.profile-page__textarea {
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.profile-page__input:focus,
+.profile-page__textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.profile-page__input:disabled,
+.profile-page__textarea:disabled,
+.profile-page__file-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.profile-page__file-input {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.profile-page__edit-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.profile-page__save-button {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--button-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(201, 111, 67, 0.22);
+}
+
+.profile-page__cancel-button {
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background-color: var(--surface-solid);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.profile-page__edit-profile-button {
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background-color: var(--surface-solid);
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.profile-page__stats-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-page__stat-card {
+  padding: 1.25rem;
+  border-radius: 1.5rem;
+  background-color: var(--surface-solid);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.profile-page__stat-label {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.profile-page__stat-value {
+  margin: 0.4rem 0 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.04em;
+}
+
+.profile-page__recipes-section {
+  margin: 0;
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  background-color: var(--surface-solid);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.profile-page__recipes-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.profile-page__recipes-title {
+  margin: 0.4rem 0 0;
+  font-size: 1.75rem;
+  letter-spacing: -0.04em;
+}
+
+.profile-page__recipes-hint {
+  max-width: 280px;
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.profile-page__empty {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  border: 1px dashed var(--border);
+  background-color: var(--surface-soft);
+  color: var(--text-soft);
+}
+
+.profile-page__empty p {
+  margin: 0;
+}
+
+.profile-page__empty p + p {
+  margin-top: 0.75rem;
+}
+
+.profile-page__empty-heading {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.profile-page__recipe-grid {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.profile-page__recipe-card {
+  border-radius: 1.25rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+  box-shadow: var(--shadow-soft);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.profile-page__recipe-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(201, 111, 67, 0.38);
+  box-shadow: var(--shadow);
+}
+
+.profile-page__recipe-thumb {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+}
+
+.profile-page__recipe-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-page__recipe-body {
+  padding: 1rem;
+}
+
+.profile-page__recipe-category {
+  display: inline-block;
+  margin-bottom: 0.6rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.profile-page__recipe-title {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: -0.03em;
+}
+
+.profile-page__recipe-description {
+  margin: 0.6rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  min-height: 70px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.profile-page__error {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background-color: var(--error-bg);
+  color: var(--error-text);
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .profile-page__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-page__stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .profile-page__recipes-hint {
+    max-width: unset;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-page {
+    padding: 1.25rem 0.75rem 2.5rem;
+  }
+
+  .profile-page__stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .profile-page__recipes-header {
+    flex-direction: column;
+  }
 }
 
 /* Auth experience */

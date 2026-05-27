@@ -10,6 +10,7 @@ type RecipeModalProps = {
   liked: boolean
   likeCount: number
   onToggleLike?: (recipeId: number) => void
+  onViewAuthor?: (username: string) => void
 }
 
 function RecipeModal({
@@ -22,6 +23,7 @@ function RecipeModal({
   liked,
   likeCount,
   onToggleLike,
+  onViewAuthor,
 }: RecipeModalProps) {
   const instructions = recipe.instructions
     .split('\n')
@@ -36,6 +38,16 @@ function RecipeModal({
           ? 'Your shared recipe'
           : 'Your private recipe'
         : 'Sample recipe'
+
+  const showAuthorLink =
+    Boolean(recipe.authorUsername) && recipe.source !== 'sample'
+
+  function handleAuthorClick() {
+    if (recipe.authorUsername) {
+      onClose()
+      onViewAuthor?.(recipe.authorUsername)
+    }
+  }
 
   return (
     <div className="recipe-modal-overlay" onClick={onClose}>
@@ -105,6 +117,16 @@ function RecipeModal({
         <div className="recipe-modal__badges">
           <p className="recipe-card__category">{recipe.category}</p>
           <p className="recipe-card__badge">{recipeStatusLabel}</p>
+          {showAuthorLink ? (
+            <button
+              type="button"
+              className="recipe-modal__author-link"
+              onClick={handleAuthorClick}
+              aria-label={`View profile of ${recipe.authorUsername}`}
+            >
+              @{recipe.authorUsername}
+            </button>
+          ) : null}
         </div>
 
         <h2 className="recipe-modal__title">{recipe.title}</h2>

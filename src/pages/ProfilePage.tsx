@@ -43,8 +43,22 @@ function logSupabaseError(context: string, error: unknown) {
 }
 
 function getFallbackUserName(email: string | null | undefined) {
-  if (!email) return 'Panda'
+  if (!email) return 'Savora'
   return email.split('@')[0]
+}
+
+function getAvatarInitials(
+  name: string | null | undefined,
+  email: string | null | undefined
+): string {
+  const source = (name?.trim() || email?.trim() || '').replace(/[^a-zA-Z\s]/g, ' ')
+  if (!source) return 'S'
+
+  const parts = source.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return source.slice(0, 2).toUpperCase()
 }
 
 function mapRecipeRow(row: DbRecipeRow): Recipe {
@@ -70,11 +84,14 @@ function mapRecipeRow(row: DbRecipeRow): Recipe {
   }
 }
 
+const FALLBACK_THUMB =
+  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=70'
+
 export default function ProfilePage() {
   const { user } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
-  const [editDisplayName, setEditDisplayName] = useState('')
-  const [editUsername, setEditUsername] = useState('')
+  const [formDisplayName, setFormDisplayName] = useState('')
+  const [formBio, setFormBio] = useState('')
   const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null)
   const [savingProfile, setSavingProfile] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -92,17 +109,22 @@ export default function ProfilePage() {
   const username = useMemo(
     () =>
       profile?.username ||
-      (user?.user_metadata as any)?.username ||
-      getFallbackUserName(user?.email),
-    [profile, user?.user_metadata, user?.email]
+      ((user?.user_metadata as Record<string, unknown>)?.username as string | undefined) ||
+      null,
+    [profile, user?.user_metadata]
   )
 
   const avatarUrl = useMemo(
     () =>
-      (user?.user_metadata as any)?.avatar_url ||
+      ((user?.user_metadata as Record<string, unknown>)?.avatar_url as string | null) ||
       profile?.avatar_url ||
       null,
     [profile, user?.user_metadata]
+  )
+
+  const avatarInitials = useMemo(
+    () => getAvatarInitials(displayName, user?.email),
+    [displayName, user?.email]
   )
 
   useEffect(() => {
@@ -176,7 +198,7 @@ export default function ProfilePage() {
 
     const storedFavoriteRecipeIds = localStorage.getItem('favoriteRecipeIds')
     const favoriteIds = storedFavoriteRecipeIds
-      ? JSON.parse(storedFavoriteRecipeIds)
+      ? (JSON.parse(storedFavoriteRecipeIds) as unknown)
       : []
 
     setFavoritesCount(Array.isArray(favoriteIds) ? favoriteIds.length : 0)
@@ -184,11 +206,25 @@ export default function ProfilePage() {
   }, [user])
 
   useEffect(() => {
-    if (profile) {
-      setEditDisplayName(profile.display_name ?? '')
-      setEditUsername(profile.username ?? '')
+    if (profile && !isEditing) {
+      setFormDisplayName(profile.display_name ?? '')
+      setFormBio(profile.bio ?? '')
     }
-  }, [profile])
+  }, [profile, isEditing])
+
+  function handleStartEditing() {
+    setFormDisplayName(profile?.display_name ?? '')
+    setFormBio(profile?.bio ?? '')
+    setEditAvatarFile(null)
+    setIsEditing(true)
+  }
+
+  function handleCancelEditing() {
+    setFormDisplayName(profile?.display_name ?? '')
+    setFormBio(profile?.bio ?? '')
+    setEditAvatarFile(null)
+    setIsEditing(false)
+  }
 
   async function handleSaveProfile() {
     const userId = user?.id?.trim()
@@ -203,11 +239,14 @@ export default function ProfilePage() {
         avatar_url = await uploadProfileImage(userId, editAvatarFile)
       }
 
+      const trimmedName = formDisplayName.trim()
+      const trimmedBio = formBio.trim()
+
       const { data, error } = await supabase
         .from('profiles')
         .update({
-          display_name: editDisplayName || null,
-          username: editUsername.trim() || null,
+          display_name: trimmedName || null,
+          bio: trimmedBio || null,
           avatar_url,
         })
         .eq('id', userId)
@@ -224,13 +263,14 @@ export default function ProfilePage() {
       } else {
         setProfile((current) => ({
           id: userId,
-          display_name: editDisplayName || null,
-          username: editUsername.trim() || null,
+          display_name: trimmedName || null,
+          username: current?.username ?? null,
           avatar_url,
-          bio: current?.bio ?? null,
+          bio: trimmedBio || null,
         }))
       }
 
+      setEditAvatarFile(null)
       setIsEditing(false)
     } catch (err) {
       console.error('Failed to save profile:', err)
@@ -242,7 +282,7 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <section style={{ padding: '2rem', textAlign: 'center' }}>
+      <section className="profile-page__state-screen">
         <p>Please sign in to view your profile.</p>
       </section>
     )
@@ -250,339 +290,213 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <section style={{ padding: '2rem', textAlign: 'center' }}>
+      <section className="profile-page__state-screen">
         <p>Loading profile…</p>
       </section>
     )
   }
 
   return (
-    <section
-      style={{
-        maxWidth: 980,
-        margin: '0 auto',
-        padding: '2rem 1rem 3rem',
-      }}
-    >
-      <div
-        style={{
-          display: 'grid',
-          gap: '1.5rem',
-          gridTemplateColumns: 'minmax(180px, 250px) 1fr',
-          alignItems: 'start',
-        }}
-      >
-        <div style={{ display: 'grid', gap: '1rem' }}>
+    <section className="profile-page">
+      <div className="profile-page__layout">
+        {/* ── Left column: avatar + info card ── */}
+        <aside className="profile-page__sidebar">
           <div
-            style={{
-              width: '100%',
-              aspectRatio: '1 / 1',
-              borderRadius: '1.5rem',
-              overflow: 'hidden',
-              backgroundColor: '#f3f4f6',
-              display: 'grid',
-              placeItems: 'center',
-            }}
+            className={
+              avatarUrl
+                ? 'profile-page__avatar-wrapper'
+                : 'profile-page__avatar-wrapper profile-page__avatar-wrapper--default'
+            }
+            aria-hidden={!avatarUrl}
           >
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={`${displayName} avatar`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : (
-                <span
-                  style={{
-                    fontSize: '3rem',
-                    color: '#374151',
-                    fontWeight: 900,
-                  }}
-                >
-                  {displayName.charAt(0).toUpperCase()}
-                </span>
-              )}
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={`${displayName} avatar`}
+                className="profile-page__avatar-img"
+              />
+            ) : (
+              <span
+                className="profile-page__avatar-initial"
+                aria-label={`${displayName} initials`}
+              >
+                {avatarInitials}
+              </span>
+            )}
           </div>
 
-          <div
-            style={{
-              padding: '1.25rem',
-              borderRadius: '1.5rem',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: '0.9rem',
-                fontWeight: 700,
-                color: '#6b7280',
-              }}
-            >
-              @{username}
-            </p>
-            <h1
-              style={{
-                margin: '0.5rem 0 0',
-                fontSize: '2rem',
-                lineHeight: 1.1,
-              }}
-            >
-              {displayName}
-            </h1>
-            <p style={{ margin: '0.75rem 0 0', color: '#4b5563' }}>
-              {user.email}
-            </p>
-            <div style={{ marginTop: 12 }}>
+          <div className="profile-page__info-card">
+            {username ? (
+              <p className="profile-page__handle">@{username}</p>
+            ) : null}
+            <h1 className="profile-page__display-name">{displayName}</h1>
+            <p className="profile-page__email">{user.email}</p>
+
+            {profile?.bio && !isEditing ? (
+              <p className="profile-page__bio">{profile.bio}</p>
+            ) : null}
+
+            <div className="profile-page__edit-actions">
               {isEditing ? (
-                <div style={{ display: 'grid', gap: 8 }}>
+                <div className="profile-page__edit-form">
+                  <label
+                    className="profile-page__field-label"
+                    htmlFor="profile-display-name"
+                  >
+                    Display name
+                  </label>
                   <input
-                    value={editDisplayName}
-                    onChange={(e) => setEditDisplayName(e.target.value)}
+                    id="profile-display-name"
+                    className="profile-page__input"
+                    value={formDisplayName}
+                    onChange={(event) => setFormDisplayName(event.target.value)}
                     placeholder="Display name"
+                    disabled={savingProfile}
                   />
-                  <input
-                    value={editUsername}
-                    onChange={(e) => setEditUsername(e.target.value)}
-                    placeholder="Username"
+
+                  <label
+                    className="profile-page__field-label"
+                    htmlFor="profile-bio"
+                  >
+                    Bio
+                  </label>
+                  <textarea
+                    id="profile-bio"
+                    className="profile-page__textarea"
+                    value={formBio}
+                    onChange={(event) => setFormBio(event.target.value)}
+                    placeholder="Tell others about your cooking style"
+                    rows={3}
+                    maxLength={280}
+                    disabled={savingProfile}
                   />
+
+                  <label
+                    className="profile-page__field-label"
+                    htmlFor="profile-avatar"
+                  >
+                    Profile photo
+                  </label>
                   <input
+                    id="profile-avatar"
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setEditAvatarFile(e.target.files?.[0] ?? null)}
+                    className="profile-page__file-input"
+                    onChange={(event) =>
+                      setEditAvatarFile(event.target.files?.[0] ?? null)
+                    }
+                    disabled={savingProfile}
                   />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="button" onClick={handleSaveProfile} disabled={savingProfile}>
+
+                  <div className="profile-page__edit-buttons">
+                    <button
+                      type="button"
+                      className="profile-page__save-button"
+                      onClick={handleSaveProfile}
+                      disabled={savingProfile}
+                    >
                       {savingProfile ? 'Saving…' : 'Save'}
                     </button>
-                    <button type="button" onClick={() => setIsEditing(false)} disabled={savingProfile}>
+                    <button
+                      type="button"
+                      className="profile-page__cancel-button"
+                      onClick={handleCancelEditing}
+                      disabled={savingProfile}
+                    >
                       Cancel
                     </button>
                   </div>
                 </div>
               ) : (
-                <div>
-                  <button type="button" onClick={() => setIsEditing(true)}>
-                    Edit profile
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="profile-page__edit-profile-button"
+                  onClick={handleStartEditing}
+                >
+                  Edit profile
+                </button>
               )}
             </div>
           </div>
-        </div>
+        </aside>
 
-        <div
-          style={{
-            display: 'grid',
-            gap: '1rem',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-          }}
-        >
-          <div
-            style={{
-              padding: '1.25rem',
-              borderRadius: '1.5rem',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                color: '#6b7280',
-                fontSize: '0.9rem',
-                fontWeight: 700,
-              }}
-            >
-              Recipes
-            </p>
-            <p
-              style={{
-                margin: '0.5rem 0 0',
-                fontSize: '2rem',
-                fontWeight: 700,
-              }}
-            >
-              {recipeCount ?? 0}
-            </p>
+        {/* ── Right column: stats + recipes (stacked) ── */}
+        <div className="profile-page__main">
+          <div className="profile-page__stats-grid">
+            <div className="profile-page__stat-card">
+              <p className="profile-page__stat-label">Recipes</p>
+              <p className="profile-page__stat-value">{recipeCount ?? 0}</p>
+            </div>
+
+            <div className="profile-page__stat-card">
+              <p className="profile-page__stat-label">Favorites</p>
+              <p className="profile-page__stat-value">{favoritesCount}</p>
+            </div>
+
+            <div className="profile-page__stat-card">
+              <p className="profile-page__stat-label">Shared</p>
+              <p className="profile-page__stat-value">{sharedRecipes.length}</p>
+            </div>
           </div>
 
-          <div
-            style={{
-              padding: '1.25rem',
-              borderRadius: '1.5rem',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                color: '#6b7280',
-                fontSize: '0.9rem',
-                fontWeight: 700,
-              }}
-            >
-              Favorites
-            </p>
-            <p
-              style={{
-                margin: '0.5rem 0 0',
-                fontSize: '2rem',
-                fontWeight: 700,
-              }}
-            >
-              {favoritesCount}
-            </p>
-          </div>
+          <section className="profile-page__recipes-section">
+            <div className="profile-page__recipes-header">
+              <div>
+                <p className="profile-page__stat-label">Shared recipes</p>
+                <h2 className="profile-page__recipes-title">
+                  Your public recipe collection
+                </h2>
+              </div>
+              <p className="profile-page__recipes-hint">
+                Share recipes publicly from the recipe form to add them here for
+                the community to discover.
+              </p>
+            </div>
 
-          <div
-            style={{
-              padding: '1.25rem',
-              borderRadius: '1.5rem',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                color: '#6b7280',
-                fontSize: '0.9rem',
-                fontWeight: 700,
-              }}
-            >
-              Shared recipes
-            </p>
-            <p
-              style={{
-                margin: '0.5rem 0 0',
-                fontSize: '2rem',
-                fontWeight: 700,
-              }}
-            >
-              {sharedRecipes.length}
-            </p>
-          </div>
+            {sharedRecipes.length === 0 ? (
+              <div className="profile-page__empty">
+                <p className="profile-page__empty-heading">
+                  No shared recipes yet.
+                </p>
+                <p>
+                  Create a recipe and choose to share it publicly to populate
+                  your shared recipes list.
+                </p>
+              </div>
+            ) : (
+              <div className="profile-page__recipe-grid">
+                {sharedRecipes.map((recipe) => (
+                  <article
+                    key={recipe.id}
+                    className="profile-page__recipe-card"
+                  >
+                    <div className="profile-page__recipe-thumb">
+                      <img
+                        src={recipe.image || FALLBACK_THUMB}
+                        alt={recipe.title}
+                        className="profile-page__recipe-thumb-img"
+                      />
+                    </div>
+                    <div className="profile-page__recipe-body">
+                      <span className="profile-page__recipe-category">
+                        {recipe.category}
+                      </span>
+                      <h3 className="profile-page__recipe-title">
+                        {recipe.title}
+                      </h3>
+                      <p className="profile-page__recipe-description">
+                        {recipe.description}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {error ? <p className="profile-page__error">{error}</p> : null}
         </div>
       </div>
-
-      <section
-        style={{
-          marginTop: '2rem',
-          padding: '1.5rem',
-          borderRadius: '1.5rem',
-          backgroundColor: '#ffffff',
-          border: '1px solid #e5e7eb',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: '1rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <p
-              style={{
-                margin: 0,
-                color: '#6b7280',
-                fontSize: '0.9rem',
-                fontWeight: 700,
-              }}
-            >
-              Shared recipes
-            </p>
-            <h2 style={{ margin: '0.5rem 0 0', fontSize: '1.75rem' }}>
-              Your public recipe collection
-            </h2>
-          </div>
-
-          <div style={{ minWidth: 220, color: '#4b5563' }}>
-            Share recipes publicly from the recipe form to add them here for the community to discover.
-          </div>
-        </div>
-
-        {sharedRecipes.length === 0 ? (
-          <div
-            style={{
-              marginTop: '1.5rem',
-              padding: '1.5rem',
-              borderRadius: '1.25rem',
-              border: '1px dashed #e5e7eb',
-              backgroundColor: '#f9fafb',
-              color: '#6b7280',
-            }}
-          >
-            <p style={{ margin: 0, fontWeight: 700 }}>No shared recipes yet.</p>
-            <p style={{ margin: '0.75rem 0 0' }}>
-              Create a recipe and choose to share it publicly to populate your shared recipes list.
-            </p>
-          </div>
-        ) : (
-          <div
-            style={{
-              marginTop: '1.5rem',
-              display: 'grid',
-              gap: '1rem',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            }}
-          >
-            {sharedRecipes.map((recipe) => (
-              <article
-                key={recipe.id}
-                style={{
-                  borderRadius: '1.25rem',
-                  overflow: 'hidden',
-                  border: '1px solid #e5e7eb',
-                  boxShadow: '0 10px 25px rgba(15, 23, 42, 0.05)',
-                }}
-              >
-                <div style={{ width: '100%', height: 180, overflow: 'hidden' }}>
-                  <img
-                    src={
-                      recipe.image ||
-                      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80'
-                    }
-                    alt={recipe.title}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                </div>
-                <div style={{ padding: '1rem' }}>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: '#6b7280',
-                      fontSize: '0.85rem',
-                      fontWeight: 700,
-                      marginBottom: '0.65rem',
-                    }}
-                  >
-                    {recipe.category}
-                  </p>
-                  <h3 style={{ margin: 0, fontSize: '1.15rem' }}>{recipe.title}</h3>
-                  <p
-                    style={{
-                      margin: '0.75rem 0 0',
-                      color: '#475569',
-                      lineHeight: 1.6,
-                      minHeight: 72,
-                    }}
-                  >
-                    {recipe.description}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {error ? (
-        <p style={{ marginTop: '1.5rem', color: '#b91c1c' }}>{error}</p>
-      ) : null}
     </section>
   )
 }

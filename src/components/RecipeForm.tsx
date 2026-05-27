@@ -111,6 +111,8 @@ function RecipeForm({ initialRecipe, onSaveRecipe, onCancel }: RecipeFormProps) 
       instructions: formState.instructions.trim(),
       source: initialRecipe?.source ?? 'user',
       isPublic: formState.isPublic,
+      likeCount: initialRecipe?.likeCount ?? 0,
+      liked: initialRecipe?.liked ?? false,
     }
 
     setErrorMessage('')

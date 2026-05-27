@@ -18,6 +18,7 @@ type CommunityFeedPageProps = {
   onToggleFavorite: (recipe: Recipe) => void
   onToggleLike?: (recipeId: number) => void
   onSelectRecipe: (recipe: Recipe) => void
+  onViewAuthor?: (username: string) => void
 }
 
 export default function CommunityFeedPage({
@@ -36,6 +37,7 @@ export default function CommunityFeedPage({
   onToggleFavorite,
   onToggleLike,
   onSelectRecipe,
+  onViewAuthor,
 }: CommunityFeedPageProps) {
   const showFallback = recipes.length === 0 && sampleRecipes.length > 0
   const feedRecipes = recipes.length > 0 ? recipes : sampleRecipes
@@ -73,11 +75,12 @@ export default function CommunityFeedPage({
         onToggleFavorite={onToggleFavorite}
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}
+        onViewAuthor={onViewAuthor}
       />
 
       {showFallback ? (
         <p className="community-feed__hint">
-          No community recipes have been shared yet, so we’re showing sample
+          No community recipes have been shared yet, so we're showing sample
           inspiration for now.
         </p>
       ) : null}

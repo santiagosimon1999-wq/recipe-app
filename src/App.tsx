@@ -8,6 +8,7 @@ import RecipeDashboard from './components/RecipeDashboard'
 import RecipeForm from './components/RecipeForm'
 import CommunityFeedPage from './pages/CommunityFeedPage'
 import ProfilePage from './pages/ProfilePage'
+import PublicProfilePage from './pages/PublicProfilePage'
 import { recipes as initialRecipes } from './data/recipes'
 import {
   calculateNutrition,
@@ -52,6 +53,18 @@ type DbRecipeRow = {
   instructions: string
   author_name?: string | null
   is_public?: boolean | null
+  author?: { username: string | null } | { username: string | null }[] | null
+}
+
+function getJoinedAuthorUsername(
+  row: DbRecipeRow
+): string | undefined {
+  const author = row.author
+  if (!author) return undefined
+  if (Array.isArray(author)) {
+    return author[0]?.username ?? undefined
+  }
+  return author.username ?? undefined
 }
 
 type Profile = {
@@ -95,7 +108,8 @@ function mapDbRecipeToUiRecipe(
     instructions: row.instructions,
     source: belongsToCurrentUser ? 'user' : 'community',
     userId: row.user_id,
-    authorName: row.author_name ?? 'Panda Chef',
+    authorName: row.author_name ?? 'Savora Chef',
+    authorUsername: getJoinedAuthorUsername(row),
     isPublic: row.is_public ?? true,
     likeCount: 0,
     liked: false,
@@ -143,7 +157,13 @@ export default function App() {
   const [recipeBeingEdited, setRecipeBeingEdited] = useState<Recipe | null>(null)
   const [formMessage, setFormMessage] = useState('')
   const [savingRecipe, setSavingRecipe] = useState(false)
-  const [view, setView] = useState<'dashboard' | 'profile' | 'community'>('dashboard')
+  const [view, setView] = useState<
+    'dashboard' | 'profile' | 'community' | 'public-profile'
+  >('dashboard')
+  const [publicProfileUsername, setPublicProfileUsername] = useState<string | null>(null)
+  const [publicProfileReturnView, setPublicProfileReturnView] = useState<
+    'dashboard' | 'community'
+  >('community')
   const favoritesFetchVersionRef = useRef(0)
 
   const displayName =
@@ -224,7 +244,7 @@ export default function App() {
         try {
           const { data: publicRows, error: publicError } = await supabase
             .from('recipes')
-            .select('*')
+            .select('*, author:profiles!recipes_user_id_fkey(username)')
             .eq('is_public', true)
             .order('created_at', { ascending: false })
 
@@ -248,7 +268,7 @@ export default function App() {
 
         const { data: communityRows, error: communityError } = await supabase
           .from('recipes')
-          .select('*')
+          .select('*, author:profiles!recipes_user_id_fkey(username)')
           .eq('is_public', true)
           .neq('user_id', user.id)
           .order('created_at', { ascending: false })
@@ -307,10 +327,11 @@ export default function App() {
 
     const fetchVersion = favoritesFetchVersionRef.current + 1
     favoritesFetchVersionRef.current = fetchVersion
+    const userId = user.id
 
     async function loadCloudFavorites() {
       try {
-        const savedIds = await getSavedRecipeIdsByUser(user.id)
+        const savedIds = await getSavedRecipeIdsByUser(userId)
         if (fetchVersion !== favoritesFetchVersionRef.current) return
         setCloudFavoriteRecipeIds(savedIds)
       } catch (err) {
@@ -810,6 +831,32 @@ export default function App() {
     setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))
   }
 
+  function handleViewAuthor(username: string) {
+    const trimmed = username?.trim()
+    if (!trimmed) return
+
+    setPublicProfileReturnView(
+      view === 'dashboard' || view === 'community' ? view : 'community'
+    )
+    setSelectedRecipe(null)
+    setPublicProfileUsername(trimmed)
+    setView('public-profile')
+  }
+
+  function handleLeavePublicProfile() {
+    setPublicProfileUsername(null)
+    setView(publicProfileReturnView)
+  }
+
+  function handleChangeView(
+    nextView: 'dashboard' | 'profile' | 'community' | 'public-profile'
+  ) {
+    if (nextView !== 'public-profile') {
+      setPublicProfileUsername(null)
+    }
+    setView(nextView)
+  }
+
   return (
     <AuthGate theme={theme} onToggleTheme={handleToggleTheme}>
       <main className={`app app--${theme}`}>
@@ -817,7 +864,7 @@ export default function App() {
           <AppHeader
             theme={theme}
             onToggleTheme={handleToggleTheme}
-            onChangeView={setView}
+            onChangeView={handleChangeView}
             view={view}
             onLogout={() => void logout()}
             onStartCreateRecipe={handleStartCreateRecipe}
@@ -835,7 +882,7 @@ export default function App() {
             <p className="form-message">{formMessage}</p>
           ) : null}
 
-          {showRecipeForm ? (
+          {showRecipeForm && view !== 'public-profile' ? (
             <RecipeForm
               key={recipeBeingEdited?.id ?? 'new'}
               initialRecipe={recipeBeingEdited}
@@ -844,7 +891,12 @@ export default function App() {
             />
           ) : null}
 
-          {view === 'profile' ? (
+          {view === 'public-profile' && publicProfileUsername ? (
+            <PublicProfilePage
+              username={publicProfileUsername}
+              onBack={handleLeavePublicProfile}
+            />
+          ) : view === 'profile' ? (
             <ProfilePage />
           ) : view === 'community' ? (
             <CommunityFeedPage
@@ -863,6 +915,7 @@ export default function App() {
               onToggleFavorite={handleToggleFavorite}
               onSelectRecipe={handleSelectRecipe}
               onToggleLike={handleToggleLike}
+              onViewAuthor={handleViewAuthor}
             />
           ) : (
             <>
@@ -887,6 +940,7 @@ export default function App() {
                 onSelectRecipe={handleSelectRecipe}
                 onStartCreateRecipe={handleStartCreateRecipe}
                 onToggleLike={handleToggleLike}
+                onViewAuthor={handleViewAuthor}
                 selectedRecipe={selectedRecipe}
                 canManageSelectedRecipe={canManageSelectedRecipe}
                 onCloseModal={handleCloseModal}

@@ -9,6 +9,7 @@ type RecipeGridProps = {
   onToggleFavorite: (recipe: Recipe) => void;
   onSelectRecipe: (recipe: Recipe) => void;
   onToggleLike?: (recipeId: number) => void;
+  onViewAuthor?: (username: string) => void;
 };
 
 function RecipeGrid({
@@ -18,6 +19,7 @@ function RecipeGrid({
   onToggleFavorite,
   onSelectRecipe,
   onToggleLike,
+  onViewAuthor,
 }: RecipeGridProps) {
   if (recipes.length === 0) {
     return (
@@ -44,6 +46,7 @@ function RecipeGrid({
           liked={Boolean(recipe.liked)}
           likeCount={recipe.likeCount ?? 0}
           onToggleLike={onToggleLike}
+          onViewAuthor={onViewAuthor}
         />
       ))}
     </section>

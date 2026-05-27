@@ -23,6 +23,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Season and grill the chicken. Chop the vegetables. Slice the chicken and combine everything in a bowl. Drizzle with olive oil and serve.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 2,
@@ -46,6 +48,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Cook the rice. Slice the vegetables. Stir fry the onion, carrot, pepper, and broccoli in olive oil. Serve the vegetables over rice.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 3,
@@ -68,6 +72,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Cook the rice. Heat the black beans. Chop the tomato and onion. Assemble in a bowl and finish with olive oil.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 4,
@@ -90,6 +96,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Cook the pasta. Sauté onion and tomato in olive oil. Toss with pasta and melt in the cheese before serving.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 5,
@@ -112,6 +120,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Cook the rice. Sauté onion and tomato in olive oil. Add chickpeas and simmer briefly. Serve over rice.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 6,
@@ -132,6 +142,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Roast the sweet potato. Warm the chickpeas. Plate with spinach and drizzle olive oil on top.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 7,
@@ -154,6 +166,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Beat the eggs. Cook onion and tomato lightly in olive oil. Add eggs and cheese, fold, and cook until set.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 8,
@@ -175,6 +189,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Layer yogurt, oats, and sliced banana in a glass or bowl. Drizzle with honey and chill before serving.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 9,
@@ -197,6 +213,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Shape and cook the beef patty. Toast the bread. Assemble with onion and tomato, then serve warm.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 10,
@@ -219,6 +237,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Warm the beans. Chop the vegetables. Toast the bread into crispy pieces and serve everything layered with cheese.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 11,
@@ -239,6 +259,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Toast the bread. Spread butter lightly. Top with banana slices and drizzle with honey.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 12,
@@ -261,6 +283,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Sauté onion and garlic in olive oil. Add tomato and lentils with water. Simmer until tender and serve hot.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 13,
@@ -283,6 +307,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Chop all vegetables, combine in a bowl, and dress with olive oil.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 14,
@@ -306,6 +332,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Cook the rice. Grill the chicken. Chop the vegetables and steam the broccoli. Plate everything together and drizzle with olive oil.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 15,
@@ -325,6 +353,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Toast the bread. Mix butter with minced garlic. Spread over bread and cut into small bites.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 16,
@@ -347,6 +377,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Cook the rice. Warm the beans. Chop the vegetables and assemble everything in a bowl.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 17,
@@ -368,6 +400,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Cook the oats with milk. Top with banana slices and honey.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 18,
@@ -389,6 +423,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Grill the salmon. Steam the broccoli. Serve with tomato and olive oil.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 19,
@@ -409,6 +445,8 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Cook the chicken. Sauté mushrooms and spinach in olive oil. Serve together.',
+    likeCount: 0,
+    liked: false,
   },
   {
     id: 20,
@@ -430,5 +468,7 @@ export const recipes: Recipe[] = [
     ],
     instructions:
       'Cook the rice. Grill the chicken. Boil the eggs. Steam the broccoli and assemble the bowl.',
+    likeCount: 0,
+    liked: false,
   },
 ]

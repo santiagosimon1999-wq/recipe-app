@@ -11,6 +11,7 @@ type RecipeSectionProps = {
   onToggleFavorite: (recipe: Recipe) => void
   onSelectRecipe: (recipe: Recipe) => void
   onToggleLike?: (recipeId: number) => void
+  onViewAuthor?: (username: string) => void
 }
 
 export default function RecipeSection({
@@ -23,6 +24,7 @@ export default function RecipeSection({
   onToggleFavorite,
   onSelectRecipe,
   onToggleLike,
+  onViewAuthor,
 }: RecipeSectionProps) {
   if (recipes.length === 0) {
     return null
@@ -45,6 +47,7 @@ export default function RecipeSection({
         onToggleFavorite={onToggleFavorite}
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}
+        onViewAuthor={onViewAuthor}
       />
     </section>
   )
