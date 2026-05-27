@@ -11,7 +11,10 @@ type AuthorJoin = {
 
 /**
  * A recipes row plus the joined `author` shape returned by
- *   .select('*, author:profiles!recipes_user_id_fkey(username, display_name)')
+ *   .select('*, author:profiles!recipes_author_id_fkey(username, display_name)')
+ *
+ * The FK hint must match the Postgres constraint name exactly — PostgREST
+ * returns PGRST200 if the relationship is ambiguous or the wrong FK is named.
  *
  * Supabase returns the join as a single object when the FK is unique and as an
  * array when it isn't, so we accept both. `author` is optional because plain
@@ -22,7 +25,7 @@ export type RecipeRowWithAuthor = RecipeRow & {
 }
 
 export const RECIPES_WITH_AUTHOR_SELECT =
-  '*, author:profiles!recipes_user_id_fkey(username, display_name)'
+  '*, author:profiles!recipes_author_id_fkey(username, display_name)'
 
 export type RecipeCreateInput = {
   title: string

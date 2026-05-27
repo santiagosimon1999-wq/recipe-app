@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router'
 import type { Recipe } from '../types/Recipe'
 import type { Profile } from '../types/Profile'
 import { useAuth } from '../context/useAuth'
@@ -34,7 +35,8 @@ const FALLBACK_THUMB =
   'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=70'
 
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [isEditing, setIsEditing] = useState(false)
   const [formDisplayName, setFormDisplayName] = useState('')
   const [formBio, setFormBio] = useState('')
@@ -46,6 +48,7 @@ export default function ProfilePage() {
   const [sharedRecipes, setSharedRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   const displayName = useMemo(
     () => profile?.display_name || getFallbackUserName(user?.email),
@@ -180,6 +183,7 @@ export default function ProfilePage() {
           username: current?.username ?? null,
           avatar_url,
           bio: trimmedBio || null,
+          deleted_at: current?.deleted_at ?? null,
         }))
       }
 
@@ -190,6 +194,36 @@ export default function ProfilePage() {
       setError('Failed to save profile. Please try again.')
     } finally {
       setSavingProfile(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (!user || deletingAccount) return
+
+    const confirmed = window.confirm(
+      'Delete your Savora account?\n\n' +
+        'Your profile will be anonymized, your favorites and likes will be removed, ' +
+        'and your shared recipes will be made private. This cannot be undone from the app.\n\n' +
+        'Type OK to continue.'
+    )
+    if (!confirmed) return
+
+    setDeletingAccount(true)
+    setError(null)
+
+    try {
+      const { error: rpcError } = await supabase.rpc('delete_user_account')
+      if (rpcError) {
+        logSupabaseError('delete_user_account', rpcError)
+        throw rpcError
+      }
+
+      await logout()
+      navigate('/', { replace: true })
+    } catch (err) {
+      console.error('Failed to delete account:', err)
+      setError('Could not delete your account. Please try again or contact support.')
+      setDeletingAccount(false)
     }
   }
 
@@ -408,6 +442,31 @@ export default function ProfilePage() {
           </section>
 
           {error ? <p className="profile-page__error">{error}</p> : null}
+
+          <section
+            className="profile-page__danger-zone"
+            aria-labelledby="profile-danger-zone-title"
+          >
+            <h3
+              id="profile-danger-zone-title"
+              className="profile-page__danger-title"
+            >
+              Danger zone
+            </h3>
+            <p className="profile-page__danger-description">
+              Deleting your account anonymizes your profile, removes your
+              favorites and likes, and makes your shared recipes private.
+              Contact support for a full data erasure.
+            </p>
+            <button
+              type="button"
+              className="profile-page__danger-button"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount}
+            >
+              {deletingAccount ? 'Deleting…' : 'Delete account'}
+            </button>
+          </section>
         </div>
       </div>
     </section>

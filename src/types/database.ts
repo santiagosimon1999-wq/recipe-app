@@ -16,6 +16,7 @@ export type Database = {
           username: string | null
           avatar_url: string | null
           bio: string | null
+          deleted_at: string | null
         }
         Insert: {
           id: string
@@ -23,6 +24,7 @@ export type Database = {
           username?: string | null
           avatar_url?: string | null
           bio?: string | null
+          deleted_at?: string | null
         }
         Update: {
           id?: string
@@ -30,6 +32,7 @@ export type Database = {
           username?: string | null
           avatar_url?: string | null
           bio?: string | null
+          deleted_at?: string | null
         }
         Relationships: [
           {
@@ -186,7 +189,12 @@ export type Database = {
         ]
       }
     }
-    Functions: Record<string, never>
+    Functions: {
+      delete_user_account: {
+        Args: Record<string, never>
+        Returns: void
+      }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }

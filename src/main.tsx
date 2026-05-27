@@ -4,13 +4,23 @@ import { BrowserRouter } from 'react-router'
 import App from './App'
 import './index.css'
 import { AuthProvider } from './context/AuthContext'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { captureBoundaryError, initSentry } from './lib/sentry'
+
+initSentry()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary
+      onError={(error, info) =>
+        captureBoundaryError(error, { componentStack: info.componentStack })
+      }
+    >
+      <BrowserRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>
 )

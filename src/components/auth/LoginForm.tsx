@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { useAuth } from '../../context/useAuth'
 import { mapAuthError } from '../../lib/mapAuthError'
 import { AuthAlert } from './AuthAlert'
@@ -63,6 +64,12 @@ export function LoginForm({ isActive = true }: LoginFormProps) {
         required
         disabled={loading}
       />
+
+      <div className="auth-aux-link__row">
+        <Link to="/forgot-password" className="auth-aux-link">
+          Forgot password?
+        </Link>
+      </div>
 
       {error ? <AuthAlert variant="error">{error}</AuthAlert> : null}
 

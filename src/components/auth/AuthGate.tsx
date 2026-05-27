@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useLocation } from 'react-router'
 import { AuthPage } from './AuthPage'
 import { useAuth } from '../../context/useAuth'
 
@@ -8,8 +9,21 @@ type AuthGateProps = {
   onToggleTheme: () => void
 }
 
+/**
+ * Routes that must remain reachable while signed out so users can complete
+ * password recovery flows even before/after a session exists.
+ */
+const PUBLIC_AUTH_ROUTES = ['/forgot-password', '/reset-password']
+
+function isPublicAuthRoute(pathname: string): boolean {
+  return PUBLIC_AUTH_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  )
+}
+
 export function AuthGate({ children, theme, onToggleTheme }: AuthGateProps) {
   const { user, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -24,7 +38,7 @@ export function AuthGate({ children, theme, onToggleTheme }: AuthGateProps) {
     )
   }
 
-  if (!user) {
+  if (!user && !isPublicAuthRoute(location.pathname)) {
     return <AuthPage theme={theme} onToggleTheme={onToggleTheme} />
   }
 

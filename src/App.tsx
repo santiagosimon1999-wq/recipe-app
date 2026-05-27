@@ -2,6 +2,8 @@
 import { Routes, Route, useLocation, useNavigate } from 'react-router'
 import './index.css'
 import { AuthGate } from './components/auth/AuthGate'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { captureBoundaryError } from './lib/sentry'
 import { useAuth } from './context/useAuth'
 import AppHeader from './components/AppHeader'
 import DiscoverPanel from './components/DiscoverPanel'
@@ -11,6 +13,8 @@ import RecipeModal from './components/RecipeModal'
 import CommunityFeedPage from './pages/CommunityFeedPage'
 import ProfilePage from './pages/ProfilePage'
 import PublicProfilePage from './pages/PublicProfilePage'
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import { recipes as initialRecipes } from './data/recipes'
 import {
   calculateNutrition,
@@ -101,6 +105,9 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const isPublicProfileRoute = location.pathname.startsWith('/users/')
+  const isStandaloneAuthRoute =
+    location.pathname === '/forgot-password' ||
+    location.pathname === '/reset-password'
   const favoritesFetchVersionRef = useRef(0)
 
   const displayName =
@@ -709,6 +716,17 @@ export default function App() {
     navigate(`/users/${encodeURIComponent(trimmed)}`)
   }
 
+  if (isStandaloneAuthRoute) {
+    return (
+      <AuthGate theme={theme} onToggleTheme={handleToggleTheme}>
+        <Routes>
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+        </Routes>
+      </AuthGate>
+    )
+  }
+
   return (
     <AuthGate theme={theme} onToggleTheme={handleToggleTheme}>
       <main className={`app app--${theme}`}>
@@ -741,6 +759,12 @@ export default function App() {
             />
           ) : null}
 
+          <ErrorBoundary
+            key={location.pathname}
+            onError={(error, info) =>
+              captureBoundaryError(error, { componentStack: info.componentStack })
+            }
+          >
           <Routes>
             <Route path="/users/:username" element={<PublicProfilePage />} />
             <Route path="/profile" element={<ProfilePage />} />
@@ -799,6 +823,7 @@ export default function App() {
             />
             <Route path="*" element={<NotFoundRoute />} />
           </Routes>
+          </ErrorBoundary>
 
           {selectedRecipe ? (
             <RecipeModal

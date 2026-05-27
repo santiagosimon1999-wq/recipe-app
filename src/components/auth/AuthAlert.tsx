@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react'
+
 type AuthAlertProps = {
   variant: 'error' | 'success'
-  children: string
+  children: ReactNode
 }
 
 export function AuthAlert({ variant, children }: AuthAlertProps) {

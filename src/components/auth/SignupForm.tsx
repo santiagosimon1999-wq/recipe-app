@@ -10,20 +10,25 @@ type SignupFormProps = {
   onSuccess?: () => void
 }
 
+type Stage = 'form' | 'check-inbox'
+
 export function SignupForm({ isActive = true, onSuccess }: SignupFormProps) {
   const { signup } = useAuth()
   const successTimeoutRef = useRef<number | null>(null)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [stage, setStage] = useState<Stage>('form')
+  const [pendingEmail, setPendingEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (!isActive) {
       setError('')
-      setMessage('')
+      // When the user switches tabs away from signup mid-success, reset the
+      // confirmation screen so the form is fresh next time they return.
+      setStage('form')
     }
   }, [isActive])
 
@@ -39,26 +44,49 @@ export function SignupForm({ isActive = true, onSuccess }: SignupFormProps) {
     event.preventDefault()
     setLoading(true)
     setError('')
-    setMessage('')
 
     try {
-      await signup(email, password)
-      setMessage(
-        'Account created. Check your email if Supabase requires confirmation.'
-      )
+      const result = await signup(email, password)
+      const submittedEmail = email
       setEmail('')
       setPassword('')
 
+      if (result.needsEmailConfirmation) {
+        setPendingEmail(submittedEmail)
+        setStage('check-inbox')
+        return
+      }
+
+      // Auto-login path — bounce back to the login tab so the AuthGate picks
+      // up the new session on the next state tick.
       if (onSuccess) {
         successTimeoutRef.current = window.setTimeout(() => {
           onSuccess()
-        }, 3000)
+        }, 1500)
       }
     } catch (err) {
       setError(mapAuthError(err, 'signup'))
     } finally {
       setLoading(false)
     }
+  }
+
+  if (stage === 'check-inbox') {
+    return (
+      <div className="auth-form" role="status" aria-live="polite">
+        <AuthAlert variant="success">
+          We sent a confirmation link to <strong>{pendingEmail}</strong>. Click
+          it to verify your email, then come back here to log in.
+        </AuthAlert>
+        <button
+          type="button"
+          className="auth-aux-link"
+          onClick={() => setStage('form')}
+        >
+          Use a different email
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -83,12 +111,11 @@ export function SignupForm({ isActive = true, onSuccess }: SignupFormProps) {
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         required
-        minLength={6}
-        hint="At least 6 characters"
+        minLength={8}
+        hint="At least 8 characters"
         disabled={loading}
       />
 
-      {message ? <AuthAlert variant="success">{message}</AuthAlert> : null}
       {error ? <AuthAlert variant="error">{error}</AuthAlert> : null}
 
       <AuthButton loading={loading} loadingLabel="Creating account…">

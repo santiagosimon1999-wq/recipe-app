@@ -1635,3 +1635,137 @@ img {
     font-size: 0.9rem;
   }
 }
+/* ===========================================================================
+   Phase 4.2 — ErrorBoundary, auth aux pages, account deletion
+   =========================================================================== */
+
+.error-boundary {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.error-boundary__card {
+  max-width: 480px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.error-boundary__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 12px;
+}
+
+.error-boundary__message {
+  color: var(--text-soft);
+  margin: 0 0 20px;
+}
+
+.error-boundary__details {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 0 0 20px;
+  font-size: 0.8rem;
+  color: var(--error-text);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+}
+
+.error-boundary__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.error-boundary__retry,
+.error-boundary__reload {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text-main);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.error-boundary__retry {
+  background: var(--accent);
+  color: var(--button-text);
+  border-color: var(--accent);
+}
+
+.error-boundary__retry:hover {
+  background: var(--accent-dark);
+}
+
+.auth-aux-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-aux-link:hover {
+  color: var(--accent-dark);
+}
+
+.auth-aux-link__row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
+  margin-bottom: 4px;
+}
+
+.profile-page__danger-zone {
+  margin-top: 32px;
+  padding: 20px;
+  border: 1px solid var(--danger);
+  border-radius: 16px;
+  background: var(--error-bg);
+}
+
+.profile-page__danger-title {
+  margin: 0 0 8px;
+  color: var(--danger);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.profile-page__danger-description {
+  margin: 0 0 16px;
+  color: var(--error-text);
+  font-size: 0.875rem;
+}
+
+.profile-page__danger-button {
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--danger);
+  background: transparent;
+  color: var(--danger);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.profile-page__danger-button:hover {
+  background: var(--danger);
+  color: #fff;
+}

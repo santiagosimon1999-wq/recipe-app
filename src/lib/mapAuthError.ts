@@ -10,8 +10,11 @@ export function mapAuthError(error: unknown, context: 'login' | 'signup'): strin
     return 'An account with this email already exists. Try logging in.'
   }
 
-  if (message.includes('password') && message.includes('6')) {
-    return 'Password must be at least 6 characters.'
+  if (
+    message.includes('password') &&
+    (message.includes('6') || message.includes('8') || message.includes('short'))
+  ) {
+    return 'Password must be at least 8 characters.'
   }
 
   if (message.includes('valid email') || message.includes('invalid email')) {
