@@ -6,6 +6,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from 'react'
+import { createPortal } from 'react-dom'
 
 type ModalProps = {
   isOpen: boolean
@@ -132,7 +133,7 @@ export function Modal({
     event.preventDefault()
   }
 
-  return (
+  return createPortal(
     <div
       className={overlayClassName}
       onClick={handleOverlayClick}
@@ -155,6 +156,7 @@ export function Modal({
         ) : null}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

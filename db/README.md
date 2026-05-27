@@ -16,6 +16,7 @@ Each file is idempotent (`CREATE … IF NOT EXISTS`, `DROP POLICY IF EXISTS`, et
 | 005 | `005_enable_rls_policies.sql` | Table GRANTs + RLS policies for all tables |
 | 006 | `006_phase4_hardening.sql` | **Phase 4.1:** indexes, FKs, length CHECKs, like-counts view, restricted like-rows RLS, drop dead `author_name` column |
 | 007 | `007_account_deletion.sql` | **Phase 4.2:** `profiles.deleted_at` + `delete_user_account()` RPC for in-app account deactivation |
+| 008 | `008_create_comments.sql` | **Phase 5.1:** `comments` table, indexes, RLS (read all / create & delete own) |
 
 ## Fresh DB bring-up
 
