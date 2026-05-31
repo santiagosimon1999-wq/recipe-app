@@ -14,5 +14,7 @@ export function getRecipeShareUrl(recipeId: number): string {
 }
 
 export function recipeSupportsSharing(recipe: Recipe): boolean {
+  if (recipe.source === 'sample') return false
+  if (recipe.source === 'user' && !recipe.isPublic) return false
   return getSupabaseRecipeId(recipe) !== null
 }

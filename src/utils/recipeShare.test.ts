@@ -34,6 +34,18 @@ describe('recipeShare', () => {
     )
   })
 
+  it('allows sharing for public user recipes', () => {
+    expect(
+      recipeSupportsSharing(makeRecipe({ source: 'user', id: 5, isPublic: true }))
+    ).toBe(true)
+  })
+
+  it('disallows sharing for private user recipes', () => {
+    expect(
+      recipeSupportsSharing(makeRecipe({ source: 'user', id: 5, isPublic: false }))
+    ).toBe(false)
+  })
+
   it('disallows sharing for legacy sample source', () => {
     expect(recipeSupportsSharing(makeRecipe({ source: 'sample', id: 1 }))).toBe(
       false

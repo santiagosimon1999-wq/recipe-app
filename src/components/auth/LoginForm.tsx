@@ -21,7 +21,9 @@ export function LoginForm({ isActive = true }: LoginFormProps) {
 
   useEffect(() => {
     if (!isActive) {
-      setError('')
+      Promise.resolve().then(() => {
+        setError('')
+      })
     }
   }, [isActive])
 

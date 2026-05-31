@@ -75,9 +75,9 @@ export function useRecipes(
 
   useEffect(() => {
     communityCursorRef.current = null
-    setHasMoreCommunity(false)
 
     async function loadRecipes() {
+      setHasMoreCommunity(false)
       let followingIds: string[] = []
 
       if (user) {

@@ -68,6 +68,27 @@ function isUniqueViolation(error: unknown): boolean {
   return code === '23505' || code === 409
 }
 
+function sanitizeSearchTerm(input: string): string {
+  const withoutControls = Array.from(input)
+    .map((char) => {
+      const code = char.charCodeAt(0)
+      return code < 32 || code === 127 ? ' ' : char
+    })
+    .join('')
+
+  return withoutControls.replace(/\s+/g, ' ').trim()
+}
+
+function escapeForPostgrestIlike(rawValue: string): string {
+  return rawValue
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/[(),]/g, ' ')
+    .replace(/[%_]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export async function getRecipes(
   userId: string
 ): Promise<RecipeRowWithAuthor[]> {
@@ -162,11 +183,13 @@ export async function searchPublicRecipes(
   searchTerm: string,
   options?: { limit?: number; excludeUserId?: string }
 ): Promise<RecipeRowWithAuthor[]> {
-  const trimmed = searchTerm.trim()
-  if (!trimmed) return []
+  const sanitizedInput = sanitizeSearchTerm(searchTerm)
+  if (!sanitizedInput) return []
 
   const limit = options?.limit ?? 40
-  const pattern = `%${trimmed.replace(/[%_]/g, '')}%`
+  const escaped = escapeForPostgrestIlike(sanitizedInput)
+  if (!escaped) return []
+  const pattern = `"%${escaped}%"`
 
   let query = supabase
     .from('recipes')

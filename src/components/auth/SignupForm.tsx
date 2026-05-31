@@ -26,10 +26,12 @@ export function SignupForm({ isActive = true, onSuccess }: SignupFormProps) {
 
   useEffect(() => {
     if (!isActive) {
-      setError('')
-      // When the user switches tabs away from signup mid-success, reset the
-      // confirmation screen so the form is fresh next time they return.
-      setStage('form')
+      Promise.resolve().then(() => {
+        setError('')
+        // When the user switches tabs away from signup mid-success, reset the
+        // confirmation screen so the form is fresh next time they return.
+        setStage('form')
+      })
     }
   }, [isActive])
 

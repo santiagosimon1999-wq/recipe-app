@@ -6,6 +6,7 @@ export type RecipeShellContextValue = {
   onViewAuthor: (username: string) => void
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const RecipeShellContext = createContext<
   RecipeShellContextValue | undefined
 >(undefined)
@@ -24,6 +25,7 @@ export function RecipeShellProvider({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useRecipeShell() {
   const value = useContext(RecipeShellContext)
 

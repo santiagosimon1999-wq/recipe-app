@@ -40,21 +40,25 @@ export default function SearchPage({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    setSearchTerm(queryFromUrl)
+    Promise.resolve().then(() => {
+      setSearchTerm(queryFromUrl)
+    })
   }, [queryFromUrl])
 
   useEffect(() => {
     let cancelled = false
     const trimmed = searchTerm.trim()
 
-    if (!trimmed) {
-      setResults([])
-      setLoading(false)
-      return
-    }
-
     const timeout = window.setTimeout(() => {
       void (async () => {
+        if (!trimmed) {
+          if (!cancelled) {
+            setResults([])
+            setLoading(false)
+          }
+          return
+        }
+
         setLoading(true)
 
         try {

@@ -72,7 +72,6 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
   useEffect(() => {
     const userId = user?.id?.trim()
     if (!userId) {
-      setLoading(false)
       return
     }
 
@@ -107,21 +106,21 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
       }
     }
 
-    const storedFavoriteRecipeIds = localStorage.getItem('favoriteRecipeIds')
-    const favoriteIds = storedFavoriteRecipeIds
-      ? (JSON.parse(storedFavoriteRecipeIds) as unknown)
-      : []
-
-    setFavoritesCount(Array.isArray(favoriteIds) ? favoriteIds.length : 0)
+    try {
+      const storedFavoriteRecipeIds = localStorage.getItem('favoriteRecipeIds')
+      const favoriteIds = storedFavoriteRecipeIds
+        ? (JSON.parse(storedFavoriteRecipeIds) as unknown)
+        : []
+      Promise.resolve().then(() => {
+        setFavoritesCount(Array.isArray(favoriteIds) ? favoriteIds.length : 0)
+      })
+    } catch {
+      Promise.resolve().then(() => {
+        setFavoritesCount(0)
+      })
+    }
     void loadProfile(userId)
   }, [user])
-
-  useEffect(() => {
-    if (profile && !isEditing) {
-      setFormDisplayName(profile.display_name ?? '')
-      setFormBio(profile.bio ?? '')
-    }
-  }, [profile, isEditing])
 
   function handleStartEditing() {
     setFormDisplayName(profile?.display_name ?? '')

@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient'
 
 export type NotificationType = 'comment' | 'like' | 'follow'
+export const NOTIFICATIONS_UPDATED_EVENT = 'savora:notifications-updated'
 
 export type AppNotification = {
   id: string
@@ -10,6 +11,11 @@ export type AppNotification = {
   recipeId: number | null
   readAt: string | null
   createdAt: string
+}
+
+export function emitNotificationsUpdated(): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new Event(NOTIFICATIONS_UPDATED_EVENT))
 }
 
 export async function createNotification(input: {
@@ -29,10 +35,18 @@ export async function createNotification(input: {
   })
 
   if (error) {
-    console.error('createNotification failed:', error)
-    if (import.meta.env.DEV) {
-      throw error
-    }
+    console.error('createNotification failed', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      context: {
+        type: input.type,
+        userId: input.userId,
+        actorId: input.actorId ?? null,
+        recipeId: input.recipeId ?? null,
+      },
+    })
   }
 }
 
@@ -91,6 +105,7 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
     .is('read_at', null)
 
   if (error) throw error
+  emitNotificationsUpdated()
 }
 
 export async function markNotificationRead(
@@ -104,4 +119,5 @@ export async function markNotificationRead(
     .eq('id', notificationId)
 
   if (error) throw error
+  emitNotificationsUpdated()
 }

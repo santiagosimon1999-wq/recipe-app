@@ -54,6 +54,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
 
   const { displayName } = useProfile(user)
   const unreadNotifications = useUnreadNotifications(user)
+
   const {
     recipeList,
     setRecipeList,

@@ -37,8 +37,23 @@ export default function SaveToCollectionButton({
 
   useEffect(() => {
     if (!user || recipeId === null) return
-    void loadCollections()
-  }, [user, recipeId, loadCollections])
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const rows = await getCollectionsForUser(user.id)
+        if (!cancelled) {
+          setCollections(rows)
+        }
+      } catch (error) {
+        console.error('Save to collection failed:', error)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user, recipeId])
 
   const savedCollections = useMemo(() => {
     if (recipeId === null) return []

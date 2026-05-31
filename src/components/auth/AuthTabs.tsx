@@ -33,7 +33,7 @@ export function AuthTabs({
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, tabId: AuthTabId) {
     const currentIndex = TABS.findIndex((tab) => tab.id === tabId)
-    let nextIndex = currentIndex
+    let nextIndex: number
 
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
       event.preventDefault()

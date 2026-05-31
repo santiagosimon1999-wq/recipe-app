@@ -30,14 +30,17 @@ export function useFavorites(user: User | null, recipeList: Recipe[]) {
   const favoritesFetchVersionRef = useRef(0)
 
   useEffect(() => {
+    const fetchVersion = favoritesFetchVersionRef.current + 1
+    favoritesFetchVersionRef.current = fetchVersion
+
     if (!user) {
-      favoritesFetchVersionRef.current += 1
-      setCloudFavoriteRecipeIds([])
+      Promise.resolve().then(() => {
+        if (fetchVersion !== favoritesFetchVersionRef.current) return
+        setCloudFavoriteRecipeIds([])
+      })
       return
     }
 
-    const fetchVersion = favoritesFetchVersionRef.current + 1
-    favoritesFetchVersionRef.current = fetchVersion
     const userId = user.id
 
     async function loadCloudFavorites() {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../context/useAuth'
 import { notify } from '../lib/toast'
@@ -16,24 +16,41 @@ export default function NotificationsPage() {
   const [items, setItems] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
 
-  const load = useCallback(async () => {
-    if (!user) return
+  useEffect(() => {
+    let cancelled = false
 
-    setLoading(true)
-    try {
-      const rows = await getNotificationsForUser(user.id)
-      setItems(rows)
-    } catch (error) {
-      console.error('Failed to load notifications:', error)
-      notify.error('Could not load notifications.')
-    } finally {
-      setLoading(false)
+    if (!user) {
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void (async () => {
+      setLoading(true)
+      try {
+        const rows = await getNotificationsForUser(user.id)
+        if (!cancelled) {
+          setItems(rows)
+        }
+      } catch (error) {
+        console.error('Failed to load notifications:', error)
+        notify.error('Could not load notifications.')
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
     }
   }, [user])
-
-  useEffect(() => {
-    void load()
-  }, [load])
 
   async function handleMarkAllRead() {
     if (!user) return

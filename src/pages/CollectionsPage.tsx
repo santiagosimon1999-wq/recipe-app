@@ -41,7 +41,9 @@ export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps
 
   useEffect(() => {
     if (!user) {
-      setLoading(false)
+      Promise.resolve().then(() => {
+        setLoading(false)
+      })
       return
     }
 
@@ -60,7 +62,9 @@ export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps
 
   useEffect(() => {
     if (!user || !selectedId) {
-      setRecipes([])
+      Promise.resolve().then(() => {
+        setRecipes([])
+      })
       return
     }
 

@@ -96,8 +96,10 @@ export default function RecipeComments({
   }, [recipe.id, supportsComments])
 
   useEffect(() => {
-    setDraft('')
-    void loadComments()
+    void (async () => {
+      setDraft('')
+      await loadComments()
+    })()
   }, [loadComments, recipe.id])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

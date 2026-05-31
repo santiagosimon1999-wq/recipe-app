@@ -24,17 +24,17 @@ export default function RecipeDetailRoute({
 
   useEffect(() => {
     let cancelled = false
-    const parsedRecipeId = parseDbRecipeId(params.recipeId)
-
-    if (parsedRecipeId === null) {
-      setError('This recipe link is invalid.')
-      return
-    }
-
-    const recipeId = parsedRecipeId
 
     async function load() {
       setError(null)
+
+      const parsedRecipeId = parseDbRecipeId(params.recipeId)
+      if (parsedRecipeId === null) {
+        setError('This recipe link is invalid.')
+        return
+      }
+
+      const recipeId = parsedRecipeId
 
       try {
         const row = await getRecipeById(recipeId, userId)
