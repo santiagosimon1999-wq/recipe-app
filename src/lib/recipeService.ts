@@ -53,6 +53,17 @@ export type CommunityRecipesOptions = {
   authorUserIds?: string[]
 }
 
+export type PublicRecipeSearchSort = 'newest' | 'oldest'
+
+export type SearchPublicRecipesOptions = {
+  limit?: number
+  excludeUserId?: string
+  category?: string
+  maxCalories?: number
+  minProtein?: number
+  sortBy?: PublicRecipeSearchSort
+}
+
 const DEFAULT_COMMUNITY_PAGE_SIZE = 20
 
 export const COMMUNITY_PAGE_SIZE = DEFAULT_COMMUNITY_PAGE_SIZE
@@ -181,7 +192,7 @@ export async function getRecipeById(
 
 export async function searchPublicRecipes(
   searchTerm: string,
-  options?: { limit?: number; excludeUserId?: string }
+  options?: SearchPublicRecipesOptions
 ): Promise<RecipeRowWithAuthor[]> {
   const sanitizedInput = sanitizeSearchTerm(searchTerm)
   if (!sanitizedInput) return []
@@ -191,23 +202,98 @@ export async function searchPublicRecipes(
   if (!escaped) return []
   const pattern = `"%${escaped}%"`
 
-  let query = supabase
+  const ascending = options?.sortBy === 'oldest'
+
+  let textQuery = supabase
     .from('recipes')
     .select(RECIPES_WITH_AUTHOR_SELECT)
     .eq('is_public', true)
     .or(`title.ilike.${pattern},description.ilike.${pattern},category.ilike.${pattern}`)
 
   if (options?.excludeUserId) {
-    query = query.neq('user_id', options.excludeUserId)
+    textQuery = textQuery.neq('user_id', options.excludeUserId)
   }
 
-  const { data, error } = await query
-    .order('created_at', { ascending: false })
+  if (options?.category && options.category !== 'All') {
+    textQuery = textQuery.eq('category', options.category)
+  }
+
+  if (typeof options?.maxCalories === 'number') {
+    textQuery = textQuery.lte('calories', options.maxCalories)
+  }
+
+  if (typeof options?.minProtein === 'number') {
+    textQuery = textQuery.gte('protein', options.minProtein)
+  }
+
+  const { data: textMatches, error: textError } = await textQuery
+    .order('created_at', { ascending })
     .limit(limit)
 
-  if (error) throw error
+  if (textError) throw textError
 
-  return (data ?? []) as unknown as RecipeRowWithAuthor[]
+  /**
+   * Ingredient fuzzy search fallback:
+   * PostgREST does not provide a safe, portable partial match operator for text[]
+   * elements, so we fetch a bounded public candidate pool and filter ingredients
+   * in memory. This keeps scope small and avoids DB/schema changes.
+   */
+  let ingredientMatches: RecipeRowWithAuthor[] = []
+  const ingredientPoolLimit = Math.max(limit, 120)
+
+  let ingredientPoolQuery = supabase
+    .from('recipes')
+    .select(RECIPES_WITH_AUTHOR_SELECT)
+    .eq('is_public', true)
+
+  if (options?.excludeUserId) {
+    ingredientPoolQuery = ingredientPoolQuery.neq('user_id', options.excludeUserId)
+  }
+
+  if (options?.category && options.category !== 'All') {
+    ingredientPoolQuery = ingredientPoolQuery.eq('category', options.category)
+  }
+
+  if (typeof options?.maxCalories === 'number') {
+    ingredientPoolQuery = ingredientPoolQuery.lte('calories', options.maxCalories)
+  }
+
+  if (typeof options?.minProtein === 'number') {
+    ingredientPoolQuery = ingredientPoolQuery.gte('protein', options.minProtein)
+  }
+
+  const { data: ingredientPool, error: ingredientPoolError } = await ingredientPoolQuery
+    .order('created_at', { ascending })
+    .limit(ingredientPoolLimit)
+
+  if (!ingredientPoolError) {
+    const term = sanitizedInput.toLowerCase()
+    ingredientMatches = ((ingredientPool ?? []) as unknown as RecipeRowWithAuthor[])
+      .filter((row) =>
+        (row.ingredients ?? []).some((ingredient) =>
+          ingredient.toLowerCase().includes(term)
+        )
+      )
+      .slice(0, limit)
+  }
+
+  const mergedById = new Map<number, RecipeRowWithAuthor>()
+  for (const row of (textMatches ?? []) as unknown as RecipeRowWithAuthor[]) {
+    mergedById.set(row.id, row)
+  }
+  for (const row of ingredientMatches) {
+    if (!mergedById.has(row.id)) {
+      mergedById.set(row.id, row)
+    }
+  }
+
+  return Array.from(mergedById.values())
+    .sort((a, b) => {
+      const aTime = new Date(a.created_at).getTime()
+      const bTime = new Date(b.created_at).getTime()
+      return ascending ? aTime - bTime : bTime - aTime
+    })
+    .slice(0, limit)
 }
 
 export async function createRecipe(

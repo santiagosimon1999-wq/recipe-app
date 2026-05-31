@@ -24,6 +24,20 @@ export function useLikes({
   likedRecipeIds,
   setLikedRecipeIds,
 }: UseLikesParams) {
+  function getLikeErrorMessage(error: unknown): string {
+    if (!error || typeof error !== 'object') {
+      return 'Failed to update like. Please try again.'
+    }
+
+    const record = error as { code?: string; message?: string }
+    const message = record.message?.toLowerCase() ?? ''
+    if (record.code === 'P0001' || message.includes('too quickly')) {
+      return 'You are liking recipes too quickly. Please wait and try again.'
+    }
+
+    return 'Failed to update like. Please try again.'
+  }
+
   const toggleLike = useCallback(
     async (recipeId: number) => {
       if (!user) return
@@ -65,7 +79,7 @@ export function useLikes({
           await unlikeRecipe(user.id, recipeId)
         } catch (err) {
           console.error('Failed to unlike:', err)
-          notify.error('Failed to unlike recipe. Please try again.')
+          notify.error(getLikeErrorMessage(err))
           setLikedRecipeIds(prevLikedIds)
           setRecipeList(prevRecipeList)
           setSelectedRecipe(prevSelected)
@@ -97,7 +111,7 @@ export function useLikes({
           )
         } catch (err) {
           console.error('Failed to like:', err)
-          notify.error('Failed to like recipe. Please try again.')
+          notify.error(getLikeErrorMessage(err))
           setLikedRecipeIds(prevLikedIds)
           setRecipeList(prevRecipeList)
           setSelectedRecipe(prevSelected)

@@ -5,6 +5,13 @@ export type FollowCounts = {
   following: number
 }
 
+function isRateLimitViolation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const record = error as { code?: string; message?: string }
+  const message = record.message?.toLowerCase() ?? ''
+  return record.code === 'P0001' || message.includes('too quickly')
+}
+
 function isUniqueViolation(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
   const record = error as { code?: string; status?: number }
@@ -26,6 +33,9 @@ export async function followUser(
 
   if (error) {
     if (isUniqueViolation(error)) return
+    if (isRateLimitViolation(error)) {
+      throw new Error('You are following too quickly. Please wait and try again.')
+    }
     throw error
   }
 }

@@ -33,6 +33,7 @@ import type { Theme } from './hooks/useTheme'
 
 const CommunityFeedPage = lazy(() => import('./pages/CommunityFeedPage'))
 const ActivityFeedPage = lazy(() => import('./pages/ActivityFeedPage'))
+const CreatorDashboardPage = lazy(() => import('./pages/CreatorDashboardPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const CollectionsPage = lazy(() => import('./pages/CollectionsPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
@@ -296,6 +297,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                   <ProfilePage onSelectRecipe={handleSelectRecipe} />
                 }
               />
+              <Route path="/creator" element={<CreatorDashboardPage />} />
               <Route path="/following" element={<ActivityFeedPage />} />
               <Route
                 path="/search"
@@ -408,6 +410,7 @@ function RouteFallback({ pathname }: { pathname: string }) {
 
   if (
     pathname === '/community' ||
+    pathname === '/creator' ||
     pathname === '/following' ||
     pathname === '/search' ||
     pathname === '/'

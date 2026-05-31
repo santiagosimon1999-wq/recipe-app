@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Recipe } from '../types/Recipe'
 import { mapDbRowToRecipe } from '../lib/recipeMappers'
+import './SearchPage.css'
 import {
+  type PublicRecipeSearchSort,
   getLikedRecipeIdsByUser,
   getLikesCountsForRecipeIds,
   searchPublicRecipes,
@@ -21,6 +23,18 @@ type SearchPageProps = {
   onViewAuthor?: (username: string) => void
 }
 
+type SearchSort = PublicRecipeSearchSort | 'most-liked'
+
+function parseNonNegativeNumber(value: string): number | undefined {
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined
+
+  return parsed
+}
+
 export default function SearchPage({
   userId,
   sampleFavoriteIds,
@@ -36,6 +50,9 @@ export default function SearchPage({
   const [searchTerm, setSearchTerm] = useState(queryFromUrl)
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [maxCaloriesInput, setMaxCaloriesInput] = useState('')
+  const [minProteinInput, setMinProteinInput] = useState('')
+  const [sortBy, setSortBy] = useState<SearchSort>('newest')
   const [results, setResults] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -48,6 +65,8 @@ export default function SearchPage({
   useEffect(() => {
     let cancelled = false
     const trimmed = searchTerm.trim()
+    const maxCalories = parseNonNegativeNumber(maxCaloriesInput)
+    const minProtein = parseNonNegativeNumber(minProteinInput)
 
     const timeout = window.setTimeout(() => {
       void (async () => {
@@ -64,6 +83,10 @@ export default function SearchPage({
         try {
           const rows = await searchPublicRecipes(trimmed, {
             excludeUserId: userId,
+            category: selectedCategory === 'All' ? undefined : selectedCategory,
+            maxCalories,
+            minProtein,
+            sortBy: sortBy === 'most-liked' ? 'newest' : sortBy,
           })
 
           if (cancelled) return
@@ -86,6 +109,13 @@ export default function SearchPage({
             }))
           }
 
+          if (sortBy === 'most-liked') {
+            mapped = [...mapped].sort((a, b) => {
+              if (b.likeCount !== a.likeCount) return b.likeCount - a.likeCount
+              return b.id - a.id
+            })
+          }
+
           if (!cancelled) setResults(mapped)
         } catch (error) {
           console.error('Search failed:', error)
@@ -100,7 +130,14 @@ export default function SearchPage({
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [searchTerm, userId])
+  }, [
+    searchTerm,
+    userId,
+    selectedCategory,
+    maxCaloriesInput,
+    minProteinInput,
+    sortBy,
+  ])
 
   useEffect(() => {
     const trimmed = searchTerm.trim()
@@ -115,8 +152,15 @@ export default function SearchPage({
   }, [searchTerm, searchParams, setSearchParams])
 
   const filteredResults = results.filter((recipe) => {
+    const maxCalories = parseNonNegativeNumber(maxCaloriesInput)
+    const minProtein = parseNonNegativeNumber(minProteinInput)
+
     const matchesCategory =
       selectedCategory === 'All' || recipe.category === selectedCategory
+    const matchesCalories =
+      maxCalories === undefined || recipe.calories <= maxCalories
+    const matchesProtein =
+      minProtein === undefined || recipe.protein >= minProtein
 
     const matchesFavorites =
       !showFavoritesOnly ||
@@ -124,11 +168,15 @@ export default function SearchPage({
         ? sampleFavoriteIds.includes(recipe.id)
         : cloudFavoriteRecipeIds.includes(recipe.id))
 
-    return matchesCategory && matchesFavorites
+    return matchesCategory && matchesCalories && matchesProtein && matchesFavorites
   })
 
   const showClearFiltersButton =
-    selectedCategory !== 'All' || showFavoritesOnly
+    selectedCategory !== 'All' ||
+    showFavoritesOnly ||
+    maxCaloriesInput.trim() !== '' ||
+    minProteinInput.trim() !== '' ||
+    sortBy !== 'newest'
 
   return (
     <section className="recipe-section search-page">
@@ -152,15 +200,99 @@ export default function SearchPage({
         onClearFilters={() => {
           setSelectedCategory('All')
           setShowFavoritesOnly(false)
+          setMaxCaloriesInput('')
+          setMinProteinInput('')
+          setSortBy('newest')
         }}
       />
+
+      <section className="search-page__advanced-filters">
+        <div className="search-page__filter-group">
+          <label className="search-page__filter-label" htmlFor="search-sort">
+            Sort results
+          </label>
+          <select
+            id="search-sort"
+            className="search-page__filter-input"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as SearchSort)}
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="most-liked">Most liked</option>
+          </select>
+        </div>
+
+        <div className="search-page__nutrition-filters">
+          <div className="search-page__filter-group">
+            <label className="search-page__filter-label" htmlFor="max-calories">
+              Max calories
+            </label>
+            <input
+              id="max-calories"
+              className="search-page__filter-input"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="numeric"
+              placeholder="e.g. 500"
+              value={maxCaloriesInput}
+              onChange={(event) => setMaxCaloriesInput(event.target.value)}
+            />
+          </div>
+
+          <div className="search-page__filter-group">
+            <label className="search-page__filter-label" htmlFor="min-protein">
+              Min protein (g)
+            </label>
+            <input
+              id="min-protein"
+              className="search-page__filter-input"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="numeric"
+              placeholder="e.g. 20"
+              value={minProteinInput}
+              onChange={(event) => setMinProteinInput(event.target.value)}
+            />
+          </div>
+        </div>
+      </section>
 
       {loading ? (
         <RecipeGridSkeleton count={6} />
       ) : searchTerm.trim() === '' ? (
-        <p className="community-feed__intro">
-          Type a recipe name, ingredient, or category to search public recipes.
-        </p>
+        <section className="search-page__empty-state">
+          <h3>Start your search</h3>
+          <p>
+            Search by title, ingredient, or category to find public recipes from
+            the community.
+          </p>
+        </section>
+      ) : filteredResults.length === 0 ? (
+        <section className="search-page__empty-state">
+          <h3>No recipes matched</h3>
+          <p>
+            No public recipes matched your query and filters. Try a broader term
+            or clear one of the filters.
+          </p>
+          {showClearFiltersButton ? (
+            <button
+              type="button"
+              className="clear-filters-button"
+              onClick={() => {
+                setSelectedCategory('All')
+                setShowFavoritesOnly(false)
+                setMaxCaloriesInput('')
+                setMinProteinInput('')
+                setSortBy('newest')
+              }}
+            >
+              Clear filters
+            </button>
+          ) : null}
+        </section>
       ) : (
         <>
           <p className="community-feed__intro">
