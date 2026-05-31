@@ -63,7 +63,6 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     hasMoreCommunity,
     loadingMoreCommunity,
     loadMoreCommunity,
-    followingFeedRecipes,
   } = useRecipes(user, communityFeedMode)
 
   const {
@@ -297,18 +296,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                   <ProfilePage onSelectRecipe={handleSelectRecipe} />
                 }
               />
-              <Route path="/following" element={
-                <ActivityFeedPage
-                  recipes={followingFeedRecipes}
-                  sampleFavoriteIds={sampleFavoriteIds}
-                  cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-                  onToggleFavorite={toggleFavorite}
-                  onSelectRecipe={handleSelectRecipe}
-                  onToggleLike={toggleLike}
-                  onViewAuthor={handleViewAuthor}
-                  isLoggedIn={Boolean(user)}
-                />
-              } />
+              <Route path="/following" element={<ActivityFeedPage />} />
               <Route
                 path="/search"
                 element={

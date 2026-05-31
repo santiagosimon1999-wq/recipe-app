@@ -1,0 +1,120 @@
+.activity-feed__list {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.activity-feed__card {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-soft);
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.activity-feed__card:hover {
+  border-color: rgba(201, 111, 67, 0.38);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.activity-feed__avatar {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--accent), var(--accent-orange));
+  color: var(--button-text);
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.activity-feed__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.activity-feed__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.activity-feed__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.activity-feed__type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.activity-feed__time {
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.activity-feed__text {
+  margin: 0;
+  color: var(--text-main);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.activity-feed__comment-preview {
+  margin: 0.45rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.activity-feed__load-more {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .activity-feed__card {
+    padding: 0.85rem;
+  }
+
+  .activity-feed__meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .activity-feed__time {
+    white-space: normal;
+  }
+}

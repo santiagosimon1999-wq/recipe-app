@@ -94,7 +94,7 @@ export default function AppHeader({
           {isLoggedIn ? (
             <div className="app-nav__actions app-nav__actions--secondary">
               <NavLink to="/following" className={navLinkClass}>
-                Following
+                Activity
               </NavLink>
               <NavLink to="/collections" className={navLinkClass}>
                 Collections
