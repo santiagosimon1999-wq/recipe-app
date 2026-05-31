@@ -3,11 +3,17 @@ import { supabase } from './supabaseClient'
 const RECIPE_IMAGES_BUCKET = 'recipe-images'
 const PROFILE_AVATARS_BUCKET = 'profile-avatars'
 
-const ALLOWED_IMAGE_MIME_TYPES = new Set([
+const ALLOWED_RECIPE_IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/webp',
   'image/gif',
+])
+
+const ALLOWED_PROFILE_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
 ])
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -22,8 +28,8 @@ function getFileExtension(fileName: string) {
   return extension.toLowerCase()
 }
 
-function validateImageFile(file: File) {
-  if (!ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
+function validateRecipeImageFile(file: File) {
+  if (!ALLOWED_RECIPE_IMAGE_MIME_TYPES.has(file.type)) {
     throw new Error('Please upload a JPEG, PNG, WebP, or GIF image.')
   }
 
@@ -33,7 +39,7 @@ function validateImageFile(file: File) {
 }
 
 export async function uploadRecipeImage(userId: string, file: File) {
-  validateImageFile(file)
+  validateRecipeImageFile(file)
 
   const fileExtension = getFileExtension(file.name)
   const fileName = `${crypto.randomUUID()}.${fileExtension}`
@@ -59,7 +65,13 @@ export async function uploadRecipeImage(userId: string, file: File) {
 }
 
 export async function uploadProfileImage(userId: string, file: File) {
-  validateImageFile(file)
+  if (!ALLOWED_PROFILE_IMAGE_MIME_TYPES.has(file.type)) {
+    throw new Error('Please upload a JPG, PNG, or WebP image.')
+  }
+
+  if (file.size > MAX_IMAGE_BYTES) {
+    throw new Error('Image size must be under 5 MB.')
+  }
 
   const fileExtension = getFileExtension(file.name)
   const fileName = `${crypto.randomUUID()}.${fileExtension}`

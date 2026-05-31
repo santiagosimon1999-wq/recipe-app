@@ -22,6 +22,34 @@ type ProfilePageProps = {
   onSelectRecipe: (recipe: Recipe) => void
 }
 
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024
+const ALLOWED_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+
+function getAvatarValidationError(file: File): string | null {
+  if (!ALLOWED_AVATAR_MIME_TYPES.has(file.type)) {
+    return 'Please upload a JPG, PNG, or WebP image.'
+  }
+
+  if (file.size > MAX_AVATAR_BYTES) {
+    return 'Image size must be under 5 MB.'
+  }
+
+  return null
+}
+
+function getUploadErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    if (
+      error.message === 'Please upload a JPG, PNG, or WebP image.' ||
+      error.message === 'Image size must be under 5 MB.'
+    ) {
+      return error.message
+    }
+  }
+
+  return 'Failed to upload profile image. Please try again.'
+}
+
 export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
   const { user, logout } = useAuth()
   const confirm = useConfirm()
@@ -30,7 +58,9 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
   const [formDisplayName, setFormDisplayName] = useState('')
   const [formBio, setFormBio] = useState('')
   const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null)
+  const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null)
   const [savingProfile, setSavingProfile] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [recipeCount, setRecipeCount] = useState<number | null>(null)
   const [favoritesCount, setFavoritesCount] = useState(0)
@@ -126,6 +156,7 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
     setFormDisplayName(profile?.display_name ?? '')
     setFormBio(profile?.bio ?? '')
     setEditAvatarFile(null)
+    setAvatarUploadError(null)
     setIsEditing(true)
   }
 
@@ -133,7 +164,26 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
     setFormDisplayName(profile?.display_name ?? '')
     setFormBio(profile?.bio ?? '')
     setEditAvatarFile(null)
+    setAvatarUploadError(null)
     setIsEditing(false)
+  }
+
+  function handleAvatarFileChange(file: File | null) {
+    if (!file) {
+      setEditAvatarFile(null)
+      setAvatarUploadError(null)
+      return
+    }
+
+    const validationError = getAvatarValidationError(file)
+    if (validationError) {
+      setEditAvatarFile(null)
+      setAvatarUploadError(validationError)
+      return
+    }
+
+    setEditAvatarFile(file)
+    setAvatarUploadError(null)
   }
 
   async function handleSaveProfile() {
@@ -141,12 +191,29 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
     if (!userId) return
 
     setSavingProfile(true)
+    setError(null)
+    setAvatarUploadError(null)
+
     try {
       let avatar_url = profile?.avatar_url ?? null
 
       if (editAvatarFile) {
-        const { uploadProfileImage } = await import('../lib/storageService')
-        avatar_url = await uploadProfileImage(userId, editAvatarFile)
+        const validationError = getAvatarValidationError(editAvatarFile)
+        if (validationError) {
+          setAvatarUploadError(validationError)
+          return
+        }
+
+        setUploadingAvatar(true)
+        try {
+          const { uploadProfileImage } = await import('../lib/storageService')
+          avatar_url = await uploadProfileImage(userId, editAvatarFile)
+        } catch (uploadError) {
+          setAvatarUploadError(getUploadErrorMessage(uploadError))
+          return
+        } finally {
+          setUploadingAvatar(false)
+        }
       }
 
       const trimmedName = formDisplayName.trim()
@@ -188,6 +255,7 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
       console.error('Failed to save profile:', err)
       setError('Failed to save profile. Please try again.')
     } finally {
+      setUploadingAvatar(false)
       setSavingProfile(false)
     }
   }
@@ -321,28 +389,43 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
                   <input
                     id="profile-avatar"
                     type="file"
-                    accept="image/*"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                     className="profile-page__file-input"
                     onChange={(event) =>
-                      setEditAvatarFile(event.target.files?.[0] ?? null)
+                      handleAvatarFileChange(event.target.files?.[0] ?? null)
                     }
-                    disabled={savingProfile}
+                    disabled={savingProfile || uploadingAvatar}
                   />
+                  {editAvatarFile ? (
+                    <p className="profile-page__bio">
+                      Selected: {editAvatarFile.name}
+                    </p>
+                  ) : null}
+                  {uploadingAvatar ? (
+                    <p className="profile-page__bio">Uploading avatar…</p>
+                  ) : null}
+                  {avatarUploadError ? (
+                    <p className="profile-page__error">{avatarUploadError}</p>
+                  ) : null}
 
                   <div className="profile-page__edit-buttons">
                     <button
                       type="button"
                       className="profile-page__save-button"
                       onClick={handleSaveProfile}
-                      disabled={savingProfile}
+                      disabled={savingProfile || uploadingAvatar}
                     >
-                      {savingProfile ? 'Saving…' : 'Save'}
+                      {uploadingAvatar
+                        ? 'Uploading avatar…'
+                        : savingProfile
+                          ? 'Saving…'
+                          : 'Save'}
                     </button>
                     <button
                       type="button"
                       className="profile-page__cancel-button"
                       onClick={handleCancelEditing}
-                      disabled={savingProfile}
+                      disabled={savingProfile || uploadingAvatar}
                     >
                       Cancel
                     </button>
