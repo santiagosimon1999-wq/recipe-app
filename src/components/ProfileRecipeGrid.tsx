@@ -47,9 +47,12 @@ export default function ProfileRecipeGrid({
               />
             </div>
             <div className="profile-page__recipe-body">
-              <span className="profile-page__recipe-category">
-                {recipe.category}
-              </span>
+              <div className="profile-page__recipe-meta">
+                <span className="profile-page__recipe-category">
+                  {recipe.category}
+                </span>
+                <span className="profile-page__recipe-badge">Shared</span>
+              </div>
               <h3 className="profile-page__recipe-title">{recipe.title}</h3>
               <p className="profile-page__recipe-description">
                 {recipe.description}

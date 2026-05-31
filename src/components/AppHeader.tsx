@@ -42,47 +42,57 @@ export default function AppHeader({
   return (
     <header className="app-hero">
       <nav className="app-nav">
-        <div>
-          <p className="app-eyebrow">Recipe social tracker</p>
-          <h1 className="app__title">Savora</h1>
+        <div className="app-nav__top">
+          <div className="app-nav__brand">
+            <p className="app-eyebrow">Recipe social tracker</p>
+            <h1 className="app__title">Savora</h1>
+          </div>
+
+          <div className="app-nav__utility">
+            <button
+              type="button"
+              className="theme-toggle-button theme-toggle-button--with-icon"
+              onClick={onToggleTheme}
+              aria-label={
+                theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
+              }
+            >
+              {theme === 'light' ? (
+                <>
+                  <Moon size={16} aria-hidden="true" />
+                  <span>Dark</span>
+                </>
+              ) : (
+                <>
+                  <Sun size={16} aria-hidden="true" />
+                  <span>Light</span>
+                </>
+              )}
+            </button>
+
+            {isLoggedIn ? (
+              <button type="button" className="logout-button" onClick={onLogout}>
+                Log out
+              </button>
+            ) : null}
+          </div>
         </div>
 
-        <div className="app-nav__actions">
-          <button
-            type="button"
-            className="theme-toggle-button theme-toggle-button--with-icon"
-            onClick={onToggleTheme}
-            aria-label={
-              theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
-            }
-          >
-            {theme === 'light' ? (
-              <>
-                <Moon size={16} aria-hidden="true" />
-                <span>Dark</span>
-              </>
-            ) : (
-              <>
-                <Sun size={16} aria-hidden="true" />
-                <span>Light</span>
-              </>
-            )}
-          </button>
-
-          <NavLink to="/" end className={navLinkClass}>
-            Recipes
-          </NavLink>
-
-          <NavLink to="/community" className={navLinkClass}>
-            Community
-          </NavLink>
-
-          <NavLink to="/search" className={navLinkClass}>
-            Search
-          </NavLink>
+        <div className="app-nav__routes" aria-label="Primary navigation">
+          <div className="app-nav__actions app-nav__actions--primary">
+            <NavLink to="/" end className={navLinkClass}>
+              Recipes
+            </NavLink>
+            <NavLink to="/community" className={navLinkClass}>
+              Community
+            </NavLink>
+            <NavLink to="/search" className={navLinkClass}>
+              Search
+            </NavLink>
+          </div>
 
           {isLoggedIn ? (
-            <>
+            <div className="app-nav__actions app-nav__actions--secondary">
               <NavLink to="/following" className={navLinkClass}>
                 Following
               </NavLink>
@@ -100,13 +110,7 @@ export default function AppHeader({
               <NavLink to="/profile" className={navLinkClass}>
                 Profile
               </NavLink>
-            </>
-          ) : null}
-
-          {isLoggedIn ? (
-            <button type="button" className="logout-button" onClick={onLogout}>
-              Log out
-            </button>
+            </div>
           ) : null}
         </div>
       </nav>

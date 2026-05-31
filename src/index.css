@@ -110,7 +110,6 @@ html.app--light,
   backdrop-filter: blur(18px);
 }
 
-.app-nav,
 .hero-content,
 .profile-card,
 .recipe-section__header,
@@ -122,14 +121,47 @@ html.app--light,
 }
 
 .app-nav {
+  display: grid;
+  gap: 14px;
   margin-bottom: 24px;
+}
+
+.app-nav__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.app-nav__brand {
+  min-width: 0;
+}
+
+.app-nav__utility,
+.app-nav__routes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-nav__routes {
+  justify-content: space-between;
 }
 
 .app-nav__actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  align-items: center;
   gap: 10px;
+}
+
+.app-nav__actions--primary {
+  justify-content: flex-start;
+}
+
+.app-nav__actions--secondary {
+  justify-content: flex-end;
 }
 
 .app-eyebrow {
@@ -653,16 +685,33 @@ html.app--dark .recipe-modal {
 
 .recipe-modal__top-bar {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 12px;
+  margin-bottom: 12px;
+}
+
+.recipe-modal__action-stack {
+  display: grid;
+  gap: 10px;
   margin-bottom: 16px;
 }
 
-.recipe-modal__actions {
+.recipe-modal__engagement-actions,
+.recipe-modal__management-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.recipe-modal__engagement-actions .like-button {
+  margin-top: 0;
+}
+
+.recipe-modal__management-actions .recipe-modal__edit-button {
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+  color: var(--text-main);
 }
 
 .recipe-modal__close-button,
@@ -687,6 +736,12 @@ html.app--dark .recipe-modal {
 }
 
 .recipe-modal__delete-button {
+  background-color: var(--danger);
+  color: var(--button-text);
+}
+
+.recipe-modal__management-actions .recipe-modal__delete-button {
+  border: none;
   background-color: var(--danger);
   color: var(--button-text);
 }
@@ -791,7 +846,6 @@ html.app--dark .recipe-modal {
     border-radius: 22px;
   }
 
-  .app-nav,
   .hero-content,
   .profile-card,
   .recipe-section__header,
@@ -803,6 +857,44 @@ html.app--dark .recipe-modal {
   .app-nav__actions,
   .profile-card__stats {
     width: 100%;
+  }
+
+  .app-nav__top {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .app-nav__utility,
+  .app-nav__routes {
+    width: 100%;
+  }
+
+  .app-nav__utility {
+    justify-content: flex-start;
+  }
+
+  .app-nav__routes {
+    display: grid;
+    gap: 10px;
+  }
+
+  .app-nav__actions--primary,
+  .app-nav__actions--secondary {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .app-nav__actions--primary .theme-toggle-button,
+  .app-nav__actions--secondary .theme-toggle-button {
+    flex: 0 0 auto;
+  }
+
+  .app-nav__actions--secondary {
+    justify-content: flex-start;
   }
 
   .profile-card__stats {
@@ -1329,10 +1421,10 @@ html.app--dark .recipe-modal {
 }
 
 .profile-page__recipe-card {
-  border-radius: 1.25rem;
+  border-radius: 24px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background-color: var(--surface);
+  background-color: var(--surface-solid);
   box-shadow: var(--shadow-soft);
   transition:
     transform 0.2s ease,
@@ -1341,14 +1433,14 @@ html.app--dark .recipe-modal {
 }
 
 .profile-page__recipe-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-5px);
   border-color: rgba(201, 111, 67, 0.38);
   box-shadow: var(--shadow);
 }
 
 .profile-page__recipe-thumb {
   width: 100%;
-  height: 180px;
+  height: 210px;
   overflow: hidden;
 }
 
@@ -1359,23 +1451,40 @@ html.app--dark .recipe-modal {
 }
 
 .profile-page__recipe-body {
-  padding: 1rem;
+  padding: 17px;
+}
+
+.profile-page__recipe-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 0.6rem;
 }
 
 .profile-page__recipe-category {
   display: inline-block;
-  margin-bottom: 0.6rem;
-  padding: 4px 10px;
+  margin-bottom: 0;
+  padding: 6px 10px;
   border-radius: 999px;
   background-color: var(--accent-soft);
   color: var(--accent);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.profile-page__recipe-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background-color: var(--accent-soft);
+  color: var(--text-soft);
+  font-size: 0.75rem;
   font-weight: 900;
 }
 
 .profile-page__recipe-title {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   letter-spacing: -0.03em;
 }
 

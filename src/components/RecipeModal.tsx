@@ -77,7 +77,17 @@ function RecipeModal({
       <div className="recipe-modal__layout">
         <div className="recipe-modal__scroll-body">
           <div className="recipe-modal__top-bar">
-            <div className="recipe-modal__actions">
+            <button
+              type="button"
+              className="recipe-modal__close-button"
+              onClick={onClose}
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="recipe-modal__action-stack">
+            <div className="recipe-modal__engagement-actions">
               {recipe.source !== 'sample' && (
                 <button
                   type="button"
@@ -97,42 +107,35 @@ function RecipeModal({
               )}
               <ShareRecipeButton recipe={recipe} />
               <SaveToCollectionButton recipe={recipe} />
-              {canManage ? (
-                <>
-                  <button
-                    type="button"
-                    className="recipe-modal__edit-button"
-                    onClick={() => onEdit(recipe)}
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    type="button"
-                    className="recipe-modal__edit-button"
-                    onClick={() => onTogglePublic?.(recipe)}
-                  >
-                    {recipe.isPublic ? 'Make Private' : 'Share Recipe'}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="recipe-modal__delete-button"
-                    onClick={() => onDelete(recipe.id)}
-                  >
-                    Delete
-                  </button>
-                </>
-              ) : null}
             </div>
 
-            <button
-              type="button"
-              className="recipe-modal__close-button"
-              onClick={onClose}
-            >
-              Close
-            </button>
+            {canManage ? (
+              <div className="recipe-modal__management-actions">
+                <button
+                  type="button"
+                  className="recipe-modal__edit-button"
+                  onClick={() => onEdit(recipe)}
+                >
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  className="recipe-modal__edit-button"
+                  onClick={() => onTogglePublic?.(recipe)}
+                >
+                  {recipe.isPublic ? 'Make Private' : 'Share Recipe'}
+                </button>
+
+                <button
+                  type="button"
+                  className="recipe-modal__delete-button"
+                  onClick={() => onDelete(recipe.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            ) : null}
           </div>
 
           {recipe.image ? (

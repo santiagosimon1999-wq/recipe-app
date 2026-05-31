@@ -10,7 +10,7 @@ export type Profile = ProfileRow
 /** Fields shown on public profile pages — no private data. */
 export type PublicProfile = Pick<
   Profile,
-  'id' | 'display_name' | 'username' | 'avatar_url' | 'bio'
+  'id' | 'display_name' | 'username' | 'avatar_url' | 'bio' | 'created_at'
 >
 
 /** Payload for editing the signed-in user's profile. */
