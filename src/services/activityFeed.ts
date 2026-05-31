@@ -22,12 +22,6 @@ type RecipeRow = {
   created_at: string
 }
 
-type FollowRow = {
-  follower_id: string
-  following_id: string
-  created_at: string
-}
-
 type LikeRow = {
   recipe_id: number
   user_id: string
@@ -195,42 +189,44 @@ export async function getActivityFeedForUser(
   const limitPerType = options?.limitPerType ?? DEFAULT_LIMIT_PER_TYPE
   const maxEvents = options?.maxEvents ?? DEFAULT_MAX_EVENTS
 
-  const [postRowsResult, followRowsResult, likeRowsResult, commentRowsResult] =
-    await Promise.all([
-      supabase
-        .from('recipes')
-        .select('id, title, user_id, created_at')
-        .eq('is_public', true)
-        .in('user_id', followingIds)
-        .order('created_at', { ascending: false })
-        .limit(limitPerType),
-      supabase
-        .from('follows')
-        .select('follower_id, following_id, created_at')
-        .in('follower_id', followingIds)
-        .order('created_at', { ascending: false })
-        .limit(limitPerType),
-      supabase
-        .from('recipe_likes')
-        .select('recipe_id, user_id, created_at')
-        .in('user_id', followingIds)
-        .order('created_at', { ascending: false })
-        .limit(limitPerType),
-      supabase
-        .from('comments')
-        .select('id, recipe_id, user_id, content, created_at')
-        .in('user_id', followingIds)
-        .order('created_at', { ascending: false })
-        .limit(limitPerType),
-    ])
+  /**
+   * RLS safety note:
+   * We intentionally exclude follow events from the activity feed.
+   *
+   * Current follows SELECT policy only permits rows where the viewer is directly
+   * involved (follower or following). Third-party follow rows from people you
+   * follow are not reliably visible. Depending on them would cause silent gaps.
+   *
+   * To keep feed correctness under current policies, we only include recipe
+   * posts, likes, and comments authored by followed users.
+   */
+  const [postRowsResult, likeRowsResult, commentRowsResult] = await Promise.all([
+    supabase
+      .from('recipes')
+      .select('id, title, user_id, created_at')
+      .eq('is_public', true)
+      .in('user_id', followingIds)
+      .order('created_at', { ascending: false })
+      .limit(limitPerType),
+    supabase
+      .from('recipe_likes')
+      .select('recipe_id, user_id, created_at')
+      .in('user_id', followingIds)
+      .order('created_at', { ascending: false })
+      .limit(limitPerType),
+    supabase
+      .from('comments')
+      .select('id, recipe_id, user_id, content, created_at')
+      .in('user_id', followingIds)
+      .order('created_at', { ascending: false })
+      .limit(limitPerType),
+  ])
 
   if (postRowsResult.error) throw postRowsResult.error
-  if (followRowsResult.error) throw followRowsResult.error
   if (likeRowsResult.error) throw likeRowsResult.error
   if (commentRowsResult.error) throw commentRowsResult.error
 
   const postRows = (postRowsResult.data ?? []) as unknown as RecipeRow[]
-  const followRows = (followRowsResult.data ?? []) as unknown as FollowRow[]
   const likeRows = (likeRowsResult.data ?? []) as unknown as LikeRow[]
   const commentRows = (commentRowsResult.data ?? []) as unknown as CommentRow[]
 
@@ -260,10 +256,6 @@ export async function getActivityFeedForUser(
 
   const profileIds = new Set<string>()
   for (const row of postRows) profileIds.add(row.user_id)
-  for (const row of followRows) {
-    profileIds.add(row.follower_id)
-    profileIds.add(row.following_id)
-  }
   for (const row of likeRows) profileIds.add(row.user_id)
   for (const row of commentRows) profileIds.add(row.user_id)
   for (const row of recipesById.values()) profileIds.add(row.user_id)
@@ -285,24 +277,6 @@ export async function getActivityFeedForUser(
       },
       recipe: toRecipeRef(row, profilesById),
       targetUser: null,
-      commentPreview: null,
-    })
-  }
-
-  for (const row of followRows) {
-    const actorProfile = profilesById.get(row.follower_id)
-    const targetProfile = profilesById.get(row.following_id)
-    events.push({
-      id: `follow:${row.follower_id}:${row.following_id}:${row.created_at}`,
-      type: 'follow',
-      createdAt: row.created_at,
-      groupCount: 1,
-      actor: {
-        ...toActor(actorProfile),
-        id: row.follower_id,
-      },
-      recipe: null,
-      targetUser: toUserRef(targetProfile),
       commentPreview: null,
     })
   }

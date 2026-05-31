@@ -5,6 +5,13 @@ export type FollowCounts = {
   following: number
 }
 
+export type FollowListProfile = {
+  id: string
+  username: string | null
+  display_name: string | null
+  avatar_url: string | null
+}
+
 function isRateLimitViolation(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
   const record = error as { code?: string; message?: string }
@@ -99,4 +106,59 @@ export async function getFollowCounts(userId: string): Promise<FollowCounts> {
     followers: record.followers ?? 0,
     following: record.following ?? 0,
   }
+}
+
+async function getProfilesByIds(profileIds: string[]): Promise<FollowListProfile[]> {
+  if (profileIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, display_name, avatar_url')
+    .in('id', profileIds)
+
+  if (error) throw error
+
+  const profileById = new Map<string, FollowListProfile>()
+  for (const row of (data ?? []) as FollowListProfile[]) {
+    profileById.set(row.id, row)
+  }
+
+  const ordered: FollowListProfile[] = []
+  for (const id of profileIds) {
+    const profile = profileById.get(id)
+    if (profile) ordered.push(profile)
+  }
+  return ordered
+}
+
+export async function getFollowersForUser(userId: string): Promise<FollowListProfile[]> {
+  const { data, error } = await supabase
+    .from('follows')
+    .select('follower_id')
+    .eq('following_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  const followerIds = (data ?? [])
+    .map((row) => (row as { follower_id: string | null }).follower_id)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+
+  return getProfilesByIds(followerIds)
+}
+
+export async function getFollowingForUser(userId: string): Promise<FollowListProfile[]> {
+  const { data, error } = await supabase
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  const followingIds = (data ?? [])
+    .map((row) => (row as { following_id: string | null }).following_id)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+
+  return getProfilesByIds(followingIds)
 }
