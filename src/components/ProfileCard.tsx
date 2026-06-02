@@ -3,7 +3,7 @@ type ProfileCardProps = {
   email?: string | null
   userInitial: string
   totalRecipes: number
-  favoriteCount: number
+  savedCount: number
   averageCalories: number
 }
 
@@ -12,7 +12,7 @@ export default function ProfileCard({
   email,
   userInitial,
   totalRecipes,
-  favoriteCount,
+  savedCount,
   averageCalories,
 }: ProfileCardProps) {
   return (
@@ -34,8 +34,8 @@ export default function ProfileCard({
         </div>
 
         <div className="profile-stat">
-          <span>{favoriteCount}</span>
-          <p>Favorites</p>
+          <span>{savedCount}</span>
+          <p>Saved</p>
         </div>
 
         <div className="profile-stat">

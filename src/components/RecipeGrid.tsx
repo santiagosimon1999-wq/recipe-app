@@ -1,12 +1,16 @@
 import type { Recipe } from "../types/Recipe";
-import { getRecipeListKey, isRecipeFavorited } from "../utils/favorites";
+import { getRecipeListKey, isRecipeSaved } from "../utils/favorites";
 import RecipeCard from "./RecipeCard";
 
 type RecipeGridProps = {
   recipes: Recipe[];
-  sampleFavoriteIds: number[];
-  cloudFavoriteRecipeIds: number[];
-  onToggleFavorite: (recipe: Recipe) => void;
+  sampleSavedRecipeIds: number[];
+  cloudSavedRecipeIds: number[];
+  likedRecipeIds?: number[];
+  likeCountsByRecipeId?: Record<number, number>;
+  emptyTitle?: string;
+  emptyBody?: string;
+  onToggleSaved: (recipe: Recipe) => void;
   onSelectRecipe: (recipe: Recipe) => void;
   onToggleLike?: (recipeId: number) => void;
   onViewAuthor?: (username: string) => void;
@@ -14,9 +18,13 @@ type RecipeGridProps = {
 
 function RecipeGrid({
   recipes,
-  sampleFavoriteIds,
-  cloudFavoriteRecipeIds,
-  onToggleFavorite,
+  sampleSavedRecipeIds,
+  cloudSavedRecipeIds,
+  likedRecipeIds,
+  likeCountsByRecipeId,
+  emptyTitle = "No recipes found",
+  emptyBody = "Try a different search or choose another category.",
+  onToggleSaved,
   onSelectRecipe,
   onToggleLike,
   onViewAuthor,
@@ -24,8 +32,8 @@ function RecipeGrid({
   if (recipes.length === 0) {
     return (
       <section className="recipe-grid-empty">
-        <h2>No recipes found</h2>
-        <p>Try a different search or choose another category.</p>
+        <h2>{emptyTitle}</h2>
+        <p>{emptyBody}</p>
       </section>
     );
   }
@@ -36,15 +44,15 @@ function RecipeGrid({
         <RecipeCard
           key={getRecipeListKey(recipe)}
           recipe={recipe}
-          isFavorite={isRecipeFavorited(
+          isSaved={isRecipeSaved(
             recipe,
-            sampleFavoriteIds,
-            cloudFavoriteRecipeIds
+            sampleSavedRecipeIds,
+            cloudSavedRecipeIds
           )}
-          onToggleFavorite={onToggleFavorite}
+          onToggleSaved={onToggleSaved}
           onSelectRecipe={onSelectRecipe}
-          liked={Boolean(recipe.liked)}
-          likeCount={recipe.likeCount ?? 0}
+          liked={likedRecipeIds?.includes(recipe.id) ?? Boolean(recipe.liked)}
+          likeCount={likeCountsByRecipeId?.[recipe.id] ?? recipe.likeCount ?? 0}
           onToggleLike={onToggleLike}
           onViewAuthor={onViewAuthor}
         />

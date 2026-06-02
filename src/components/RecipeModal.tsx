@@ -8,11 +8,13 @@ import {
   Wheat,
 } from 'lucide-react'
 import type { Recipe } from '../types/Recipe'
+import { getRecipeCategoryNames, toCategoryTag } from '../utils/categories'
 import { ErrorBoundary } from './ErrorBoundary'
 import { Modal } from './ui/Modal'
 import SaveToCollectionButton from './SaveToCollectionButton'
 import ShareRecipeButton from './ShareRecipeButton'
 import RecipeComments from './RecipeComments'
+import './RecipeModal.css'
 
 type RecipeModalProps = {
   recipe: Recipe
@@ -64,6 +66,7 @@ function RecipeModal({
   const authorLabel = recipe.authorUsername
     ? `@${recipe.authorUsername}`
     : recipe.authorName
+  const categories = getRecipeCategoryNames(recipe)
 
   function handleAuthorClick() {
     if (recipe.authorUsername) {
@@ -86,58 +89,6 @@ function RecipeModal({
             </button>
           </div>
 
-          <div className="recipe-modal__action-stack">
-            <div className="recipe-modal__engagement-actions">
-              {recipe.source !== 'sample' && (
-                <button
-                  type="button"
-                  className={
-                    liked ? 'like-button like-button--active' : 'like-button'
-                  }
-                  onClick={() => onToggleLike?.(recipe.id)}
-                  aria-label={liked ? 'Unlike recipe' : 'Like recipe'}
-                >
-                  <ThumbsUp
-                    size={16}
-                    aria-hidden="true"
-                    fill={liked ? 'currentColor' : 'none'}
-                  />
-                  <span>{likeCount}</span>
-                </button>
-              )}
-              <ShareRecipeButton recipe={recipe} />
-              <SaveToCollectionButton recipe={recipe} />
-            </div>
-
-            {canManage ? (
-              <div className="recipe-modal__management-actions">
-                <button
-                  type="button"
-                  className="recipe-modal__edit-button"
-                  onClick={() => onEdit(recipe)}
-                >
-                  Edit
-                </button>
-
-                <button
-                  type="button"
-                  className="recipe-modal__edit-button"
-                  onClick={() => onTogglePublic?.(recipe)}
-                >
-                  {recipe.isPublic ? 'Make Private' : 'Share Recipe'}
-                </button>
-
-                <button
-                  type="button"
-                  className="recipe-modal__delete-button"
-                  onClick={() => onDelete(recipe.id)}
-                >
-                  Delete
-                </button>
-              </div>
-            ) : null}
-          </div>
-
           {recipe.image ? (
             <img
               src={recipe.image}
@@ -145,34 +96,6 @@ function RecipeModal({
               className="recipe-modal__image"
             />
           ) : null}
-
-          <div className="recipe-modal__badges">
-            <p className="recipe-card__category">{recipe.category}</p>
-            <p className="recipe-card__badge recipe-card__badge--with-icon">
-              {recipe.source === 'user' ? (
-                <>
-                  <User size={14} aria-hidden="true" />
-                  <span>{recipeStatusLabel}</span>
-                </>
-              ) : (
-                <span>{recipeStatusLabel}</span>
-              )}
-            </p>
-            {showAuthor ? (
-              showAuthorLink ? (
-                <button
-                  type="button"
-                  className="recipe-modal__author-link"
-                  onClick={handleAuthorClick}
-                  aria-label={`View profile of ${recipe.authorUsername}`}
-                >
-                  {authorLabel}
-                </button>
-              ) : (
-                <span className="recipe-modal__author-name">{authorLabel}</span>
-              )
-            ) : null}
-          </div>
 
           <h2 id={titleId} className="recipe-modal__title">
             {recipe.title}
@@ -236,21 +159,112 @@ function RecipeModal({
             </ol>
           </div>
 
-        </div>
+          <div className="recipe-modal__badges">
+            <div className="recipe-modal__category-list">
+              {categories.map((categoryName) => {
+                const tag = toCategoryTag(categoryName)
+                return (
+                  <p key={categoryName} className="recipe-card__category">
+                    {tag?.icon ? <span aria-hidden="true">{tag.icon}</span> : null}
+                    <span>{categoryName}</span>
+                  </p>
+                )
+              })}
+            </div>
+            <p className="recipe-card__badge recipe-card__badge--with-icon">
+              {recipe.source === 'user' ? (
+                <>
+                  <User size={14} aria-hidden="true" />
+                  <span>{recipeStatusLabel}</span>
+                </>
+              ) : (
+                <span>{recipeStatusLabel}</span>
+              )}
+            </p>
+            {showAuthor ? (
+              showAuthorLink ? (
+                <button
+                  type="button"
+                  className="recipe-modal__author-link"
+                  onClick={handleAuthorClick}
+                  aria-label={`View profile of ${recipe.authorUsername}`}
+                >
+                  {authorLabel}
+                </button>
+              ) : (
+                <span className="recipe-modal__author-name">{authorLabel}</span>
+              )
+            ) : null}
+          </div>
 
-        <div className="recipe-modal__comments-panel">
-          <ErrorBoundary
-            fallback={(error) => (
-              <section className="recipe-comments recipe-comments--error">
-                <h3 className="recipe-comments__title">Comments</h3>
-                <p className="recipe-comments__error" role="alert">
-                  Could not load comments: {error.message}
-                </p>
-              </section>
-            )}
-          >
-            <RecipeComments recipe={recipe} onViewAuthor={onViewAuthor} />
-          </ErrorBoundary>
+          <div className="recipe-modal__action-stack">
+            <div className="recipe-modal__engagement-actions">
+              {recipe.source !== 'sample' && (
+                <button
+                  type="button"
+                  className={
+                    liked ? 'like-button like-button--active' : 'like-button'
+                  }
+                  onClick={() => onToggleLike?.(recipe.id)}
+                  aria-label={liked ? 'Unlike recipe' : 'Like recipe'}
+                >
+                  <ThumbsUp
+                    size={16}
+                    aria-hidden="true"
+                    fill={liked ? 'currentColor' : 'none'}
+                  />
+                  <span>{likeCount}</span>
+                </button>
+              )}
+              <ShareRecipeButton recipe={recipe} />
+              <SaveToCollectionButton recipe={recipe} />
+            </div>
+
+            {canManage ? (
+              <div className="recipe-modal__management-actions">
+                <button
+                  type="button"
+                  className="recipe-modal__edit-button"
+                  onClick={() => onEdit(recipe)}
+                >
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  className="recipe-modal__edit-button"
+                  onClick={() => onTogglePublic?.(recipe)}
+                >
+                  {recipe.isPublic ? 'Make Private' : 'Share Recipe'}
+                </button>
+
+                <button
+                  type="button"
+                  className="recipe-modal__delete-button"
+                  onClick={() => onDelete(recipe.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+          <hr className="recipe-modal__divider" />
+
+          <div className="recipe-modal__comments-section">
+            <ErrorBoundary
+              fallback={(error) => (
+                <section className="recipe-comments recipe-comments--error">
+                  <h3 className="recipe-comments__title">Comments</h3>
+                  <p className="recipe-comments__error" role="alert">
+                    Could not load comments: {error.message}
+                  </p>
+                </section>
+              )}
+            >
+              <RecipeComments recipe={recipe} onViewAuthor={onViewAuthor} />
+            </ErrorBoundary>
+          </div>
         </div>
       </div>
     </Modal>

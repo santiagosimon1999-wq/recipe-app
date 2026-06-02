@@ -1,4 +1,5 @@
 import type { Recipe } from '../types/Recipe'
+import { getRecipeCategoryNames, toCategoryTag } from '../utils/categories'
 import { getRecipeListKey } from '../utils/favorites'
 
 const FALLBACK_THUMB =
@@ -28,7 +29,9 @@ export default function ProfileRecipeGrid({
 
   return (
     <div className="profile-page__recipe-grid">
-      {recipes.map((recipe) => (
+      {recipes.map((recipe) => {
+        const categories = getRecipeCategoryNames(recipe).slice(0, 2)
+        return (
         <article
           key={getRecipeListKey(recipe)}
           className="profile-page__recipe-card"
@@ -48,9 +51,17 @@ export default function ProfileRecipeGrid({
             </div>
             <div className="profile-page__recipe-body">
               <div className="profile-page__recipe-meta">
-                <span className="profile-page__recipe-category">
-                  {recipe.category}
-                </span>
+                <div className="profile-page__recipe-category-list">
+                  {categories.map((categoryName) => {
+                    const tag = toCategoryTag(categoryName)
+                    return (
+                      <span key={categoryName} className="profile-page__recipe-category">
+                        {tag?.icon ? <span aria-hidden="true">{tag.icon}</span> : null}
+                        <span>{categoryName}</span>
+                      </span>
+                    )
+                  })}
+                </div>
                 <span className="profile-page__recipe-badge">Shared</span>
               </div>
               <h3 className="profile-page__recipe-title">{recipe.title}</h3>
@@ -60,7 +71,8 @@ export default function ProfileRecipeGrid({
             </div>
           </button>
         </article>
-      ))}
+        )
+      })}
     </div>
   )
 }

@@ -4,7 +4,7 @@ import {
   getRecipeListKey,
   getSupabaseRecipeId,
   isCloudRecipe,
-  isRecipeFavorited,
+  isRecipeSaved,
   isSampleRecipe,
   normalizeSupabaseRecipeId,
   parseDbRecipeId,
@@ -65,17 +65,17 @@ describe('isSampleRecipe / isCloudRecipe', () => {
   })
 })
 
-describe('isRecipeFavorited', () => {
-  it('checks sample favorites by sample id list', () => {
+describe('isRecipeSaved', () => {
+  it('checks sample saved recipes by sample id list', () => {
     const sample = makeRecipe({ id: 3, source: 'sample' })
-    expect(isRecipeFavorited(sample, [3], [])).toBe(true)
-    expect(isRecipeFavorited(sample, [4], [])).toBe(false)
+    expect(isRecipeSaved(sample, [3], [])).toBe(true)
+    expect(isRecipeSaved(sample, [4], [])).toBe(false)
   })
 
-  it('checks cloud favorites by parsed db id', () => {
+  it('checks cloud saved recipes by parsed db id', () => {
     const dbRecipe = makeRecipe({ id: 10, source: 'community' })
-    expect(isRecipeFavorited(dbRecipe, [], [10])).toBe(true)
-    expect(isRecipeFavorited(dbRecipe, [], [11])).toBe(false)
+    expect(isRecipeSaved(dbRecipe, [], [10])).toBe(true)
+    expect(isRecipeSaved(dbRecipe, [], [11])).toBe(false)
   })
 })
 

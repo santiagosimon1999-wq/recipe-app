@@ -13,13 +13,13 @@ export function getRecipeListKey(recipe: Recipe): string {
   return `${recipe.source ?? 'unknown'}-${recipe.id}`
 }
 
-export function isRecipeFavorited(
+export function isRecipeSaved(
   recipe: Recipe,
-  sampleFavoriteIds: number[],
-  cloudFavoriteRecipeIds: number[]
+  sampleSavedRecipeIds: number[],
+  cloudSavedRecipeIds: number[]
 ): boolean {
   if (isSampleRecipe(recipe)) {
-    return sampleFavoriteIds.includes(recipe.id)
+    return sampleSavedRecipeIds.includes(recipe.id)
   }
 
   const dbId = parseDbRecipeId(recipe.id)
@@ -27,8 +27,11 @@ export function isRecipeFavorited(
     return false
   }
 
-  return cloudFavoriteRecipeIds.includes(dbId)
+  return cloudSavedRecipeIds.includes(dbId)
 }
+
+/** @deprecated Use isRecipeSaved instead. */
+export const isRecipeFavorited = isRecipeSaved
 
 /** Parse a Postgres/Supabase recipe primary key (bigint may arrive as string). */
 export function parseDbRecipeId(value: unknown): number | null {
@@ -81,7 +84,7 @@ export function getSupabaseRecipeId(recipe: Recipe): number | null {
 
   if (id === null) {
     console.error(
-      'Invalid Supabase recipe id for cloud favorite:',
+      'Invalid Supabase recipe id for cloud saved recipe:',
       recipe.id,
       recipe
     )

@@ -1,5 +1,7 @@
 import { supabase } from './supabaseClient'
 import type { Database } from '../types/database'
+import type { CategoryGroupKey, CategoryTag } from '../types/Category'
+import { getCategoryOption, resolveLegacyCategoryNames } from '../utils/categories'
 import { normalizeSupabaseRecipeId } from '../utils/favorites'
 
 type RecipeRow = Database['public']['Tables']['recipes']['Row']
@@ -22,6 +24,16 @@ type AuthorJoin = {
  */
 export type RecipeRowWithAuthor = RecipeRow & {
   author?: AuthorJoin | AuthorJoin[] | null
+  category_tags?: CategoryTag[]
+}
+
+export type CategoryRegistryItem = {
+  id: number
+  name: string
+  slug: string
+  icon: string | null
+  groupKey: CategoryGroupKey
+  groupLabel: string
 }
 
 export const RECIPES_WITH_AUTHOR_SELECT =
@@ -33,6 +45,7 @@ export type RecipeCreateInput = {
   ingredients?: string[]
   instructions?: string
   category?: string
+  categories?: string[]
   image_url?: string | null
   calories?: number
   protein?: number
@@ -49,6 +62,8 @@ export type CommunityRecipesOptions = {
   limit?: number
   /** Fetch rows with `created_at` strictly before this ISO timestamp (cursor pagination). */
   cursor?: string
+  /** Filter by category assignment. */
+  category?: string
   /** Only recipes from these user ids (e.g. people you follow). */
   authorUserIds?: string[]
 }
@@ -100,6 +115,241 @@ function escapeForPostgrestIlike(rawValue: string): string {
     .trim()
 }
 
+function normalizeCategoryPayload(input: {
+  category?: string
+  categories?: string[]
+}): string[] {
+  const candidates = [
+    ...(input.categories ?? []),
+    ...(input.category ? [input.category] : []),
+  ]
+
+  const normalized = new Set<string>()
+
+  for (const candidate of candidates) {
+    const trimmed = candidate.trim()
+    if (!trimmed) continue
+    const option = getCategoryOption(trimmed)
+    if (option) {
+      normalized.add(option.name)
+      continue
+    }
+
+    for (const mapped of resolveLegacyCategoryNames(trimmed)) {
+      normalized.add(mapped)
+    }
+  }
+
+  return [...normalized]
+}
+
+function toCategoryTagFromRegistryRow(row: {
+  id: number
+  name: string
+  slug: string
+  icon: string | null
+  category_groups?: { key: string; label: string } | { key: string; label: string }[] | null
+}): CategoryTag | null {
+  const groupRaw = Array.isArray(row.category_groups)
+    ? row.category_groups[0]
+    : row.category_groups
+
+  if (!groupRaw?.key || !groupRaw.label) {
+    return null
+  }
+
+  const groupKey = groupRaw.key as CategoryGroupKey
+
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    icon: row.icon,
+    groupKey,
+    groupLabel: groupRaw.label,
+  }
+}
+
+async function getRecipeCategoryTagsByRecipeIds(
+  recipeIds: number[]
+): Promise<Record<number, CategoryTag[]>> {
+  if (recipeIds.length === 0) return {}
+
+  const { data, error } = await supabase
+    .from('recipe_categories')
+    .select(
+      `
+      recipe_id,
+      categories (
+        id,
+        name,
+        slug,
+        icon,
+        category_groups (
+          key,
+          label
+        )
+      )
+    `
+    )
+    .in('recipe_id', recipeIds)
+
+  if (error) {
+    throw error
+  }
+
+  const result: Record<number, CategoryTag[]> = {}
+  for (const recipeId of recipeIds) {
+    result[recipeId] = []
+  }
+
+  for (const row of (data ?? []) as Array<{
+    recipe_id: number
+    categories?: {
+      id: number
+      name: string
+      slug: string
+      icon: string | null
+      category_groups?: { key: string; label: string } | { key: string; label: string }[] | null
+    } | null
+  }>) {
+    if (!row.categories) continue
+    const tag = toCategoryTagFromRegistryRow(row.categories)
+    if (!tag) continue
+    if (!result[row.recipe_id]) result[row.recipe_id] = []
+    result[row.recipe_id].push(tag)
+  }
+
+  return result
+}
+
+async function attachCategoryTags(
+  rows: RecipeRowWithAuthor[]
+): Promise<RecipeRowWithAuthor[]> {
+  const recipeIds = rows
+    .map((row) => Number(row.id))
+    .filter((id) => Number.isFinite(id) && id > 0)
+
+  if (recipeIds.length === 0) return rows
+
+  try {
+    const tagsByRecipe = await getRecipeCategoryTagsByRecipeIds(recipeIds)
+    return rows.map((row) => ({
+      ...row,
+      category_tags: tagsByRecipe[Number(row.id)] ?? [],
+    }))
+  } catch (error) {
+    console.error('Failed to hydrate recipe category tags:', error)
+    return rows
+  }
+}
+
+async function getRecipeIdsForCategory(categoryName: string): Promise<number[]> {
+  const selected = normalizeCategoryPayload({ category: categoryName })
+  if (selected.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('recipe_categories')
+    .select('recipe_id, categories!inner(name)')
+    .in('categories.name', selected)
+
+  if (error) {
+    throw error
+  }
+
+  return [...new Set((data ?? []).map((row) => Number((row as { recipe_id: number }).recipe_id)).filter((id) => Number.isFinite(id) && id > 0))]
+}
+
+async function syncRecipeCategories(
+  recipeId: number,
+  categoryNames: string[]
+): Promise<void> {
+  const normalized = normalizeCategoryPayload({ categories: categoryNames })
+
+  await supabase
+    .from('recipe_categories')
+    .delete()
+    .eq('recipe_id', recipeId)
+
+  if (normalized.length === 0) {
+    return
+  }
+
+  const { data: categories, error: categoriesError } = await supabase
+    .from('categories')
+    .select('id, name')
+    .in('name', normalized)
+    .eq('is_active', true)
+
+  if (categoriesError) {
+    throw categoriesError
+  }
+
+  const inserts = (categories ?? []).map((item) => ({
+    recipe_id: recipeId,
+    category_id: Number((item as { id: number }).id),
+  }))
+
+  if (inserts.length === 0) {
+    return
+  }
+
+  const { error: insertError } = await supabase
+    .from('recipe_categories')
+    .insert(inserts)
+
+  if (insertError) {
+    throw insertError
+  }
+}
+
+export async function getCategoryRegistry(): Promise<CategoryRegistryItem[]> {
+  const { data, error } = await supabase
+    .from('categories')
+    .select(
+      `
+      id,
+      name,
+      slug,
+      icon,
+      sort_order,
+      category_groups!inner (
+        key,
+        label
+      )
+    `
+    )
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  return ((data ?? []) as Array<{
+    id: number
+    name: string
+    slug: string
+    icon: string | null
+    category_groups?: { key: string; label: string } | { key: string; label: string }[] | null
+  }>)
+    .map((row) => {
+      const group = Array.isArray(row.category_groups)
+        ? row.category_groups[0]
+        : row.category_groups
+      if (!group?.key || !group.label) return null
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        icon: row.icon,
+        groupKey: group.key as CategoryGroupKey,
+        groupLabel: group.label,
+      }
+    })
+    .filter((row): row is CategoryRegistryItem => row !== null)
+}
+
 export async function getRecipes(
   userId: string
 ): Promise<RecipeRowWithAuthor[]> {
@@ -117,7 +367,7 @@ export async function getRecipes(
     throw error
   }
 
-  return (data ?? []) as unknown as RecipeRowWithAuthor[]
+  return attachCategoryTags((data ?? []) as unknown as RecipeRowWithAuthor[])
 }
 
 /**
@@ -149,6 +399,14 @@ export async function getCommunityRecipes(
     query = query.in('user_id', options.authorUserIds)
   }
 
+  if (options?.category) {
+    const categoryRecipeIds = await getRecipeIdsForCategory(options.category)
+    if (categoryRecipeIds.length === 0) {
+      return []
+    }
+    query = query.in('id', categoryRecipeIds)
+  }
+
   const { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -157,7 +415,7 @@ export async function getCommunityRecipes(
     throw error
   }
 
-  return (data ?? []) as unknown as RecipeRowWithAuthor[]
+  return attachCategoryTags((data ?? []) as unknown as RecipeRowWithAuthor[])
 }
 
 /**
@@ -187,7 +445,8 @@ export async function getRecipeById(
     return null
   }
 
-  return row
+  const [enriched] = await attachCategoryTags([row])
+  return enriched ?? row
 }
 
 export async function searchPublicRecipes(
@@ -203,6 +462,14 @@ export async function searchPublicRecipes(
   const pattern = `"%${escaped}%"`
 
   const ascending = options?.sortBy === 'oldest'
+  const categoryRecipeIds =
+    options?.category && options.category !== 'All'
+      ? await getRecipeIdsForCategory(options.category)
+      : null
+
+  if (categoryRecipeIds && categoryRecipeIds.length === 0) {
+    return []
+  }
 
   let textQuery = supabase
     .from('recipes')
@@ -214,8 +481,8 @@ export async function searchPublicRecipes(
     textQuery = textQuery.neq('user_id', options.excludeUserId)
   }
 
-  if (options?.category && options.category !== 'All') {
-    textQuery = textQuery.eq('category', options.category)
+  if (categoryRecipeIds) {
+    textQuery = textQuery.in('id', categoryRecipeIds)
   }
 
   if (typeof options?.maxCalories === 'number') {
@@ -250,8 +517,8 @@ export async function searchPublicRecipes(
     ingredientPoolQuery = ingredientPoolQuery.neq('user_id', options.excludeUserId)
   }
 
-  if (options?.category && options.category !== 'All') {
-    ingredientPoolQuery = ingredientPoolQuery.eq('category', options.category)
+  if (categoryRecipeIds) {
+    ingredientPoolQuery = ingredientPoolQuery.in('id', categoryRecipeIds)
   }
 
   if (typeof options?.maxCalories === 'number') {
@@ -287,7 +554,10 @@ export async function searchPublicRecipes(
     }
   }
 
-  return Array.from(mergedById.values())
+  const mergedRows = Array.from(mergedById.values())
+  const enrichedRows = await attachCategoryTags(mergedRows)
+
+  return enrichedRows
     .sort((a, b) => {
       const aTime = new Date(a.created_at).getTime()
       const bTime = new Date(b.created_at).getTime()
@@ -304,6 +574,12 @@ export async function createRecipe(
     throw new Error('createRecipe requires an authenticated user id')
   }
 
+  const normalizedCategoryNames = normalizeCategoryPayload({
+    category: recipe.category,
+    categories: recipe.categories,
+  })
+  const primaryCategory = normalizedCategoryNames[0] ?? recipe.category ?? 'Other'
+
   const { data, error } = await supabase
     .from('recipes')
     .insert({
@@ -313,7 +589,7 @@ export async function createRecipe(
       description: recipe.description ?? '',
       ingredients: recipe.ingredients ?? [],
       instructions: recipe.instructions ?? '',
-      category: recipe.category ?? 'Other',
+      category: primaryCategory,
       image_url: recipe.image_url ?? null,
       calories: recipe.calories ?? 0,
       protein: recipe.protein ?? 0,
@@ -328,7 +604,13 @@ export async function createRecipe(
     throw error
   }
 
-  return data as unknown as RecipeRowWithAuthor
+  const created = data as unknown as RecipeRowWithAuthor
+  if (normalizedCategoryNames.length > 0) {
+    await syncRecipeCategories(created.id, normalizedCategoryNames)
+  }
+
+  const [enriched] = await attachCategoryTags([created])
+  return enriched ?? created
 }
 
 export async function updateRecipe(
@@ -340,7 +622,15 @@ export async function updateRecipe(
     throw new Error('updateRecipe requires an authenticated user id')
   }
 
-  const payload: RecipeUpdateInput = {
+  const normalizedCategoryNames = normalizeCategoryPayload({
+    category: updates.category,
+    categories: updates.categories,
+  })
+  const nextPrimaryCategory =
+    normalizedCategoryNames[0] ??
+    updates.category
+
+  const payload: Database['public']['Tables']['recipes']['Update'] = {
     ...(updates.title !== undefined ? { title: updates.title } : {}),
     ...(updates.description !== undefined
       ? { description: updates.description }
@@ -351,7 +641,7 @@ export async function updateRecipe(
     ...(updates.instructions !== undefined
       ? { instructions: updates.instructions }
       : {}),
-    ...(updates.category !== undefined ? { category: updates.category } : {}),
+    ...(nextPrimaryCategory !== undefined ? { category: nextPrimaryCategory } : {}),
     ...(updates.image_url !== undefined ? { image_url: updates.image_url } : {}),
     ...(updates.calories !== undefined ? { calories: updates.calories } : {}),
     ...(updates.protein !== undefined ? { protein: updates.protein } : {}),
@@ -372,7 +662,13 @@ export async function updateRecipe(
     throw error
   }
 
-  return data as unknown as RecipeRowWithAuthor
+  const updated = data as unknown as RecipeRowWithAuthor
+  if (updates.category !== undefined || updates.categories !== undefined) {
+    await syncRecipeCategories(updated.id, normalizedCategoryNames)
+  }
+
+  const [enriched] = await attachCategoryTags([updated])
+  return enriched ?? updated
 }
 
 export async function deleteRecipe(recipeId: number, userId: string): Promise<void> {
@@ -505,6 +801,54 @@ export async function getSavedRecipeIdsByUser(userId: string): Promise<number[]>
   return (data ?? [])
     .map((row) => Math.trunc(Number((row as { recipe_id: number | string }).recipe_id)))
     .filter((id) => Number.isFinite(id) && id > 0)
+}
+
+export async function getSavedRecipesForUser(
+  userId: string
+): Promise<RecipeRowWithAuthor[]> {
+  if (!userId) {
+    throw new Error('getSavedRecipesForUser requires an authenticated user id')
+  }
+
+  const { data, error } = await supabase
+    .from('saved_recipes')
+    .select(
+      `
+      created_at,
+      recipe:recipes (
+        ${RECIPES_WITH_AUTHOR_SELECT}
+      )
+    `
+    )
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Supabase getSavedRecipesForUser error:', error)
+    throw error
+  }
+
+  const recipeRows = (data ?? [])
+    .map(
+      (row) =>
+        (row as {
+          recipe: RecipeRowWithAuthor | RecipeRowWithAuthor[] | null
+        }).recipe
+    )
+    .flatMap((recipe) => {
+      if (!recipe) return []
+      return Array.isArray(recipe) ? recipe : [recipe]
+    })
+    .filter(
+      (recipe): recipe is RecipeRowWithAuthor =>
+        Number.isFinite(Number(recipe.id)) && Number(recipe.id) > 0
+    )
+
+  if (recipeRows.length === 0) {
+    return []
+  }
+
+  return attachCategoryTags(recipeRows)
 }
 
 export async function saveRecipeForUser(userId: string, recipeId: number): Promise<void> {

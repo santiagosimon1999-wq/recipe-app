@@ -122,6 +122,71 @@ export type Database = {
           },
         ]
       }
+      categories: {
+        Row: {
+          created_at: string
+          group_id: number
+          icon: string | null
+          id: number
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          group_id: number
+          icon?: string | null
+          id?: never
+          is_active?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          group_id?: number
+          icon?: string | null
+          id?: never
+          is_active?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "category_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      category_groups: {
+        Row: {
+          created_at: string
+          id: number
+          key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          key: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          key?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string | null
@@ -250,6 +315,39 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "recipe_likes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_categories: {
+        Row: {
+          category_id: number
+          created_at: string
+          recipe_id: number
+        }
+        Insert: {
+          category_id: number
+          created_at?: string
+          recipe_id: number
+        }
+        Update: {
+          category_id?: number
+          created_at?: string
+          recipe_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_categories_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"

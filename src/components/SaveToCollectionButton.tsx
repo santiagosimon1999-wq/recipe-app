@@ -79,13 +79,13 @@ export default function SaveToCollectionButton({
     )
 
     if (alreadyInList) {
-      notify.success(`Already in “${collectionName}”.`)
+      notify.success(`Already in collection “${collectionName}”.`)
       setOpen(false)
       return
     }
 
     await addRecipeToCollection(user.id, collectionId, recipeId)
-    notify.success(`Recipe saved to “${collectionName}”.`)
+    notify.success(`Added to collection “${collectionName}”.`)
     setOpen(false)
     await loadCollections()
   }
@@ -111,7 +111,7 @@ export default function SaveToCollectionButton({
 
       if (rows.length === 1) {
         if (containing.length > 0) {
-          notify.success(`Saved in “${rows[0].name}”.`)
+          notify.success(`Already in collection “${rows[0].name}”.`)
           return
         }
         await persistToCollection(rows[0].id, rows[0].name)
@@ -122,7 +122,7 @@ export default function SaveToCollectionButton({
     } catch (error) {
       console.error('Save to collection failed:', error)
       notify.error(
-        'Could not save to your list. If this keeps happening, run migration 010 in Supabase.'
+          'Could not add to your collection. If this keeps happening, run migration 010 in Supabase.'
       )
     } finally {
       setBusy(false)
@@ -137,7 +137,7 @@ export default function SaveToCollectionButton({
       await persistToCollection(collectionId, name)
     } catch (error) {
       console.error('Save to collection failed:', error)
-      notify.error('Could not save to that list.')
+      notify.error('Could not add to that collection.')
     } finally {
       setBusy(false)
     }
@@ -145,10 +145,10 @@ export default function SaveToCollectionButton({
 
   const savedLabel =
     savedCollections.length === 1
-      ? `Saved · ${savedCollections[0].name}`
+      ? `In collection · ${savedCollections[0].name}`
       : savedCollections.length > 1
-        ? `Saved · ${savedCollections.length} lists`
-        : 'Saved to list'
+        ? `In ${savedCollections.length} collections`
+        : 'Added to collection'
 
   return (
     <div className="save-to-collection">
@@ -165,7 +165,9 @@ export default function SaveToCollectionButton({
         aria-haspopup={collections.length > 1 ? 'menu' : undefined}
         disabled={busy}
         aria-label={
-          isSaved ? 'Recipe saved to your lists' : 'Save recipe to a list'
+          isSaved
+            ? 'Recipe added to one or more collections'
+            : 'Add recipe to a collection'
         }
       >
         {isSaved ? (
@@ -173,8 +175,11 @@ export default function SaveToCollectionButton({
         ) : (
           <Bookmark size={16} aria-hidden="true" />
         )}
-        {busy ? 'Saving…' : isSaved ? savedLabel : 'Save to list'}
+        {busy ? 'Adding…' : isSaved ? savedLabel : 'Add to collection'}
       </button>
+      <p className="save-to-collection__hint">
+        Collections help organize recipes you have already saved.
+      </p>
 
       {open && collections.length > 1 ? (
         <div className="save-to-collection__menu" role="menu">
@@ -198,7 +203,7 @@ export default function SaveToCollectionButton({
               >
                 <span>{collection.name}</span>
                 {inList ? (
-                  <span className="save-to-collection__badge">Saved</span>
+                  <span className="save-to-collection__badge">Added</span>
                 ) : collection.recipeCount > 0 ? (
                   <span className="save-to-collection__count">
                     {collection.recipeCount}

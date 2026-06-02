@@ -12,15 +12,25 @@ import {
 import DiscoverPanel from '../components/DiscoverPanel'
 import RecipeGrid from '../components/RecipeGrid'
 import { RecipeGridSkeleton } from '../components/ui/RecipeCardSkeleton'
+import {
+  recipeMatchesSelectedCategory,
+} from '../utils/categories'
+import type { CategoryGroupKey } from '../types/Category'
+import type { CategoryOption } from '../utils/categories'
 
 type SearchPageProps = {
   userId?: string
-  sampleFavoriteIds: number[]
-  cloudFavoriteRecipeIds: number[]
-  onToggleFavorite: (recipe: Recipe) => void
+  likedRecipeIds?: number[]
+  likeCountsByRecipeId?: Record<number, number>
+  sampleSavedRecipeIds: number[]
+  cloudSavedRecipeIds: number[]
+  onToggleSaved: (recipe: Recipe) => void
   onSelectRecipe: (recipe: Recipe) => void
   onToggleLike?: (recipeId: number) => void
   onViewAuthor?: (username: string) => void
+  onMergeLikeCounts?: (likeCounts: Record<number, number>) => void
+  onMergeLikedRecipeIds?: (recipeIds: number[]) => void
+  categoryOptions?: Record<CategoryGroupKey, CategoryOption[]>
 }
 
 type SearchSort = PublicRecipeSearchSort | 'most-liked'
@@ -37,19 +47,24 @@ function parseNonNegativeNumber(value: string): number | undefined {
 
 export default function SearchPage({
   userId,
-  sampleFavoriteIds,
-  cloudFavoriteRecipeIds,
-  onToggleFavorite,
+  likedRecipeIds,
+  likeCountsByRecipeId,
+  sampleSavedRecipeIds,
+  cloudSavedRecipeIds,
+  onToggleSaved,
   onSelectRecipe,
   onToggleLike,
   onViewAuthor,
+  onMergeLikeCounts,
+  onMergeLikedRecipeIds,
+  categoryOptions,
 }: SearchPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryFromUrl = searchParams.get('q') ?? ''
 
   const [searchTerm, setSearchTerm] = useState(queryFromUrl)
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [showSavedOnly, setShowSavedOnly] = useState(false)
   const [maxCaloriesInput, setMaxCaloriesInput] = useState('')
   const [minProteinInput, setMinProteinInput] = useState('')
   const [sortBy, setSortBy] = useState<SearchSort>('newest')
@@ -102,6 +117,9 @@ export default function SearchPage({
                 : Promise.resolve([] as number[]),
             ])
 
+            onMergeLikeCounts?.(likeCounts)
+            onMergeLikedRecipeIds?.(likedIds)
+
             mapped = mapped.map((recipe) => ({
               ...recipe,
               likeCount: likeCounts[recipe.id] ?? 0,
@@ -137,6 +155,8 @@ export default function SearchPage({
     maxCaloriesInput,
     minProteinInput,
     sortBy,
+    onMergeLikeCounts,
+    onMergeLikedRecipeIds,
   ])
 
   useEffect(() => {
@@ -155,25 +175,27 @@ export default function SearchPage({
     const maxCalories = parseNonNegativeNumber(maxCaloriesInput)
     const minProtein = parseNonNegativeNumber(minProteinInput)
 
-    const matchesCategory =
-      selectedCategory === 'All' || recipe.category === selectedCategory
+    const matchesCategory = recipeMatchesSelectedCategory(
+      recipe,
+      selectedCategory
+    )
     const matchesCalories =
       maxCalories === undefined || recipe.calories <= maxCalories
     const matchesProtein =
       minProtein === undefined || recipe.protein >= minProtein
 
-    const matchesFavorites =
-      !showFavoritesOnly ||
+    const matchesSaved =
+      !showSavedOnly ||
       (recipe.source === 'sample'
-        ? sampleFavoriteIds.includes(recipe.id)
-        : cloudFavoriteRecipeIds.includes(recipe.id))
+        ? sampleSavedRecipeIds.includes(recipe.id)
+        : cloudSavedRecipeIds.includes(recipe.id))
 
-    return matchesCategory && matchesCalories && matchesProtein && matchesFavorites
+    return matchesCategory && matchesCalories && matchesProtein && matchesSaved
   })
 
   const showClearFiltersButton =
     selectedCategory !== 'All' ||
-    showFavoritesOnly ||
+    showSavedOnly ||
     maxCaloriesInput.trim() !== '' ||
     minProteinInput.trim() !== '' ||
     sortBy !== 'newest'
@@ -190,16 +212,17 @@ export default function SearchPage({
       <DiscoverPanel
         searchTerm={searchTerm}
         selectedCategory={selectedCategory}
-        showFavoritesOnly={showFavoritesOnly}
+        categoryOptions={categoryOptions}
+        showSavedOnly={showSavedOnly}
         showClearFiltersButton={showClearFiltersButton}
         onSearchChange={setSearchTerm}
         onCategoryChange={setSelectedCategory}
-        onToggleShowFavoritesOnly={() =>
-          setShowFavoritesOnly((value) => !value)
+        onToggleShowSavedOnly={() =>
+          setShowSavedOnly((value) => !value)
         }
         onClearFilters={() => {
           setSelectedCategory('All')
-          setShowFavoritesOnly(false)
+          setShowSavedOnly(false)
           setMaxCaloriesInput('')
           setMinProteinInput('')
           setSortBy('newest')
@@ -274,8 +297,9 @@ export default function SearchPage({
         <section className="search-page__empty-state">
           <h3>No recipes matched</h3>
           <p>
-            No public recipes matched your query and filters. Try a broader term
-            or clear one of the filters.
+            {showSavedOnly
+              ? 'No saved recipes matched your search and filters. Try a broader term or turn off Saved only.'
+              : 'No public recipes matched your query and filters. Try a broader term or clear one of the filters.'}
           </p>
           {showClearFiltersButton ? (
             <button
@@ -283,7 +307,7 @@ export default function SearchPage({
               className="clear-filters-button"
               onClick={() => {
                 setSelectedCategory('All')
-                setShowFavoritesOnly(false)
+                setShowSavedOnly(false)
                 setMaxCaloriesInput('')
                 setMinProteinInput('')
                 setSortBy('newest')
@@ -302,9 +326,11 @@ export default function SearchPage({
           </p>
           <RecipeGrid
             recipes={filteredResults}
-            sampleFavoriteIds={sampleFavoriteIds}
-            cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-            onToggleFavorite={onToggleFavorite}
+            sampleSavedRecipeIds={sampleSavedRecipeIds}
+            cloudSavedRecipeIds={cloudSavedRecipeIds}
+            likedRecipeIds={likedRecipeIds}
+            likeCountsByRecipeId={likeCountsByRecipeId}
+            onToggleSaved={onToggleSaved}
             onSelectRecipe={onSelectRecipe}
             onToggleLike={onToggleLike}
             onViewAuthor={onViewAuthor}

@@ -1,9 +1,18 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
+import type { CategoryGroupKey } from '../types/Category'
 import type { Recipe } from '../types/Recipe'
-import { RECIPE_CATEGORIES } from '../utils/categories'
+import {
+  CATEGORY_REGISTRY,
+  dedupeCategoryNames,
+  getPrimaryCategory,
+  getRecipeCategoryNames,
+  groupCategoryOptions,
+  type CategoryOption,
+} from '../utils/categories'
 
 type RecipeFormProps = {
   initialRecipe: Recipe | null
+  categoryOptions?: Record<CategoryGroupKey, CategoryOption[]>
   onSaveRecipe: (recipe: Recipe) => void
   onCancel: () => void
 }
@@ -14,6 +23,8 @@ type RecipeFormState = {
   imageFile: File | null
   description: string
   category: string
+  categories: string[]
+  categorySearch: string
   ingredients: string
   instructions: string
   isPublic: boolean
@@ -26,7 +37,9 @@ function getInitialFormState(initialRecipe: Recipe | null): RecipeFormState {
       image: '',
       imageFile: null,
       description: '',
-      category: RECIPE_CATEGORIES[0],
+      category: getPrimaryCategory(['Dinner']),
+      categories: ['Dinner'],
+      categorySearch: '',
       ingredients: '',
       instructions: '',
       isPublic: true,
@@ -38,19 +51,32 @@ function getInitialFormState(initialRecipe: Recipe | null): RecipeFormState {
     image: initialRecipe.image,
     imageFile: null,
     description: initialRecipe.description,
-    category: initialRecipe.category,
+    category: getPrimaryCategory(getRecipeCategoryNames(initialRecipe)),
+    categories: getRecipeCategoryNames(initialRecipe),
+    categorySearch: '',
     ingredients: initialRecipe.ingredients.join('\n'),
     instructions: initialRecipe.instructions,
     isPublic: initialRecipe.isPublic ?? true,
   }
 }
 
-function RecipeForm({ initialRecipe, onSaveRecipe, onCancel }: RecipeFormProps) {
+function RecipeForm({
+  initialRecipe,
+  categoryOptions,
+  onSaveRecipe,
+  onCancel,
+}: RecipeFormProps) {
   const [formState, setFormState] = useState<RecipeFormState>(() =>
     getInitialFormState(initialRecipe)
   )
 
   const [errorMessage, setErrorMessage] = useState('')
+  const groupedCategoryOptions =
+    categoryOptions && Object.values(categoryOptions).some((group) => group.length > 0)
+      ? categoryOptions
+      : groupCategoryOptions(CATEGORY_REGISTRY)
+
+  const categorySearchLower = formState.categorySearch.trim().toLowerCase()
   const [imagePreviewUrl, setImagePreviewUrl] = useState(
     initialRecipe?.image ?? ''
   )
@@ -124,13 +150,20 @@ function RecipeForm({ initialRecipe, onSaveRecipe, onCancel }: RecipeFormProps) 
       return
     }
 
+    const normalizedCategories = dedupeCategoryNames(formState.categories)
+    if (normalizedCategories.length === 0) {
+      setErrorMessage('Please choose at least one category.')
+      return
+    }
+
     const recipeToSave: Recipe = {
       id: initialRecipe?.id ?? 0,
       title: formState.title.trim(),
       image: formState.image.trim(),
       imageFile: formState.imageFile,
       description: formState.description.trim(),
-      category: formState.category,
+      category: getPrimaryCategory(normalizedCategories),
+      categories: normalizedCategories,
       calories: initialRecipe?.calories ?? 0,
       protein: initialRecipe?.protein ?? 0,
       carbs: initialRecipe?.carbs ?? 0,
@@ -148,6 +181,21 @@ function RecipeForm({ initialRecipe, onSaveRecipe, onCancel }: RecipeFormProps) 
 
     setErrorMessage('')
     onSaveRecipe(recipeToSave)
+  }
+
+  function handleToggleCategory(categoryName: string) {
+    setFormState((current) => {
+      const alreadySelected = current.categories.includes(categoryName)
+      const nextCategories = alreadySelected
+        ? current.categories.filter((item) => item !== categoryName)
+        : dedupeCategoryNames([...current.categories, categoryName])
+
+      return {
+        ...current,
+        categories: nextCategories,
+        category: getPrimaryCategory(nextCategories),
+      }
+    })
   }
 
   return (
@@ -199,18 +247,67 @@ function RecipeForm({ initialRecipe, onSaveRecipe, onCancel }: RecipeFormProps) 
         </div>
 
         <div className="recipe-form__group">
-          <label htmlFor="category">Category</label>
-          <select
-            id="category"
-            value={formState.category}
-            onChange={(event) => updateField('category', event.target.value)}
-          >
-            {RECIPE_CATEGORIES.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
+          <label htmlFor="categorySearch">Categories</label>
+          <input
+            id="categorySearch"
+            type="text"
+            value={formState.categorySearch}
+            onChange={(event) => updateField('categorySearch', event.target.value)}
+            placeholder="Search categories..."
+          />
+
+          <div className="recipe-form__selected-categories">
+            {formState.categories.map((categoryName) => (
+              <button
+                key={categoryName}
+                type="button"
+                className="recipe-form__category-chip recipe-form__category-chip--active"
+                onClick={() => handleToggleCategory(categoryName)}
+              >
+                <span>{categoryName}</span>
+                <span aria-hidden="true">×</span>
+              </button>
             ))}
-          </select>
+          </div>
+
+          <div className="recipe-form__category-groups">
+            {(Object.entries(groupedCategoryOptions) as Array<
+              [CategoryGroupKey, CategoryOption[]]
+            >).map(([groupKey, options]) => {
+              const filteredOptions = options.filter((option) =>
+                option.name.toLowerCase().includes(categorySearchLower)
+              )
+              if (filteredOptions.length === 0) return null
+
+              return (
+                <div key={groupKey} className="recipe-form__category-group">
+                  <p className="recipe-form__category-group-label">
+                    {filteredOptions[0]?.groupLabel}
+                  </p>
+                  <div className="recipe-form__category-options">
+                    {filteredOptions.map((option) => {
+                      const selected = formState.categories.includes(option.name)
+                      return (
+                        <button
+                          key={option.slug}
+                          type="button"
+                          className={
+                            selected
+                              ? 'recipe-form__category-chip recipe-form__category-chip--active'
+                              : 'recipe-form__category-chip'
+                          }
+                          onClick={() => handleToggleCategory(option.name)}
+                        >
+                          {option.icon ? <span aria-hidden="true">{option.icon}</span> : null}
+                          <span>{option.name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         <div className="recipe-form__group">

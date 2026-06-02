@@ -63,7 +63,7 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [recipeCount, setRecipeCount] = useState<number | null>(null)
-  const [favoritesCount, setFavoritesCount] = useState(0)
+  const [savedCount, setSavedCount] = useState(0)
   const [sharedRecipes, setSharedRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -137,16 +137,18 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
     }
 
     try {
-      const storedFavoriteRecipeIds = localStorage.getItem('favoriteRecipeIds')
-      const favoriteIds = storedFavoriteRecipeIds
-        ? (JSON.parse(storedFavoriteRecipeIds) as unknown)
+      const storedSavedRecipeIds =
+        localStorage.getItem('savedRecipeIds') ??
+        localStorage.getItem('favoriteRecipeIds')
+      const savedIds = storedSavedRecipeIds
+        ? (JSON.parse(storedSavedRecipeIds) as unknown)
         : []
       Promise.resolve().then(() => {
-        setFavoritesCount(Array.isArray(favoriteIds) ? favoriteIds.length : 0)
+        setSavedCount(Array.isArray(savedIds) ? savedIds.length : 0)
       })
     } catch {
       Promise.resolve().then(() => {
-        setFavoritesCount(0)
+        setSavedCount(0)
       })
     }
     void loadProfile(userId)
@@ -266,7 +268,7 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
     const confirmed = await confirm({
       title: 'Delete your account?',
       message:
-        'Your profile will be anonymized, your favorites and likes removed, and your shared recipes made private. This cannot be undone from the app.',
+        'Your profile will be anonymized, your saved recipes and likes removed, and your shared recipes made private. This cannot be undone from the app.',
       confirmLabel: 'Delete account',
       cancelLabel: 'Cancel',
       variant: 'danger',
@@ -453,8 +455,8 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
             </div>
 
             <div className="profile-page__stat-card">
-              <p className="profile-page__stat-label">Favorites</p>
-              <p className="profile-page__stat-value">{favoritesCount}</p>
+              <p className="profile-page__stat-label">Saved</p>
+              <p className="profile-page__stat-value">{savedCount}</p>
             </div>
 
             <div className="profile-page__stat-card">
@@ -478,7 +480,7 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
               <div>
                 <p className="profile-page__stat-label">Shared recipes</p>
                 <h2 className="profile-page__recipes-title">
-                  Your public recipe collection
+                  Your shared recipes
                 </h2>
               </div>
               <p className="profile-page__recipes-hint">
@@ -495,6 +497,30 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
             />
           </section>
 
+          <section className="profile-page__saved-actions">
+            <p className="profile-page__stat-label">Saved recipes</p>
+            <p className="profile-page__recipes-hint">
+              Every recipe you save appears in Saved. Collections help organize
+              recipes you have already saved.
+            </p>
+            <div className="profile-page__saved-action-buttons">
+              <button
+                type="button"
+                className="profile-page__edit-profile-button"
+                onClick={() => navigate('/saved')}
+              >
+                View saved recipes
+              </button>
+              <button
+                type="button"
+                className="profile-page__cancel-button"
+                onClick={() => navigate('/collections')}
+              >
+                Manage collections
+              </button>
+            </div>
+          </section>
+
           {error ? <p className="profile-page__error">{error}</p> : null}
 
           <section
@@ -509,7 +535,7 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
             </h3>
             <p className="profile-page__danger-description">
               Deleting your account anonymizes your profile, removes your
-              favorites and likes, and makes your shared recipes private.
+              saved recipes and likes, and makes your shared recipes private.
               Contact support for a full data erasure.
             </p>
             <button

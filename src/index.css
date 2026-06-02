@@ -190,6 +190,7 @@ html.app--light,
 .theme-toggle-button,
 .logout-button,
 .create-recipe-toggle-button,
+.saved-toggle-button,
 .favorites-toggle-button,
 .clear-filters-button,
 .recipe-form__submit-button,
@@ -379,6 +380,20 @@ html.app--light,
   margin-bottom: 18px;
 }
 
+.category-filter__groups {
+  display: grid;
+  gap: 12px;
+}
+
+.category-filter__group-label {
+  margin: 0 0 6px;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .category-filter__buttons,
 .filter-actions,
 .recipe-form__actions {
@@ -396,6 +411,9 @@ html.app--light,
   cursor: pointer;
   font-size: 0.92rem;
   font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .category-filter__button--active {
@@ -404,12 +422,14 @@ html.app--light,
   color: var(--button-text);
 }
 
+.saved-toggle-button,
 .favorites-toggle-button {
   border: 1px solid var(--accent);
   background-color: var(--surface-solid);
   color: var(--accent);
 }
 
+.saved-toggle-button--active,
 .favorites-toggle-button--active {
   background-color: var(--accent);
   color: var(--button-text);
@@ -522,6 +542,16 @@ html.app--light,
   color: var(--accent);
   font-size: 0.78rem;
   font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.recipe-card__category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .recipe-card__title {
@@ -541,6 +571,7 @@ html.app--light,
   font-weight: 900;
 }
 
+.save-button,
 .favorite-button {
   margin-top: 14px;
   padding: 10px 14px;
@@ -553,6 +584,7 @@ html.app--light,
   font-weight: 900;
 }
 
+.save-button--active,
 .favorite-button--active {
   border-color: var(--accent);
   background-color: var(--accent);
@@ -578,6 +610,53 @@ html.app--light,
 .recipe-form__group textarea {
   min-height: 110px;
   resize: vertical;
+}
+
+.recipe-form__selected-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recipe-form__category-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.recipe-form__category-group-label {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.recipe-form__category-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.recipe-form__category-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background-color: var(--surface-solid);
+  color: var(--text-main);
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.recipe-form__category-chip--active {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+  color: var(--accent);
 }
 
 .recipe-form__checkbox-group {
@@ -1462,6 +1541,12 @@ html.app--dark .recipe-modal {
   margin-bottom: 0.6rem;
 }
 
+.profile-page__recipe-category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .profile-page__recipe-category {
   display: inline-block;
   margin-bottom: 0;
@@ -1471,6 +1556,9 @@ html.app--dark .recipe-modal {
   color: var(--accent);
   font-size: 0.78rem;
   font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .profile-page__recipe-badge {
@@ -2164,6 +2252,7 @@ html.app--dark .recipe-modal {
 .theme-toggle-button--with-icon,
 .recipe-card__badge--with-icon,
 .recipe-card__nutrition-item,
+.save-button,
 .favorite-button,
 .like-button {
   display: inline-flex;
@@ -2516,6 +2605,13 @@ html.app--dark .recipe-modal {
   position: relative;
 }
 
+.save-to-collection__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-soft, #6f7f72);
+  max-width: 22rem;
+}
+
 .save-to-collection__menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -2589,6 +2685,21 @@ html.app--dark .recipe-modal {
 .collections-page__sidebar {
   display: grid;
   gap: 14px;
+}
+
+.profile-page__saved-actions {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+}
+
+.profile-page__saved-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
 }
 
 .collections-page__create-form {

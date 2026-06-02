@@ -86,8 +86,21 @@ export default function FollowButton({
     }
   }, [user, isSelf, busy, following, targetUserId, targetDisplayName])
 
-  if (!user || isSelf) {
+  if (isSelf) {
     return null
+  }
+
+  if (!user) {
+    return (
+      <button
+        type="button"
+        className={`follow-button ${className}`.trim()}
+        onClick={() => notify.info('Sign in to follow chefs.')}
+      >
+        <UserPlus size={16} aria-hidden="true" />
+        Follow
+      </button>
+    )
   }
 
   if (loading) {

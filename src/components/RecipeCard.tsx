@@ -9,12 +9,13 @@ import {
   Wheat,
 } from 'lucide-react'
 import type { Recipe } from '../types/Recipe'
+import { getRecipeCategoryNames, toCategoryTag } from '../utils/categories'
 import ShareRecipeButton from './ShareRecipeButton'
 
 type RecipeCardProps = {
   recipe: Recipe
-  isFavorite: boolean
-  onToggleFavorite: (recipe: Recipe) => void
+  isSaved: boolean
+  onToggleSaved: (recipe: Recipe) => void
   onSelectRecipe: (recipe: Recipe) => void
   liked?: boolean
   likeCount?: number
@@ -24,8 +25,8 @@ type RecipeCardProps = {
 
 function RecipeCard({
   recipe,
-  isFavorite,
-  onToggleFavorite,
+  isSaved,
+  onToggleSaved,
   onSelectRecipe,
   liked,
   likeCount = 0,
@@ -43,10 +44,10 @@ function RecipeCard({
     onSelectRecipe(recipe)
   }
 
-  function handleFavoriteClick(event: MouseEvent<HTMLButtonElement>) {
+  function handleSaveClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
     event.stopPropagation()
-    onToggleFavorite(recipe)
+    onToggleSaved(recipe)
   }
 
   function handleAuthorClick(event: MouseEvent<HTMLButtonElement>) {
@@ -66,6 +67,7 @@ function RecipeCard({
     : recipe.authorName
 
   const isOwnRecipe = recipe.source === 'user'
+  const recipeCategories = getRecipeCategoryNames(recipe).slice(0, 3)
 
   return (
     <article className="recipe-card">
@@ -85,7 +87,17 @@ function RecipeCard({
 
         <div className="recipe-card__content">
           <div className="recipe-card__meta">
-            <p className="recipe-card__category">{recipe.category}</p>
+            <div className="recipe-card__category-list">
+              {recipeCategories.map((categoryName) => {
+                const tag = toCategoryTag(categoryName)
+                return (
+                  <p key={categoryName} className="recipe-card__category">
+                    {tag?.icon ? <span aria-hidden="true">{tag.icon}</span> : null}
+                    <span>{categoryName}</span>
+                  </p>
+                )
+              })}
+            </div>
 
             <span className="recipe-card__badge recipe-card__badge--with-icon">
               {isOwnRecipe ? (
@@ -151,19 +163,17 @@ function RecipeCard({
         <button
           type="button"
           className={
-            isFavorite
-              ? 'favorite-button favorite-button--active'
-              : 'favorite-button'
+            isSaved ? 'save-button save-button--active' : 'save-button'
           }
-          onClick={handleFavoriteClick}
-          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          onClick={handleSaveClick}
+          aria-label={isSaved ? 'Unsave recipe' : 'Save recipe'}
         >
           <Heart
             size={16}
             aria-hidden="true"
-            fill={isFavorite ? 'currentColor' : 'none'}
+            fill={isSaved ? 'currentColor' : 'none'}
           />
-          <span>{isFavorite ? 'Favorited' : 'Favorite'}</span>
+          <span>{isSaved ? 'Saved' : 'Save'}</span>
         </button>
         {recipe.source !== 'sample' && (
           <button

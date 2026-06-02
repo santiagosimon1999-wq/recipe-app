@@ -1,3 +1,5 @@
+import type { CategoryTag } from './Category'
+
 export type RecipeSource = 'sample' | 'user' | 'community'
 
 export type Recipe = {
@@ -7,6 +9,8 @@ export type Recipe = {
   imageFile?: File | null
   description: string
   category: string
+  categories?: string[]
+  categoryTags?: CategoryTag[]
   calories: number
   protein: number
   carbs: number

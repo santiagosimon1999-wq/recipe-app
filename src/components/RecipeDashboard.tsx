@@ -5,9 +5,11 @@ type RecipeDashboardProps = {
   userRecipes: Recipe[]
   communityRecipes: Recipe[]
   savoraInspirationRecipes: Recipe[]
-  sampleFavoriteIds: number[]
-  cloudFavoriteRecipeIds: number[]
-  onToggleFavorite: (recipe: Recipe) => void
+  sampleSavedRecipeIds: number[]
+  cloudSavedRecipeIds: number[]
+  likedRecipeIds?: number[]
+  likeCountsByRecipeId?: Record<number, number>
+  onToggleSaved: (recipe: Recipe) => void
   onSelectRecipe: (recipe: Recipe) => void
   onStartCreateRecipe: () => void
   onToggleLike?: (recipeId: number) => void
@@ -18,9 +20,11 @@ export default function RecipeDashboard({
   userRecipes,
   communityRecipes,
   savoraInspirationRecipes,
-  sampleFavoriteIds,
-  cloudFavoriteRecipeIds,
-  onToggleFavorite,
+  sampleSavedRecipeIds,
+  cloudSavedRecipeIds,
+  likedRecipeIds,
+  likeCountsByRecipeId,
+  onToggleSaved,
   onSelectRecipe,
   onStartCreateRecipe,
   onToggleLike,
@@ -32,11 +36,13 @@ export default function RecipeDashboard({
         <RecipeSection
           eyebrow="Your kitchen"
           title="Your Recipes"
-          countLabel="saved"
+          countLabel="recipes"
           recipes={userRecipes}
-          sampleFavoriteIds={sampleFavoriteIds}
-          cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-          onToggleFavorite={onToggleFavorite}
+          sampleSavedRecipeIds={sampleSavedRecipeIds}
+          cloudSavedRecipeIds={cloudSavedRecipeIds}
+          likedRecipeIds={likedRecipeIds}
+          likeCountsByRecipeId={likeCountsByRecipeId}
+          onToggleSaved={onToggleSaved}
           onSelectRecipe={onSelectRecipe}
           onToggleLike={onToggleLike}
           onViewAuthor={onViewAuthor}
@@ -59,9 +65,11 @@ export default function RecipeDashboard({
         title="Shared Recipes"
         countLabel="shared"
         recipes={communityRecipes}
-        sampleFavoriteIds={sampleFavoriteIds}
-        cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-        onToggleFavorite={onToggleFavorite}
+        sampleSavedRecipeIds={sampleSavedRecipeIds}
+        cloudSavedRecipeIds={cloudSavedRecipeIds}
+        likedRecipeIds={likedRecipeIds}
+        likeCountsByRecipeId={likeCountsByRecipeId}
+        onToggleSaved={onToggleSaved}
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}
         onViewAuthor={onViewAuthor}
@@ -73,9 +81,11 @@ export default function RecipeDashboard({
           title="Explore Recipes"
           countLabel="ideas"
           recipes={savoraInspirationRecipes}
-          sampleFavoriteIds={sampleFavoriteIds}
-          cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-          onToggleFavorite={onToggleFavorite}
+          sampleSavedRecipeIds={sampleSavedRecipeIds}
+          cloudSavedRecipeIds={cloudSavedRecipeIds}
+          likedRecipeIds={likedRecipeIds}
+          likeCountsByRecipeId={likeCountsByRecipeId}
+          onToggleSaved={onToggleSaved}
           onSelectRecipe={onSelectRecipe}
           onToggleLike={onToggleLike}
           onViewAuthor={onViewAuthor}

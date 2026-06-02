@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../context/useAuth'
+import { supabase } from '../lib/supabaseClient'
 import { notify } from '../lib/toast'
 import {
   getNotificationsForUser,
   markAllNotificationsRead,
   markNotificationRead,
+  NOTIFICATIONS_UPDATED_EVENT,
   type AppNotification,
 } from '../services/notifications'
 import { ProfilePageSkeleton } from '../components/ui/ProfilePageSkeleton'
@@ -15,6 +17,7 @@ export default function NotificationsPage() {
   const navigate = useNavigate()
   const [items, setItems] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshTick, setRefreshTick] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -49,6 +52,46 @@ export default function NotificationsPage() {
 
     return () => {
       cancelled = true
+    }
+  }, [user, refreshTick])
+
+  useEffect(() => {
+    if (!user || typeof window === 'undefined' || typeof document === 'undefined') {
+      return
+    }
+
+    const refreshNotifications = () => {
+      setRefreshTick((tick) => tick + 1)
+    }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshNotifications()
+      }
+    }
+
+    const channel = supabase
+      .channel(`notifications-page-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        refreshNotifications
+      )
+      .subscribe()
+
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshNotifications)
+    window.addEventListener('focus', refreshNotifications)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshNotifications)
+      window.removeEventListener('focus', refreshNotifications)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      void supabase.removeChannel(channel)
     }
   }, [user])
 

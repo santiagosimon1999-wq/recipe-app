@@ -12,14 +12,23 @@ import { mapDbRowToRecipe } from '../lib/recipeMappers'
 import { ProfilePageSkeleton } from '../components/ui/ProfilePageSkeleton'
 import { getAvatarInitials } from '../lib/userUtils'
 import { getFollowCounts, type FollowCounts } from '../services/follows'
-import { getLikesCountsForRecipeIds } from '../lib/recipeService'
+import {
+  getLikedRecipeIdsByUser,
+  getLikesCountsForRecipeIds,
+} from '../lib/recipeService'
 
 type PublicProfilePageProps = {
+  userId?: string
   onSelectRecipe: (recipe: Recipe) => void
+  onMergeLikeCounts?: (likeCounts: Record<number, number>) => void
+  onMergeLikedRecipeIds?: (recipeIds: number[]) => void
 }
 
 export default function PublicProfilePage({
+  userId,
   onSelectRecipe,
+  onMergeLikeCounts,
+  onMergeLikedRecipeIds,
 }: PublicProfilePageProps) {
   const params = useParams<{ username: string }>()
   const navigate = useNavigate()
@@ -133,14 +142,23 @@ export default function PublicProfilePage({
           .map((recipe) => recipe.id)
           .filter((id) => Number.isFinite(id) && id > 0)
 
-        const likeCounts =
+        const [likeCounts, likedIds] =
           recipeIds.length > 0
-            ? await getLikesCountsForRecipeIds(recipeIds)
-            : {}
+            ? await Promise.all([
+                getLikesCountsForRecipeIds(recipeIds),
+                userId
+                  ? getLikedRecipeIdsByUser(userId)
+                  : Promise.resolve([] as number[]),
+              ])
+            : [{}, [] as number[]]
+
+        onMergeLikeCounts?.(likeCounts)
+        onMergeLikedRecipeIds?.(likedIds)
 
         const publicRecipes = mappedRecipes.map((recipe) => ({
           ...recipe,
           likeCount: likeCounts[recipe.id] ?? 0,
+          liked: likedIds.includes(recipe.id),
         }))
 
         const totalLikes = publicRecipes.reduce(
@@ -174,7 +192,7 @@ export default function PublicProfilePage({
     return () => {
       cancelled = true
     }
-  }, [username])
+  }, [username, userId, onMergeLikeCounts, onMergeLikedRecipeIds])
 
   if (loading) {
     return <ProfilePageSkeleton />

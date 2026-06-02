@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { FolderPlus, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { mapDbRowToRecipe } from '../lib/recipeMappers'
+import {
+  getLikedRecipeIdsByUser,
+  getLikesCountsForRecipeIds,
+} from '../lib/recipeService'
 import { notify } from '../lib/toast'
 import {
   createCollection,
@@ -15,11 +19,20 @@ import ProfileRecipeGrid from '../components/ProfileRecipeGrid'
 import { ProfilePageSkeleton } from '../components/ui/ProfilePageSkeleton'
 
 type CollectionsPageProps = {
+  userId?: string
   onSelectRecipe: (recipe: Recipe) => void
+  onMergeLikeCounts?: (likeCounts: Record<number, number>) => void
+  onMergeLikedRecipeIds?: (recipeIds: number[]) => void
 }
 
-export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps) {
+export default function CollectionsPage({
+  userId,
+  onSelectRecipe,
+  onMergeLikeCounts,
+  onMergeLikedRecipeIds,
+}: CollectionsPageProps) {
   const { user } = useAuth()
+  const activeUserId = userId ?? user?.id
   const [collections, setCollections] = useState<CollectionSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [recipes, setRecipes] = useState<Recipe[]>([])
@@ -29,18 +42,18 @@ export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps
   const [busy, setBusy] = useState(false)
 
   const loadCollections = useCallback(async () => {
-    if (!user) return
+    if (!activeUserId) return
 
-    const rows = await getCollectionsForUser(user.id)
+    const rows = await getCollectionsForUser(activeUserId)
     setCollections(rows)
 
     if (!selectedId && rows.length > 0) {
       setSelectedId(rows[0].id)
     }
-  }, [user, selectedId])
+  }, [activeUserId, selectedId])
 
   useEffect(() => {
-    if (!user) {
+    if (!activeUserId) {
       Promise.resolve().then(() => {
         setLoading(false)
       })
@@ -58,10 +71,10 @@ export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps
         setLoading(false)
       }
     })()
-  }, [user, loadCollections])
+  }, [activeUserId, loadCollections])
 
   useEffect(() => {
-    if (!user || !selectedId) {
+    if (!activeUserId || !selectedId) {
       Promise.resolve().then(() => {
         setRecipes([])
       })
@@ -71,8 +84,26 @@ export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps
     void (async () => {
       setLoadingRecipes(true)
       try {
-        const rows = await getCollectionRecipeRows(user.id, selectedId)
-        setRecipes(rows.map((row) => mapDbRowToRecipe(row, user.id)))
+        const rows = await getCollectionRecipeRows(activeUserId, selectedId)
+        const mappedRecipes = rows.map((row) => mapDbRowToRecipe(row, activeUserId))
+        const recipeIds = mappedRecipes.map((recipe) => recipe.id).filter((id) => id > 0)
+        const [likeCounts, likedIds] =
+          recipeIds.length > 0
+            ? await Promise.all([
+                getLikesCountsForRecipeIds(recipeIds),
+                getLikedRecipeIdsByUser(activeUserId),
+              ])
+            : [{}, [] as number[]]
+
+        onMergeLikeCounts?.(likeCounts)
+        onMergeLikedRecipeIds?.(likedIds)
+        setRecipes(
+          mappedRecipes.map((recipe) => ({
+            ...recipe,
+            likeCount: likeCounts[recipe.id] ?? 0,
+            liked: likedIds.includes(recipe.id),
+          }))
+        )
       } catch (error) {
         console.error('Failed to load collection recipes:', error)
         setRecipes([])
@@ -80,14 +111,19 @@ export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps
         setLoadingRecipes(false)
       }
     })()
-  }, [user, selectedId])
+  }, [
+    activeUserId,
+    selectedId,
+    onMergeLikeCounts,
+    onMergeLikedRecipeIds,
+  ])
 
   async function handleCreateCollection() {
-    if (!user || busy) return
+    if (!activeUserId || busy) return
 
     setBusy(true)
     try {
-      const created = await createCollection(user.id, newName)
+      const created = await createCollection(activeUserId, newName)
       setNewName('')
       setCollections((current) => [created, ...current])
       setSelectedId(created.id)
@@ -103,11 +139,11 @@ export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps
   }
 
   async function handleDeleteCollection(collectionId: string) {
-    if (!user || busy) return
+    if (!activeUserId || busy) return
 
     setBusy(true)
     try {
-      await deleteCollection(user.id, collectionId)
+      await deleteCollection(activeUserId, collectionId)
       setCollections((current) => {
         const next = current.filter((item) => item.id !== collectionId)
         if (selectedId === collectionId) {
@@ -124,10 +160,10 @@ export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps
     }
   }
 
-  if (!user) {
+  if (!activeUserId) {
     return (
       <section className="profile-page__state-screen">
-        <p>Sign in to organize recipes into collections.</p>
+        <p>Sign in to save recipes and organize them into collections.</p>
       </section>
     )
   }
@@ -140,9 +176,12 @@ export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps
     <section className="collections-page profile-page">
       <div className="profile-page__layout collections-page__layout">
         <aside className="collections-page__sidebar">
-          <h1 className="profile-page__display-name">My collections</h1>
+          <h1 className="profile-page__display-name">Collections</h1>
           <p className="profile-page__bio">
-            Group saved inspiration into themed cookbooks.
+            Organize your saved recipes into collections.
+          </p>
+          <p className="profile-page__recipes-hint">
+            Collections help organize recipes you have already saved.
           </p>
 
           <form
@@ -210,13 +249,13 @@ export default function CollectionsPage({ onSelectRecipe }: CollectionsPageProps
                 recipes={recipes}
                 onSelectRecipe={onSelectRecipe}
                 emptyHeading="This collection is empty."
-                emptyBody="Save recipes to this collection from a recipe modal."
+                emptyBody="Add saved recipes to this collection from the recipe modal."
               />
             )
           ) : (
             <div className="profile-page__empty">
               <p className="profile-page__empty-heading">No collections yet.</p>
-              <p>Create your first collection to get started.</p>
+              <p>Collections are optional folders for your saved recipes.</p>
             </div>
           )}
         </div>

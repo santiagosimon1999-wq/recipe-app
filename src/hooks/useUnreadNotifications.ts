@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabaseClient'
 import {
   getUnreadNotificationCount,
   NOTIFICATIONS_UPDATED_EVENT,
@@ -40,18 +41,41 @@ export function useUnreadNotifications(user: User | null) {
   }, [user, refreshTick])
 
   useEffect(() => {
-    if (!user || typeof window === 'undefined') return
-
-    const handleNotificationsUpdated = () => {
-      setRefreshTick((tick) => tick + 1)
+    if (!user || typeof window === 'undefined' || typeof document === 'undefined') {
+      return
     }
 
-    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationsUpdated)
-    return () => {
-      window.removeEventListener(
-        NOTIFICATIONS_UPDATED_EVENT,
-        handleNotificationsUpdated
+    const refreshUnreadCount = () => {
+      setRefreshTick((tick) => tick + 1)
+    }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshUnreadCount()
+      }
+    }
+
+    const channel = supabase
+      .channel(`notifications-unread-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        refreshUnreadCount
       )
+      .subscribe()
+
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshUnreadCount)
+    window.addEventListener('focus', refreshUnreadCount)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshUnreadCount)
+      window.removeEventListener('focus', refreshUnreadCount)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      void supabase.removeChannel(channel)
     }
   }, [user])
 

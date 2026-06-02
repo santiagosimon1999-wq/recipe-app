@@ -12,7 +12,7 @@ type AppHeaderProps = {
   email?: string | null
   userInitial: string
   totalRecipes: number
-  favoriteCount: number
+  savedCount: number
   averageCalories: number
   isLoggedIn: boolean
   unreadNotifications?: number
@@ -34,7 +34,7 @@ export default function AppHeader({
   email,
   userInitial,
   totalRecipes,
-  favoriteCount,
+  savedCount,
   averageCalories,
   isLoggedIn,
   unreadNotifications = 0,
@@ -99,6 +99,9 @@ export default function AppHeader({
               <NavLink to="/following" className={navLinkClass}>
                 Activity
               </NavLink>
+              <NavLink to="/saved" className={navLinkClass}>
+                Saved
+              </NavLink>
               <NavLink to="/collections" className={navLinkClass}>
                 Collections
               </NavLink>
@@ -123,15 +126,15 @@ export default function AppHeader({
         email={email}
         userInitial={userInitial}
         totalRecipes={totalRecipes}
-        favoriteCount={favoriteCount}
+        savedCount={savedCount}
         averageCalories={averageCalories}
       />
 
       <section className="hero-content">
         <div>
           <p className="app__subtitle">
-            Save your recipes, track macros, and discover meal ideas like a
-            social recipe board.
+            Save recipes in one place, organize them with collections, and
+            discover meal ideas like a social recipe board.
           </p>
 
           <div className="hero-tags">

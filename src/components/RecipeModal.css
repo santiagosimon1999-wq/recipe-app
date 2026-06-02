@@ -1,0 +1,268 @@
+.recipe-modal {
+  max-width: 860px;
+  max-height: 90vh;
+}
+
+.recipe-modal__layout {
+  max-height: 90vh;
+}
+
+.recipe-modal__scroll-body {
+  padding: 24px 26px 20px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.recipe-modal__top-bar {
+  margin-bottom: 10px;
+}
+
+.recipe-modal__image {
+  width: 100%;
+  height: 280px;
+  margin-bottom: 14px;
+}
+
+.recipe-modal__title {
+  margin-bottom: 10px;
+  line-height: 1.15;
+}
+
+.recipe-modal__description {
+  margin-bottom: 16px;
+  line-height: 1.65;
+}
+
+.recipe-modal__action-stack {
+  margin-bottom: 12px;
+}
+
+.recipe-modal__badges {
+  margin-bottom: 14px;
+}
+
+.recipe-modal__category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.recipe-modal__nutrition-grid {
+  margin-bottom: 18px;
+}
+
+.recipe-modal__section {
+  margin-bottom: 16px;
+}
+
+.recipe-modal__section h3 {
+  margin-bottom: 8px;
+}
+
+.recipe-modal__ingredients-list,
+.recipe-modal__instructions-list {
+  line-height: 1.7;
+}
+
+.recipe-modal__divider {
+  margin: 18px 0 12px;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.recipe-modal__comments-section {
+  margin-bottom: 2px;
+}
+
+.recipe-comments {
+  padding: 0;
+}
+
+.recipe-comments__header {
+  margin-bottom: 10px;
+}
+
+.recipe-comments__title {
+  font-size: 1rem;
+}
+
+.recipe-comments__count {
+  padding: 3px 8px;
+  font-size: 0.75rem;
+}
+
+.recipe-comments__notice,
+.recipe-comments__state,
+.recipe-comments__error {
+  margin-bottom: 10px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.recipe-comments__list {
+  max-height: 230px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.recipe-comments__item {
+  gap: 9px;
+  padding: 10px;
+  border-radius: 14px;
+}
+
+.recipe-comments__avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 0.72rem;
+}
+
+.recipe-comments__meta {
+  margin-bottom: 4px;
+  gap: 4px 8px;
+}
+
+.recipe-comments__display-name {
+  font-size: 0.9rem;
+}
+
+.recipe-comments__username {
+  font-size: 0.82rem;
+}
+
+.recipe-comments__date {
+  font-size: 0.76rem;
+}
+
+.recipe-comments__text {
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.recipe-comments__delete {
+  width: 30px;
+  height: 30px;
+}
+
+.recipe-comments__form {
+  gap: 8px;
+}
+
+.recipe-comments__label {
+  font-size: 0.9rem;
+}
+
+.recipe-comments__textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.recipe-comments__form-footer {
+  align-items: center;
+}
+
+.recipe-comments__counter {
+  font-size: 0.8rem;
+}
+
+.recipe-comments__submit {
+  padding: 8px 15px;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 760px) {
+  .recipe-modal {
+    max-width: 100%;
+    max-height: 92vh;
+  }
+
+  .recipe-modal__scroll-body {
+    padding: 16px 16px 14px;
+  }
+
+  .recipe-modal__image {
+    height: 210px;
+    margin-bottom: 12px;
+  }
+
+  .recipe-modal__title {
+    font-size: 1.65rem;
+  }
+
+  .recipe-modal__description {
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .recipe-modal__nutrition-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .recipe-modal__nutrition-item {
+    padding: 12px;
+  }
+
+  .recipe-comments__list {
+    max-height: 180px;
+  }
+}
+
+@media (max-width: 480px) {
+  .recipe-modal-overlay {
+    padding: 10px;
+  }
+
+  .recipe-modal {
+    border-radius: 18px;
+    max-height: 94vh;
+  }
+
+  .recipe-modal__scroll-body {
+    padding: 14px 14px 12px;
+  }
+
+  .recipe-modal__image {
+    height: 180px;
+    border-radius: 14px;
+  }
+
+  .recipe-modal__title {
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+  }
+
+  .recipe-modal__description {
+    font-size: 0.92rem;
+  }
+
+  .recipe-modal__nutrition-item {
+    border-radius: 14px;
+  }
+
+  .recipe-comments__item {
+    padding: 9px;
+  }
+
+  .recipe-comments__avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .recipe-comments__list {
+    max-height: 160px;
+  }
+
+  .recipe-comments__form-footer {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .recipe-comments__submit {
+    width: auto;
+  }
+}

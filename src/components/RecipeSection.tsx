@@ -6,9 +6,11 @@ type RecipeSectionProps = {
   title: string
   countLabel: string
   recipes: Recipe[]
-  sampleFavoriteIds: number[]
-  cloudFavoriteRecipeIds: number[]
-  onToggleFavorite: (recipe: Recipe) => void
+  sampleSavedRecipeIds: number[]
+  cloudSavedRecipeIds: number[]
+  likedRecipeIds?: number[]
+  likeCountsByRecipeId?: Record<number, number>
+  onToggleSaved: (recipe: Recipe) => void
   onSelectRecipe: (recipe: Recipe) => void
   onToggleLike?: (recipeId: number) => void
   onViewAuthor?: (username: string) => void
@@ -19,9 +21,11 @@ export default function RecipeSection({
   title,
   countLabel,
   recipes,
-  sampleFavoriteIds,
-  cloudFavoriteRecipeIds,
-  onToggleFavorite,
+  sampleSavedRecipeIds,
+  cloudSavedRecipeIds,
+  likedRecipeIds,
+  likeCountsByRecipeId,
+  onToggleSaved,
   onSelectRecipe,
   onToggleLike,
   onViewAuthor,
@@ -42,9 +46,11 @@ export default function RecipeSection({
 
       <RecipeGrid
         recipes={recipes}
-        sampleFavoriteIds={sampleFavoriteIds}
-        cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-        onToggleFavorite={onToggleFavorite}
+        sampleSavedRecipeIds={sampleSavedRecipeIds}
+        cloudSavedRecipeIds={cloudSavedRecipeIds}
+        likedRecipeIds={likedRecipeIds}
+        likeCountsByRecipeId={likeCountsByRecipeId}
+        onToggleSaved={onToggleSaved}
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}
         onViewAuthor={onViewAuthor}

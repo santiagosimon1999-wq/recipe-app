@@ -1,17 +1,17 @@
-// src/lib/nutritionService.ts
+import {
+  getIngredientAliasCount,
+  normalizeIngredientLookupText,
+  resolveIngredientAlias,
+  toSingularPhrase,
+} from './ingredientAliases'
+import {
+  getIngredientCategoryCounts,
+  getSupportedIngredientKeys as getSupportedIngredientKeysFromCatalog,
+  INGREDIENT_NUTRITION,
+} from './nutritionIngredients'
+import type { NutritionBasis, NutritionTotals } from './nutritionIngredients'
 
-export type NutritionTotals = {
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-}
-
-type NutritionBasis = 'piece' | '100g' | 'cup' | 'tbsp' | 'tsp' | '100ml'
-
-type IngredientNutrition = NutritionTotals & {
-  basis: NutritionBasis
-}
+export type { NutritionTotals }
 
 export type ParsedIngredientDebug = {
   original: string
@@ -22,121 +22,12 @@ export type ParsedIngredientDebug = {
   basis: NutritionBasis | null
   multiplier: number
   applied: NutritionTotals | null
+  skippedReason: 'section-header' | 'unmatched' | null
 }
 
-const INGREDIENT_NUTRITION: Record<string, IngredientNutrition> = {
-  egg: { basis: 'piece', calories: 78, protein: 6.3, carbs: 0.6, fat: 5.3 },
-  eggs: { basis: 'piece', calories: 78, protein: 6.3, carbs: 0.6, fat: 5.3 },
-  banana: { basis: 'piece', calories: 105, protein: 1.3, carbs: 27, fat: 0.4 },
-  apple: { basis: 'piece', calories: 95, protein: 0.5, carbs: 25, fat: 0.3 },
-  tomato: { basis: 'piece', calories: 22, protein: 1.1, carbs: 4.8, fat: 0.2 },
-  onion: { basis: 'piece', calories: 44, protein: 1.2, carbs: 10.3, fat: 0.1 },
-  garlic: { basis: 'piece', calories: 4, protein: 0.2, carbs: 1, fat: 0 },
-  carrot: { basis: 'piece', calories: 25, protein: 0.6, carbs: 6, fat: 0.1 },
-  potato: { basis: 'piece', calories: 161, protein: 4.3, carbs: 37, fat: 0.2 },
-  'sweet potato': {
-    basis: 'piece',
-    calories: 112,
-    protein: 2,
-    carbs: 26,
-    fat: 0.1,
-  },
-  cucumber: { basis: 'piece', calories: 8, protein: 0.3, carbs: 1.9, fat: 0.1 },
-  'bell pepper': {
-    basis: 'piece',
-    calories: 24,
-    protein: 1,
-    carbs: 6,
-    fat: 0.2,
-  },
-  bread: { basis: 'piece', calories: 80, protein: 3, carbs: 15, fat: 1 },
-  tortilla: { basis: 'piece', calories: 140, protein: 4, carbs: 24, fat: 3.5 },
-
-  chicken: { basis: '100g', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
-  'chicken breast': {
-    basis: '100g',
-    calories: 165,
-    protein: 31,
-    carbs: 0,
-    fat: 3.6,
-  },
-  beef: { basis: '100g', calories: 250, protein: 26, carbs: 0, fat: 15 },
-  'ground beef': {
-    basis: '100g',
-    calories: 332,
-    protein: 14,
-    carbs: 0,
-    fat: 30,
-  },
-  pork: { basis: '100g', calories: 242, protein: 27, carbs: 0, fat: 14 },
-  salmon: { basis: '100g', calories: 208, protein: 20, carbs: 0, fat: 13 },
-  tuna: { basis: '100g', calories: 132, protein: 28, carbs: 0, fat: 1.3 },
-  shrimp: { basis: '100g', calories: 99, protein: 24, carbs: 0.2, fat: 0.3 },
-  cheese: { basis: '100g', calories: 402, protein: 25, carbs: 1.3, fat: 33 },
-  mozzarella: {
-    basis: '100g',
-    calories: 280,
-    protein: 28,
-    carbs: 3.1,
-    fat: 17,
-  },
-  cheddar: {
-    basis: '100g',
-    calories: 403,
-    protein: 25,
-    carbs: 1.3,
-    fat: 33,
-  },
-
-  rice: { basis: 'cup', calories: 206, protein: 4.3, carbs: 45, fat: 0.4 },
-  'brown rice': {
-    basis: 'cup',
-    calories: 216,
-    protein: 5,
-    carbs: 45,
-    fat: 1.8,
-  },
-  pasta: { basis: 'cup', calories: 221, protein: 8, carbs: 43, fat: 1.3 },
-  spaghetti: { basis: 'cup', calories: 221, protein: 8, carbs: 43, fat: 1.3 },
-  oats: { basis: 'cup', calories: 307, protein: 10.7, carbs: 54.8, fat: 5.3 },
-  flour: { basis: 'cup', calories: 455, protein: 13, carbs: 95, fat: 1.2 },
-  milk: { basis: 'cup', calories: 103, protein: 8, carbs: 12, fat: 2.4 },
-  yogurt: { basis: 'cup', calories: 149, protein: 13, carbs: 11.4, fat: 8 },
-  broccoli: { basis: 'cup', calories: 55, protein: 3.7, carbs: 11.2, fat: 0.6 },
-  spinach: { basis: 'cup', calories: 7, protein: 0.9, carbs: 1.1, fat: 0.1 },
-  lettuce: { basis: 'cup', calories: 5, protein: 0.5, carbs: 1, fat: 0.1 },
-  mushroom: { basis: 'cup', calories: 15, protein: 2.2, carbs: 2.3, fat: 0.2 },
-  corn: { basis: 'cup', calories: 96, protein: 3.4, carbs: 21, fat: 1.5 },
-  beans: { basis: 'cup', calories: 127, protein: 8.7, carbs: 22.8, fat: 0.5 },
-  'black beans': {
-    basis: 'cup',
-    calories: 132,
-    protein: 8.9,
-    carbs: 23.7,
-    fat: 0.5,
-  },
-  chickpeas: { basis: 'cup', calories: 269, protein: 14.5, carbs: 45, fat: 4.2 },
-  lentils: { basis: 'cup', calories: 230, protein: 17.9, carbs: 39.9, fat: 0.8 },
-
-  butter: { basis: 'tbsp', calories: 102, protein: 0.1, carbs: 0, fat: 11.5 },
-  'olive oil': {
-    basis: 'tbsp',
-    calories: 119,
-    protein: 0,
-    carbs: 0,
-    fat: 13.5,
-  },
-  oil: { basis: 'tbsp', calories: 119, protein: 0, carbs: 0, fat: 13.5 },
-  sugar: { basis: 'tbsp', calories: 49, protein: 0, carbs: 12.6, fat: 0 },
-  honey: { basis: 'tbsp', calories: 64, protein: 0.1, carbs: 17.3, fat: 0 },
-
-  salt: { basis: 'tsp', calories: 0, protein: 0, carbs: 0, fat: 0 },
-  pepper: { basis: 'tsp', calories: 6, protein: 0.2, carbs: 1.4, fat: 0.1 },
-
-  water: { basis: '100ml', calories: 0, protein: 0, carbs: 0, fat: 0 },
-  juice: { basis: '100ml', calories: 45, protein: 0.7, carbs: 10.4, fat: 0.2 },
-  broth: { basis: '100ml', calories: 6, protein: 0.5, carbs: 0.4, fat: 0.2 },
-}
+const SORTED_INGREDIENT_KEYS = Object.keys(INGREDIENT_NUTRITION).sort(
+  (a, b) => b.length - a.length
+)
 
 function emptyTotals(): NutritionTotals {
   return { calories: 0, protein: 0, carbs: 0, fat: 0 }
@@ -168,24 +59,87 @@ function scaleTotals(
 }
 
 function normalizeIngredientText(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, ' ')
-    .replace(/,/g, ' ')
+  return normalizeIngredientLookupText(value)
+}
+
+function normalizeIngredientName(value: string): string {
+  const noiseWordsPattern = [
+    'of',
+    'and',
+    'with',
+    'without',
+    'fresh',
+    'chopped',
+    'diced',
+    'sliced',
+    'minced',
+    'grated',
+    'shredded',
+    'large',
+    'medium',
+    'small',
+    'boneless',
+    'skinless',
+    'ground',
+    'to taste',
+    'optional',
+    'opcional',
+    'al gusto',
+    'con',
+    'sin',
+    'para',
+    'al',
+    'la',
+    'el',
+    'los',
+    'las',
+    'un',
+    'una',
+    'unos',
+    'unas',
+    'cups?',
+    'tazas?',
+    'tbsp',
+    'tablespoons?',
+    'cucharadas?',
+    'tsp',
+    'teaspoons?',
+    'cucharaditas?',
+    'grams?',
+    'gramos?',
+    'gramo',
+    'kg',
+    'kilogramos?',
+    'kilogramo',
+    'ml',
+    'mililitros?',
+    'mililitro',
+    'liters?',
+    'litros?',
+    'litro',
+    'oz',
+    'ounces?',
+    'onzas?',
+    'lb',
+    'lbs',
+    'libras?',
+    'libra',
+  ].join('|')
+
+  return normalizeIngredientLookupText(value)
+    .replace(new RegExp(`\\b(${noiseWordsPattern})\\b`, 'g'), ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }
 
-function normalizeIngredientName(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(
-      /\b(of|and|fresh|chopped|diced|sliced|minced|large|medium|small|to taste|optional)\b/g,
-      ' '
-    )
-    .replace(/[^a-z\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+function isSectionHeaderLine(ingredient: string): boolean {
+  const normalized = normalizeIngredientLookupText(ingredient)
+  if (!normalized) return true
+
+  const startsWithPara = /^para\b/.test(normalized)
+  const hasAmount = /\d/.test(normalized)
+  return startsWithPara && !hasAmount
 }
 
 function parseFraction(value: string): number | null {
@@ -225,7 +179,7 @@ function extractAmountAndUnit(ingredient: string): {
   const normalized = normalizeIngredientText(ingredient)
 
   const pattern =
-    /^(?<amount>\d+\s+\d+\/\d+|\d+\/\d+|\d+(\.\d+)?)\s*(?<unit>cups?|cup|tbsp|tablespoons?|tsp|teaspoons?|grams?|g|kg|ml|l|oz|ounces?|lb|lbs|cloves?|slices?)?\s+(?<name>.+)$/i
+    /^(?<amount>\d+\s+\d+\/\d+|\d+\/\d+|\d+(\.\d+)?)\s*(?<unit>cups?|cup|tazas?|tbsp|tablespoons?|cucharadas?|tsp|teaspoons?|cucharaditas?|grams?|gramos?|gramo|gr|g|kg|kilogramos?|kilogramo|ml|mililitros?|mililitro|l|liters?|litros?|litro|oz|ounces?|onzas?|lb|lbs|libras?|libra|cloves?|dientes?|slices?|rebanadas?)?\s+(?<name>.+)$/i
 
   const match = normalized.match(pattern)
 
@@ -234,7 +188,7 @@ function extractAmountAndUnit(ingredient: string): {
     const unit = match.groups.unit?.toLowerCase() ?? null
     const name = normalizeIngredientName(match.groups.name)
 
-    if (amount && name) {
+    if (amount !== null && name) {
       return { amount, unit, name }
     }
   }
@@ -246,10 +200,23 @@ function extractAmountAndUnit(ingredient: string): {
   }
 }
 
+function containsWholePhrase(text: string, phrase: string): boolean {
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(^|\\s)${escaped}(\\s|$)`).test(text)
+}
+
 function findIngredientMatch(name: string): {
   key: string | null
-  value: IngredientNutrition | null
+  value: (typeof INGREDIENT_NUTRITION)[string] | null
 } {
+  const aliasMatch = resolveIngredientAlias(name)
+  if (aliasMatch && INGREDIENT_NUTRITION[aliasMatch]) {
+    return {
+      key: aliasMatch,
+      value: INGREDIENT_NUTRITION[aliasMatch],
+    }
+  }
+
   if (INGREDIENT_NUTRITION[name]) {
     return {
       key: name,
@@ -257,9 +224,17 @@ function findIngredientMatch(name: string): {
     }
   }
 
-  const bestMatch = Object.keys(INGREDIENT_NUTRITION)
-    .sort((a, b) => b.length - a.length)
-    .find((key) => name.includes(key))
+  const singularName = toSingularPhrase(name)
+  if (INGREDIENT_NUTRITION[singularName]) {
+    return {
+      key: singularName,
+      value: INGREDIENT_NUTRITION[singularName],
+    }
+  }
+
+  const bestMatch = SORTED_INGREDIENT_KEYS.find(
+    (key) => containsWholePhrase(name, key) || containsWholePhrase(singularName, key)
+  )
 
   return {
     key: bestMatch ?? null,
@@ -277,24 +252,62 @@ function normalizeUnitAlias(unit: string | null): string | null {
   if (['tablespoon', 'tablespoons'].includes(normalized)) {
     return 'tbsp'
   }
+  if (['cucharada', 'cucharadas'].includes(normalized)) {
+    return 'tbsp'
+  }
 
   if (['teaspoon', 'teaspoons'].includes(normalized)) {
     return 'tsp'
+  }
+  if (['cucharadita', 'cucharaditas'].includes(normalized)) {
+    return 'tsp'
+  }
+
+  if (['taza', 'tazas'].includes(normalized)) {
+    return 'cup'
   }
 
   if (['gram', 'grams'].includes(normalized)) {
     return 'g'
   }
+  if (['gramo', 'gramos', 'gr'].includes(normalized)) {
+    return 'g'
+  }
+
+  if (['kilogramo', 'kilogramos'].includes(normalized)) {
+    return 'kg'
+  }
 
   if (['ounce', 'ounces'].includes(normalized)) {
     return 'oz'
+  }
+  if (['onza', 'onzas'].includes(normalized)) {
+    return 'oz'
+  }
+
+  if (['libra', 'libras'].includes(normalized)) {
+    return 'lb'
+  }
+
+  if (['mililitro', 'mililitros'].includes(normalized)) {
+    return 'ml'
+  }
+
+  if (['litro', 'litros', 'liter', 'liters'].includes(normalized)) {
+    return 'l'
   }
 
   if (['clove', 'cloves'].includes(normalized)) {
     return 'piece'
   }
+  if (['diente', 'dientes'].includes(normalized)) {
+    return 'piece'
+  }
 
   if (['slice', 'slices'].includes(normalized)) {
+    return 'piece'
+  }
+  if (['rebanada', 'rebanadas'].includes(normalized)) {
     return 'piece'
   }
 
@@ -401,6 +414,23 @@ function calculateIngredientNutritionInternal(ingredient: string): {
   applied: NutritionTotals | null
   debug: ParsedIngredientDebug
 } {
+  if (isSectionHeaderLine(ingredient)) {
+    return {
+      applied: null,
+      debug: {
+        original: ingredient,
+        normalizedName: '',
+        amount: 0,
+        unit: null,
+        matchedKey: null,
+        basis: null,
+        multiplier: 0,
+        applied: null,
+        skippedReason: 'section-header',
+      },
+    }
+  }
+
   const parsed = extractAmountAndUnit(ingredient)
   const match = findIngredientMatch(parsed.name)
 
@@ -416,6 +446,7 @@ function calculateIngredientNutritionInternal(ingredient: string): {
         basis: null,
         multiplier: 0,
         applied: null,
+        skippedReason: 'unmatched',
       },
     }
   }
@@ -439,6 +470,7 @@ function calculateIngredientNutritionInternal(ingredient: string): {
         carbs: roundToOneDecimal(applied.carbs),
         fat: roundToOneDecimal(applied.fat),
       },
+      skippedReason: null,
     },
   }
 }
@@ -452,15 +484,62 @@ export function debugParseIngredients(
   })
 }
 
+export function getSupportedIngredientCount(): number {
+  return Object.keys(INGREDIENT_NUTRITION).length
+}
+
+export function getSupportedIngredientKeys(): string[] {
+  return getSupportedIngredientKeysFromCatalog()
+}
+
+export function getNutritionCoverageReport(sampleIngredients: string[] = []): {
+  totalIngredients: number
+  totalAliases: number
+  categoryCoverage: ReturnType<typeof getIngredientCategoryCounts>
+  successfulMatches: Array<{ input: string; matchedKey: string | null }>
+} {
+  const successfulMatches = debugParseIngredients(sampleIngredients).map((parsed) => ({
+    input: parsed.original,
+    matchedKey: parsed.matchedKey,
+  }))
+
+  return {
+    totalIngredients: getSupportedIngredientCount(),
+    totalAliases: getIngredientAliasCount(),
+    categoryCoverage: getIngredientCategoryCounts(),
+    successfulMatches,
+  }
+}
+
 export async function calculateNutrition(
   ingredients: string[]
 ): Promise<NutritionTotals> {
   const totals = ingredients.reduce<NutritionTotals>((current, ingredient) => {
     const result = calculateIngredientNutritionInternal(ingredient)
 
-    if (!result.applied) {
+    if (result.debug.skippedReason === 'section-header') {
+      console.info('[nutrition] skipped section header:', {
+        ingredient: result.debug.original,
+      })
       return current
     }
+
+    if (!result.applied) {
+      console.warn('[nutrition] unmatched ingredient:', {
+        ingredient: result.debug.original,
+        normalizedName: result.debug.normalizedName,
+      })
+      return current
+    }
+
+    console.info('[nutrition] matched ingredient:', {
+      ingredient: result.debug.original,
+      normalizedName: result.debug.normalizedName,
+      matchedKey: result.debug.matchedKey,
+      basis: result.debug.basis,
+      multiplier: result.debug.multiplier,
+      applied: result.debug.applied,
+    })
 
     return addTotals(current, result.applied)
   }, emptyTotals())

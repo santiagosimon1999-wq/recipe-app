@@ -1,25 +1,29 @@
 import SearchBar from './SearchBar'
 import CategoryFilter from './CategoryFilter'
+import type { CategoryOption } from '../utils/categories'
+import type { CategoryGroupKey } from '../types/Category'
 
 type DiscoverPanelProps = {
   searchTerm: string
   selectedCategory: string
-  showFavoritesOnly: boolean
+  categoryOptions?: Record<CategoryGroupKey, CategoryOption[]>
+  showSavedOnly: boolean
   showClearFiltersButton: boolean
   onSearchChange: (searchTerm: string) => void
   onCategoryChange: (category: string) => void
-  onToggleShowFavoritesOnly: () => void
+  onToggleShowSavedOnly: () => void
   onClearFilters: () => void
 }
 
 export default function DiscoverPanel({
   searchTerm,
   selectedCategory,
-  showFavoritesOnly,
+  categoryOptions,
+  showSavedOnly,
   showClearFiltersButton,
   onSearchChange,
   onCategoryChange,
-  onToggleShowFavoritesOnly,
+  onToggleShowSavedOnly,
   onClearFilters,
 }: DiscoverPanelProps) {
   return (
@@ -35,6 +39,7 @@ export default function DiscoverPanel({
 
       <CategoryFilter
         selectedCategory={selectedCategory}
+        categoryOptions={categoryOptions}
         onCategoryChange={onCategoryChange}
       />
 
@@ -42,13 +47,13 @@ export default function DiscoverPanel({
         <button
           type="button"
           className={
-            showFavoritesOnly
-              ? 'favorites-toggle-button favorites-toggle-button--active'
-              : 'favorites-toggle-button'
+            showSavedOnly
+              ? 'saved-toggle-button saved-toggle-button--active'
+              : 'saved-toggle-button'
           }
-          onClick={onToggleShowFavoritesOnly}
+          onClick={onToggleShowSavedOnly}
         >
-          {showFavoritesOnly ? '★ Favorites only' : '☆ Show favorites'}
+          {showSavedOnly ? '★ Saved only' : '☆ Show saved'}
         </button>
 
         {showClearFiltersButton ? (

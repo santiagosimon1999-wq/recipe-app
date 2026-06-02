@@ -26,9 +26,13 @@ import { getSupabaseRecipeId, parseDbRecipeId } from '../utils/favorites'
 async function enrichRecipesWithLikes(
   recipes: Recipe[],
   userId: string | undefined
-): Promise<{ enriched: Recipe[]; likedIds: number[] }> {
+): Promise<{
+  enriched: Recipe[]
+  likedIds: number[]
+  likeCountsByRecipeId: Record<number, number>
+}> {
   if (recipes.length === 0) {
-    return { enriched: recipes, likedIds: [] }
+    return { enriched: recipes, likedIds: [], likeCountsByRecipeId: {} }
   }
 
   const recipeIds = recipes
@@ -58,7 +62,7 @@ async function enrichRecipesWithLikes(
     }
   })
 
-  return { enriched, likedIds }
+  return { enriched, likedIds, likeCountsByRecipeId: likeCounts }
 }
 
 export function useRecipes(
@@ -67,6 +71,9 @@ export function useRecipes(
 ) {
   const [recipeList, setRecipeList] = useState<Recipe[]>([])
   const [likedRecipeIds, setLikedRecipeIds] = useState<number[]>([])
+  const [likeCountsByRecipeId, setLikeCountsByRecipeId] = useState<
+    Record<number, number>
+  >({})
   const [hasMoreCommunity, setHasMoreCommunity] = useState(false)
   const [loadingMoreCommunity, setLoadingMoreCommunity] = useState(false)
   const [followingFeedRecipes, setFollowingFeedRecipes] = useState<Recipe[]>([])
@@ -108,14 +115,17 @@ export function useRecipes(
               : null
           setHasMoreCommunity(publicRows.length >= COMMUNITY_PAGE_SIZE)
 
-          const { enriched } = await enrichRecipesWithLikes(publicRecipes, undefined)
+          const { enriched, likeCountsByRecipeId: likeCounts } =
+            await enrichRecipesWithLikes(publicRecipes, undefined)
           setLikedRecipeIds([])
+          setLikeCountsByRecipeId(likeCounts)
           setRecipeList(enriched)
           setFollowingFeedRecipes([])
         } catch (error) {
           console.error('Failed to load public community recipes:', error)
           setRecipeList([])
           setLikedRecipeIds([])
+          setLikeCountsByRecipeId({})
           setFollowingFeedRecipes([])
         }
 
@@ -153,18 +163,29 @@ export function useRecipes(
         )
 
         const combined = [...ownRecipes, ...communityRecipes]
-        const { enriched, likedIds } = await enrichRecipesWithLikes(
+        const {
+          enriched,
+          likedIds,
+          likeCountsByRecipeId: combinedLikeCounts,
+        } = await enrichRecipesWithLikes(
           combined,
           user.id
         )
 
-        const { enriched: enrichedFollowing } = await enrichRecipesWithLikes(
+        const {
+          enriched: enrichedFollowing,
+          likeCountsByRecipeId: followingLikeCounts,
+        } = await enrichRecipesWithLikes(
           followingMapped,
           user.id
         )
 
         setFollowingFeedRecipes(enrichedFollowing)
         setLikedRecipeIds(likedIds)
+        setLikeCountsByRecipeId({
+          ...combinedLikeCounts,
+          ...followingLikeCounts,
+        })
         setRecipeList(enriched)
       } catch (error) {
         console.error('Failed to load recipes from Supabase:', error)
@@ -173,8 +194,10 @@ export function useRecipes(
           const rows = await getRecipes(user.id)
           const mappedRecipes = rows.map((row) => mapDbRowToRecipe(row, user.id))
           setRecipeList(mappedRecipes)
+          setLikeCountsByRecipeId({})
         } catch {
           setRecipeList([])
+          setLikeCountsByRecipeId({})
         }
       }
     }
@@ -218,6 +241,15 @@ export function useRecipes(
         user?.id
       )
 
+      setLikeCountsByRecipeId((current) => {
+        const next = { ...current }
+        for (const recipe of enrichedNew) {
+          if (recipe.source === 'sample') continue
+          next[recipe.id] = recipe.likeCount ?? 0
+        }
+        return next
+      })
+
       setRecipeList((current) => {
         const existingIds = new Set(current.map((recipe) => recipe.id))
         const toAppend = enrichedNew.filter(
@@ -247,6 +279,8 @@ export function useRecipes(
     setRecipeList,
     likedRecipeIds,
     setLikedRecipeIds,
+    likeCountsByRecipeId,
+    setLikeCountsByRecipeId,
     hasMoreCommunity,
     loadingMoreCommunity,
     loadMoreCommunity,
@@ -292,6 +326,24 @@ export function useRecipeMutations(
         }
 
         const nutrition = await calculateNutrition(recipeData.ingredients)
+        console.info('[nutrition] calculated totals:', {
+          title: recipeData.title,
+          ingredientCount: recipeData.ingredients.length,
+          totals: nutrition,
+        })
+
+        if (
+          recipeData.ingredients.length > 0 &&
+          nutrition.calories === 0 &&
+          nutrition.protein === 0 &&
+          nutrition.carbs === 0 &&
+          nutrition.fat === 0
+        ) {
+          console.warn('[nutrition] zero totals for non-empty ingredients:', {
+            title: recipeData.title,
+            ingredients: recipeData.ingredients,
+          })
+        }
 
         let imageUrl = recipeData.image || null
 
@@ -299,11 +351,25 @@ export function useRecipeMutations(
           imageUrl = await uploadRecipeImage(user.id, recipeData.imageFile)
         }
 
+        const macroPayload = {
+          calories: nutrition.calories,
+          protein: nutrition.protein,
+          carbs: nutrition.carbs,
+          fat: nutrition.fat,
+        }
+
         if (recipeBeingEdited) {
           if (recipeBeingEdited.source !== 'user') {
             notify.error('Only your own recipes can be edited.')
             return
           }
+
+          console.info('[recipe save] payload macros:', {
+            mode: 'edit',
+            recipeId: recipeBeingEdited.id,
+            title: recipeData.title,
+            macros: macroPayload,
+          })
 
           const updatedRow = await updateRecipeById(
             recipeBeingEdited.id,
@@ -314,11 +380,12 @@ export function useRecipeMutations(
               ingredients: recipeData.ingredients,
               instructions: recipeData.instructions,
               category: recipeData.category,
+              categories: recipeData.categories,
               image_url: imageUrl,
-              calories: nutrition.calories,
-              protein: nutrition.protein,
-              carbs: nutrition.carbs,
-              fat: nutrition.fat,
+              calories: macroPayload.calories,
+              protein: macroPayload.protein,
+              carbs: macroPayload.carbs,
+              fat: macroPayload.fat,
               is_public: recipeData.isPublic,
             }
           )
@@ -327,24 +394,45 @@ export function useRecipeMutations(
 
           setRecipeList((currentRecipes) =>
             currentRecipes.map((recipe) =>
-              recipe.id === recipeBeingEdited.id ? updatedRecipe : recipe
+              recipe.id === recipeBeingEdited.id
+                ? {
+                    ...updatedRecipe,
+                    likeCount: recipe.likeCount,
+                    liked: recipe.liked,
+                  }
+                : recipe
             )
           )
 
-          setSelectedRecipe(updatedRecipe)
+          setSelectedRecipe((current) =>
+            current && current.id === updatedRecipe.id
+              ? {
+                  ...updatedRecipe,
+                  likeCount: current.likeCount,
+                  liked: current.liked,
+                }
+              : updatedRecipe
+          )
           notify.success('Recipe updated successfully.')
         } else {
+          console.info('[recipe save] payload macros:', {
+            mode: 'create',
+            title: recipeData.title,
+            macros: macroPayload,
+          })
+
           const createdRow = await createRecipe(user.id, {
             title: recipeData.title,
             description: recipeData.description,
             ingredients: recipeData.ingredients,
             instructions: recipeData.instructions,
             category: recipeData.category,
+            categories: recipeData.categories,
             image_url: imageUrl,
-            calories: nutrition.calories,
-            protein: nutrition.protein,
-            carbs: nutrition.carbs,
-            fat: nutrition.fat,
+            calories: macroPayload.calories,
+            protein: macroPayload.protein,
+            carbs: macroPayload.carbs,
+            fat: macroPayload.fat,
             is_public: recipeData.isPublic,
           })
 
@@ -453,11 +541,25 @@ export function useRecipeMutations(
 
         setRecipeList((currentRecipes) =>
           currentRecipes.map((currentRecipe) =>
-            currentRecipe.id === recipe.id ? updatedRecipe : currentRecipe
+            currentRecipe.id === recipe.id
+              ? {
+                  ...updatedRecipe,
+                  likeCount: currentRecipe.likeCount,
+                  liked: currentRecipe.liked,
+                }
+              : currentRecipe
           )
         )
 
-        setSelectedRecipe(updatedRecipe)
+        setSelectedRecipe((current) =>
+          current && current.id === updatedRecipe.id
+            ? {
+                ...updatedRecipe,
+                likeCount: current.likeCount,
+                liked: current.liked,
+              }
+            : updatedRecipe
+        )
 
         notify.success(
           updatedRecipe.isPublic

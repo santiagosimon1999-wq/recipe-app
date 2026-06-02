@@ -1,21 +1,26 @@
 import type { CommunityFeedMode } from '../hooks/useRecipes'
+import type { CategoryGroupKey } from '../types/Category'
 import type { Recipe } from '../types/Recipe'
 import DiscoverPanel from '../components/DiscoverPanel'
 import RecipeGrid from '../components/RecipeGrid'
+import type { CategoryOption } from '../utils/categories'
 
 type CommunityFeedPageProps = {
   recipes: Recipe[]
-  sampleFavoriteIds: number[]
-  cloudFavoriteRecipeIds: number[]
+  sampleSavedRecipeIds: number[]
+  cloudSavedRecipeIds: number[]
+  likedRecipeIds?: number[]
+  likeCountsByRecipeId?: Record<number, number>
   searchTerm: string
   selectedCategory: string
-  showFavoritesOnly: boolean
+  categoryOptions?: Record<CategoryGroupKey, CategoryOption[]>
+  showSavedOnly: boolean
   showClearFiltersButton: boolean
   onSearchChange: (searchTerm: string) => void
   onCategoryChange: (category: string) => void
-  onToggleShowFavoritesOnly: () => void
+  onToggleShowSavedOnly: () => void
   onClearFilters: () => void
-  onToggleFavorite: (recipe: Recipe) => void
+  onToggleSaved: (recipe: Recipe) => void
   onToggleLike?: (recipeId: number) => void
   onSelectRecipe: (recipe: Recipe) => void
   onViewAuthor?: (username: string) => void
@@ -29,17 +34,20 @@ type CommunityFeedPageProps = {
 
 export default function CommunityFeedPage({
   recipes,
-  sampleFavoriteIds,
-  cloudFavoriteRecipeIds,
+  sampleSavedRecipeIds,
+  cloudSavedRecipeIds,
+  likedRecipeIds,
+  likeCountsByRecipeId,
   searchTerm,
   selectedCategory,
-  showFavoritesOnly,
+  categoryOptions,
+  showSavedOnly,
   showClearFiltersButton,
   onSearchChange,
   onCategoryChange,
-  onToggleShowFavoritesOnly,
+  onToggleShowSavedOnly,
   onClearFilters,
-  onToggleFavorite,
+  onToggleSaved,
   onToggleLike,
   onSelectRecipe,
   onViewAuthor,
@@ -107,11 +115,12 @@ export default function CommunityFeedPage({
       <DiscoverPanel
         searchTerm={searchTerm}
         selectedCategory={selectedCategory}
-        showFavoritesOnly={showFavoritesOnly}
+        categoryOptions={categoryOptions}
+        showSavedOnly={showSavedOnly}
         showClearFiltersButton={showClearFiltersButton}
         onSearchChange={onSearchChange}
         onCategoryChange={onCategoryChange}
-        onToggleShowFavoritesOnly={onToggleShowFavoritesOnly}
+        onToggleShowSavedOnly={onToggleShowSavedOnly}
         onClearFilters={onClearFilters}
       />
 
@@ -124,9 +133,11 @@ export default function CommunityFeedPage({
 
       <RecipeGrid
         recipes={recipes}
-        sampleFavoriteIds={sampleFavoriteIds}
-        cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-        onToggleFavorite={onToggleFavorite}
+        sampleSavedRecipeIds={sampleSavedRecipeIds}
+        cloudSavedRecipeIds={cloudSavedRecipeIds}
+        likedRecipeIds={likedRecipeIds}
+        likeCountsByRecipeId={likeCountsByRecipeId}
+        onToggleSaved={onToggleSaved}
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}
         onViewAuthor={onViewAuthor}

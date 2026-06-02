@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Routes, Route, useLocation, useNavigate } from 'react-router'
 import { RecipeShellProvider } from './context/RecipeShellContext'
 import ProfilePage from './pages/ProfilePage'
@@ -14,7 +14,7 @@ import RecipeForm from './components/RecipeForm'
 import RecipeModal from './components/RecipeModal'
 import { RecipeGridSkeleton } from './components/ui/RecipeCardSkeleton'
 import { ProfilePageSkeleton } from './components/ui/ProfilePageSkeleton'
-import { useFavorites } from './hooks/useFavorites'
+import { useSaved } from './hooks/useFavorites'
 import { useLikes } from './hooks/useLikes'
 import { useProfile } from './hooks/useProfile'
 import { useRecipeFilters } from './hooks/useRecipeFilters'
@@ -26,10 +26,17 @@ import {
 import { useUnreadNotifications } from './hooks/useUnreadNotifications'
 import RecipeDetailRoute from './components/RecipeDetailRoute'
 import { normalizeRecipeForUi } from './lib/recipeMappers'
+import { getCategoryRegistry } from './lib/recipeService'
 import { getUserInitial } from './lib/userUtils'
 import { notify } from './lib/toast'
+import type { CategoryGroupKey } from './types/Category'
 import type { Recipe } from './types/Recipe'
 import type { Theme } from './hooks/useTheme'
+import {
+  CATEGORY_REGISTRY,
+  groupCategoryOptions,
+  type CategoryOption,
+} from './utils/categories'
 
 const CommunityFeedPage = lazy(() => import('./pages/CommunityFeedPage'))
 const ActivityFeedPage = lazy(() => import('./pages/ActivityFeedPage'))
@@ -38,6 +45,7 @@ const FollowListPage = lazy(() => import('./pages/FollowListPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const CollectionsPage = lazy(() => import('./pages/CollectionsPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const SavedRecipesPage = lazy(() => import('./pages/SavedRecipesPage'))
 
 type AppShellProps = {
   theme: Theme
@@ -53,6 +61,9 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
 
   const [communityFeedMode, setCommunityFeedMode] =
     useState<CommunityFeedMode>('all')
+  const [categoryOptions, setCategoryOptions] = useState<
+    Record<CategoryGroupKey, CategoryOption[]>
+  >(() => groupCategoryOptions(CATEGORY_REGISTRY))
 
   const { displayName } = useProfile(user)
   const unreadNotifications = useUnreadNotifications(user)
@@ -62,25 +73,27 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     setRecipeList,
     likedRecipeIds,
     setLikedRecipeIds,
+    likeCountsByRecipeId,
+    setLikeCountsByRecipeId,
     hasMoreCommunity,
     loadingMoreCommunity,
     loadMoreCommunity,
   } = useRecipes(user, communityFeedMode)
 
   const {
-    cloudFavoriteRecipeIds,
-    sampleFavoriteIds,
-    favoriteCount,
-    toggleFavorite,
-    removeCloudFavorite,
-  } = useFavorites(user, recipeList)
+    cloudSavedRecipeIds,
+    sampleSavedRecipeIds,
+    savedCount,
+    toggleSaved,
+    removeCloudSavedRecipeId,
+  } = useSaved(user, recipeList)
 
   const {
     searchTerm,
     setSearchTerm,
     selectedCategory,
     setSelectedCategory,
-    showFavoritesOnly,
+    showSavedOnly,
     userRecipes,
     communityRecipes,
     savoraInspirationRecipes,
@@ -88,8 +101,8 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     averageCalories,
     showClearFiltersButton,
     handleClearFilters,
-    handleToggleShowFavoritesOnly,
-  } = useRecipeFilters(recipeList, sampleFavoriteIds, cloudFavoriteRecipeIds)
+    handleToggleShowSavedOnly,
+  } = useRecipeFilters(recipeList, sampleSavedRecipeIds, cloudSavedRecipeIds)
 
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
   const [showRecipeForm, setShowRecipeForm] = useState(false)
@@ -100,6 +113,8 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     user,
     recipeList,
     setRecipeList,
+    likeCountsByRecipeId,
+    setLikeCountsByRecipeId,
     selectedRecipe,
     setSelectedRecipe,
     likedRecipeIds,
@@ -109,10 +124,64 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
   const { saveRecipe, deleteRecipe, toggleRecipePublic } = useRecipeMutations(
     user,
     setRecipeList,
-    removeCloudFavorite
+    removeCloudSavedRecipeId
   )
 
   const canManageSelectedRecipe = !!user && selectedRecipe?.source === 'user'
+
+  const mergeLikeCounts = useCallback(
+    (likeCounts: Record<number, number>) => {
+      const entries = Object.entries(likeCounts)
+      if (entries.length === 0) return
+
+      setLikeCountsByRecipeId((current) => {
+        const next = { ...current }
+        for (const [recipeId, likeCount] of entries) {
+          const parsedId = Number(recipeId)
+          if (!Number.isFinite(parsedId) || parsedId <= 0) continue
+          next[parsedId] = likeCount
+        }
+        return next
+      })
+    },
+    [setLikeCountsByRecipeId]
+  )
+
+  const mergeLikedRecipeIds = useCallback(
+    (recipeIds: number[]) => {
+      if (recipeIds.length === 0) return
+      setLikedRecipeIds((current) => [...new Set([...current, ...recipeIds])])
+    },
+    [setLikedRecipeIds]
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const registry = await getCategoryRegistry()
+        if (cancelled || registry.length === 0) return
+
+        setCategoryOptions(
+          groupCategoryOptions(
+            registry.map((item) => ({
+              name: item.name,
+              slug: item.slug,
+              icon: item.icon ?? '',
+              groupKey: item.groupKey,
+              groupLabel: item.groupLabel,
+            }))
+          )
+        )
+      } catch {
+        // Keep static fallback registry.
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function handleAddRecipe(recipeData: Recipe) {
     await saveRecipe({
@@ -207,12 +276,18 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
       setSelectedRecipe(
         normalizeRecipeForUi({
           ...normalized,
-          likeCount: fromList?.likeCount ?? normalized.likeCount,
-          liked: fromList?.liked ?? normalized.liked,
+          likeCount:
+            likeCountsByRecipeId[normalized.id] ??
+            fromList?.likeCount ??
+            normalized.likeCount,
+          liked:
+            likedRecipeIds.includes(normalized.id) ||
+            fromList?.liked ||
+            normalized.liked,
         })
       )
     },
-    [recipeList]
+    [recipeList, likedRecipeIds, likeCountsByRecipeId]
   )
 
   function handleCloseModal() {
@@ -223,9 +298,29 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     }
   }
 
-  const handleRecipeFromDeepLink = useCallback((recipe: Recipe) => {
-    setSelectedRecipe(recipe)
-  }, [])
+  const handleRecipeFromDeepLink = useCallback(
+    (recipe: Recipe) => {
+      if (recipe.id > 0 && recipe.source !== 'sample') {
+        setLikeCountsByRecipeId((current) => ({
+          ...current,
+          [recipe.id]: recipe.likeCount ?? current[recipe.id] ?? 0,
+        }))
+        setLikedRecipeIds((current) => {
+          const withoutRecipeId = current.filter((id) => id !== recipe.id)
+          return recipe.liked ? [...withoutRecipeId, recipe.id] : withoutRecipeId
+        })
+      }
+
+      setSelectedRecipe(
+        normalizeRecipeForUi({
+          ...recipe,
+          likeCount: recipe.likeCount ?? 0,
+          liked: recipe.liked,
+        })
+      )
+    },
+    [setLikeCountsByRecipeId, setLikedRecipeIds]
+  )
 
   function handleViewAuthor(username: string) {
     const trimmed = username?.trim()
@@ -254,7 +349,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
             email={user?.email}
             userInitial={getUserInitial(displayName || user?.email)}
             totalRecipes={allUserRecipes.length}
-            favoriteCount={favoriteCount}
+            savedCount={savedCount}
             averageCalories={averageCalories}
             isLoggedIn={Boolean(user)}
             unreadNotifications={unreadNotifications}
@@ -264,6 +359,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
           <RecipeForm
             key={recipeBeingEdited?.id ?? 'new'}
             initialRecipe={recipeBeingEdited}
+            categoryOptions={categoryOptions}
             onSaveRecipe={handleAddRecipe}
             onCancel={handleCancelRecipeForm}
           />
@@ -283,13 +379,20 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                   <RecipeDetailRoute
                     userId={user?.id}
                     onRecipeReady={handleRecipeFromDeepLink}
+                    onMergeLikeCounts={mergeLikeCounts}
+                    onMergeLikedRecipeIds={mergeLikedRecipeIds}
                   />
                 }
               />
               <Route
                 path="/users/:username"
                 element={
-                  <PublicProfilePage onSelectRecipe={handleSelectRecipe} />
+                  <PublicProfilePage
+                    userId={user?.id}
+                    onSelectRecipe={handleSelectRecipe}
+                    onMergeLikeCounts={mergeLikeCounts}
+                    onMergeLikedRecipeIds={mergeLikedRecipeIds}
+                  />
                 }
               />
               <Route
@@ -313,19 +416,47 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                 element={
                   <SearchPage
                     userId={user?.id}
-                    sampleFavoriteIds={sampleFavoriteIds}
-                    cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-                    onToggleFavorite={toggleFavorite}
+                    likedRecipeIds={likedRecipeIds}
+                    likeCountsByRecipeId={likeCountsByRecipeId}
+                    sampleSavedRecipeIds={sampleSavedRecipeIds}
+                    cloudSavedRecipeIds={cloudSavedRecipeIds}
+                    categoryOptions={categoryOptions}
+                    onToggleSaved={toggleSaved}
                     onSelectRecipe={handleSelectRecipe}
                     onToggleLike={toggleLike}
                     onViewAuthor={handleViewAuthor}
+                    onMergeLikeCounts={mergeLikeCounts}
+                    onMergeLikedRecipeIds={mergeLikedRecipeIds}
+                  />
+                }
+              />
+              <Route
+                path="/saved"
+                element={
+                  <SavedRecipesPage
+                    userId={user?.id}
+                    sampleSavedRecipeIds={sampleSavedRecipeIds}
+                    cloudSavedRecipeIds={cloudSavedRecipeIds}
+                    likedRecipeIds={likedRecipeIds}
+                    likeCountsByRecipeId={likeCountsByRecipeId}
+                    onToggleSaved={toggleSaved}
+                    onSelectRecipe={handleSelectRecipe}
+                    onToggleLike={toggleLike}
+                    onViewAuthor={handleViewAuthor}
+                    onMergeLikeCounts={mergeLikeCounts}
+                    onMergeLikedRecipeIds={mergeLikedRecipeIds}
                   />
                 }
               />
               <Route
                 path="/collections"
                 element={
-                  <CollectionsPage onSelectRecipe={handleSelectRecipe} />
+                  <CollectionsPage
+                    userId={user?.id}
+                    onSelectRecipe={handleSelectRecipe}
+                    onMergeLikeCounts={mergeLikeCounts}
+                    onMergeLikedRecipeIds={mergeLikedRecipeIds}
+                  />
                 }
               />
               <Route path="/notifications" element={<NotificationsPage />} />
@@ -334,20 +465,23 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                 element={
                   <CommunityFeedPage
                     recipes={communityRecipes}
-                    sampleFavoriteIds={sampleFavoriteIds}
-                    cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
+                    sampleSavedRecipeIds={sampleSavedRecipeIds}
+                    cloudSavedRecipeIds={cloudSavedRecipeIds}
                     searchTerm={searchTerm}
                     selectedCategory={selectedCategory}
-                    showFavoritesOnly={showFavoritesOnly}
+                    categoryOptions={categoryOptions}
+                    showSavedOnly={showSavedOnly}
                     showClearFiltersButton={showClearFiltersButton}
                     onSearchChange={setSearchTerm}
                     onCategoryChange={setSelectedCategory}
-                    onToggleShowFavoritesOnly={handleToggleShowFavoritesOnly}
+                    onToggleShowSavedOnly={handleToggleShowSavedOnly}
                     onClearFilters={handleClearFilters}
-                    onToggleFavorite={toggleFavorite}
+                    onToggleSaved={toggleSaved}
                     onSelectRecipe={handleSelectRecipe}
                     onToggleLike={toggleLike}
                     onViewAuthor={handleViewAuthor}
+                    likedRecipeIds={likedRecipeIds}
+                    likeCountsByRecipeId={likeCountsByRecipeId}
                     hasMore={hasMoreCommunity}
                     loadingMore={loadingMoreCommunity}
                     onLoadMore={() => void loadMoreCommunity()}
@@ -364,11 +498,12 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                     <DiscoverPanel
                       searchTerm={searchTerm}
                       selectedCategory={selectedCategory}
-                      showFavoritesOnly={showFavoritesOnly}
+                      categoryOptions={categoryOptions}
+                      showSavedOnly={showSavedOnly}
                       showClearFiltersButton={showClearFiltersButton}
                       onSearchChange={setSearchTerm}
                       onCategoryChange={setSelectedCategory}
-                      onToggleShowFavoritesOnly={handleToggleShowFavoritesOnly}
+                      onToggleShowSavedOnly={handleToggleShowSavedOnly}
                       onClearFilters={handleClearFilters}
                     />
 
@@ -376,13 +511,15 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                       userRecipes={userRecipes}
                       communityRecipes={communityRecipes}
                       savoraInspirationRecipes={savoraInspirationRecipes}
-                      sampleFavoriteIds={sampleFavoriteIds}
-                      cloudFavoriteRecipeIds={cloudFavoriteRecipeIds}
-                      onToggleFavorite={toggleFavorite}
+                      sampleSavedRecipeIds={sampleSavedRecipeIds}
+                      cloudSavedRecipeIds={cloudSavedRecipeIds}
+                      onToggleSaved={toggleSaved}
                       onSelectRecipe={handleSelectRecipe}
                       onStartCreateRecipe={handleStartCreateRecipe}
                       onToggleLike={toggleLike}
                       onViewAuthor={handleViewAuthor}
+                      likedRecipeIds={likedRecipeIds}
+                      likeCountsByRecipeId={likeCountsByRecipeId}
                     />
                   </>
                 }
@@ -400,8 +537,10 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
             onDelete={handleDeleteRecipe}
             onTogglePublic={handleToggleRecipePublic}
             canManage={canManageSelectedRecipe}
-            liked={Boolean(selectedRecipe.liked)}
-            likeCount={selectedRecipe.likeCount ?? 0}
+            liked={likedRecipeIds.includes(selectedRecipe.id)}
+            likeCount={
+              likeCountsByRecipeId[selectedRecipe.id] ?? selectedRecipe.likeCount ?? 0
+            }
             onToggleLike={toggleLike}
             onViewAuthor={handleViewAuthor}
           />
@@ -423,6 +562,7 @@ function RouteFallback({ pathname }: { pathname: string }) {
     pathname === '/profile/followers' ||
     pathname === '/profile/following' ||
     pathname === '/following' ||
+    pathname === '/saved' ||
     pathname === '/search' ||
     pathname === '/'
   ) {

@@ -12,11 +12,15 @@ import { parseDbRecipeId } from '../utils/favorites'
 type RecipeDetailRouteProps = {
   userId?: string
   onRecipeReady: (recipe: Recipe) => void
+  onMergeLikeCounts?: (likeCounts: Record<number, number>) => void
+  onMergeLikedRecipeIds?: (recipeIds: number[]) => void
 }
 
 export default function RecipeDetailRoute({
   userId,
   onRecipeReady,
+  onMergeLikeCounts,
+  onMergeLikedRecipeIds,
 }: RecipeDetailRouteProps) {
   const params = useParams<{ recipeId: string }>()
   const navigate = useNavigate()
@@ -60,6 +64,9 @@ export default function RecipeDetailRoute({
             likeCount: likeCounts[recipe.id] ?? 0,
             liked: likedIds.includes(recipe.id),
           }
+
+          onMergeLikeCounts?.(likeCounts)
+          onMergeLikedRecipeIds?.(likedIds)
         }
 
         onRecipeReady(recipe)
@@ -76,7 +83,13 @@ export default function RecipeDetailRoute({
     return () => {
       cancelled = true
     }
-  }, [params.recipeId, userId, onRecipeReady])
+  }, [
+    params.recipeId,
+    userId,
+    onRecipeReady,
+    onMergeLikeCounts,
+    onMergeLikedRecipeIds,
+  ])
 
   if (!error) {
     return (

@@ -1,16 +1,20 @@
 import { useMemo, useState } from 'react'
 import { isSavoraTeamRecipe } from '../lib/savoraTeam'
 import type { Recipe } from '../types/Recipe'
-import { isRecipeFavorited } from '../utils/favorites'
+import {
+  recipeCategorySearchText,
+  recipeMatchesSelectedCategory,
+} from '../utils/categories'
+import { isRecipeSaved } from '../utils/favorites'
 
 export function useRecipeFilters(
   recipeList: Recipe[],
-  sampleFavoriteIds: number[],
-  cloudFavoriteRecipeIds: number[]
+  sampleSavedRecipeIds: number[],
+  cloudSavedRecipeIds: number[]
 ) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [showSavedOnly, setShowSavedOnly] = useState(false)
 
   const filteredRecipes = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase()
@@ -18,26 +22,29 @@ export function useRecipeFilters(
     return recipeList.filter((recipe) => {
       const matchesSearch =
         recipe.title.toLowerCase().includes(normalizedSearch) ||
+        recipeCategorySearchText(recipe).includes(normalizedSearch) ||
         recipe.ingredients.some((ingredient) =>
           ingredient.toLowerCase().includes(normalizedSearch)
         )
 
-      const matchesCategory =
-        selectedCategory === 'All' || recipe.category === selectedCategory
+      const matchesCategory = recipeMatchesSelectedCategory(
+        recipe,
+        selectedCategory
+      )
 
-      const matchesFavorites =
-        !showFavoritesOnly ||
-        isRecipeFavorited(recipe, sampleFavoriteIds, cloudFavoriteRecipeIds)
+      const matchesSaved =
+        !showSavedOnly ||
+        isRecipeSaved(recipe, sampleSavedRecipeIds, cloudSavedRecipeIds)
 
-      return matchesSearch && matchesCategory && matchesFavorites
+      return matchesSearch && matchesCategory && matchesSaved
     })
   }, [
     recipeList,
     searchTerm,
     selectedCategory,
-    showFavoritesOnly,
-    sampleFavoriteIds,
-    cloudFavoriteRecipeIds,
+    showSavedOnly,
+    sampleSavedRecipeIds,
+    cloudSavedRecipeIds,
   ])
 
   const savoraInspirationRecipes = useMemo(
@@ -77,16 +84,16 @@ export function useRecipeFilters(
   }, [allUserRecipes])
 
   const showClearFiltersButton =
-    searchTerm !== '' || selectedCategory !== 'All' || showFavoritesOnly
+    searchTerm !== '' || selectedCategory !== 'All' || showSavedOnly
 
   function handleClearFilters() {
     setSearchTerm('')
     setSelectedCategory('All')
-    setShowFavoritesOnly(false)
+    setShowSavedOnly(false)
   }
 
-  function handleToggleShowFavoritesOnly() {
-    setShowFavoritesOnly((currentValue) => !currentValue)
+  function handleToggleShowSavedOnly() {
+    setShowSavedOnly((currentValue) => !currentValue)
   }
 
   return {
@@ -94,7 +101,7 @@ export function useRecipeFilters(
     setSearchTerm,
     selectedCategory,
     setSelectedCategory,
-    showFavoritesOnly,
+    showSavedOnly,
     filteredRecipes,
     userRecipes,
     communityRecipes,
@@ -103,6 +110,6 @@ export function useRecipeFilters(
     averageCalories,
     showClearFiltersButton,
     handleClearFilters,
-    handleToggleShowFavoritesOnly,
+    handleToggleShowSavedOnly,
   }
 }

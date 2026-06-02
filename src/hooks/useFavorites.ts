@@ -13,91 +13,93 @@ import {
   isSampleRecipe,
 } from '../utils/favorites'
 
-export function useFavorites(user: User | null, recipeList: Recipe[]) {
-  const [cloudFavoriteRecipeIds, setCloudFavoriteRecipeIds] = useState<number[]>(
-    []
-  )
-  const [sampleFavoriteIds, setSampleFavoriteIds] = useState<number[]>(() => {
+export function useSaved(user: User | null, recipeList: Recipe[]) {
+  const [cloudSavedRecipeIds, setCloudSavedRecipeIds] = useState<number[]>([])
+  const [sampleSavedRecipeIds, setSampleSavedRecipeIds] = useState<number[]>(() => {
     try {
-      const stored = localStorage.getItem('favoriteSampleRecipeIds')
+      const stored =
+        localStorage.getItem('savedSampleRecipeIds') ??
+        localStorage.getItem('favoriteSampleRecipeIds')
       return stored ? (JSON.parse(stored) as number[]) : []
     } catch (err) {
-      console.error('Failed to load sample favorites from localStorage:', err)
+      console.error('Failed to load sample saved recipes from localStorage:', err)
       return []
     }
   })
 
-  const favoritesFetchVersionRef = useRef(0)
+  const savedFetchVersionRef = useRef(0)
 
   useEffect(() => {
-    const fetchVersion = favoritesFetchVersionRef.current + 1
-    favoritesFetchVersionRef.current = fetchVersion
+    const fetchVersion = savedFetchVersionRef.current + 1
+    savedFetchVersionRef.current = fetchVersion
 
     if (!user) {
       Promise.resolve().then(() => {
-        if (fetchVersion !== favoritesFetchVersionRef.current) return
-        setCloudFavoriteRecipeIds([])
+        if (fetchVersion !== savedFetchVersionRef.current) return
+        setCloudSavedRecipeIds([])
       })
       return
     }
 
     const userId = user.id
 
-    async function loadCloudFavorites() {
+    async function loadCloudSavedRecipeIds() {
       try {
         const savedIds = await getSavedRecipeIdsByUser(userId)
-        if (fetchVersion !== favoritesFetchVersionRef.current) return
-        setCloudFavoriteRecipeIds(savedIds)
+        if (fetchVersion !== savedFetchVersionRef.current) return
+        setCloudSavedRecipeIds(savedIds)
       } catch (err) {
-        console.error('Failed to load saved favorites from Supabase:', err)
-        if (fetchVersion !== favoritesFetchVersionRef.current) return
-        setCloudFavoriteRecipeIds([])
+        console.error('Failed to load saved recipes from Supabase:', err)
+        if (fetchVersion !== savedFetchVersionRef.current) return
+        setCloudSavedRecipeIds([])
       }
     }
 
-    void loadCloudFavorites()
+    void loadCloudSavedRecipeIds()
   }, [user])
 
   useEffect(() => {
-    localStorage.setItem(
-      'favoriteRecipeIds',
-      JSON.stringify([
-        ...cloudFavoriteRecipeIds.map((id) => `db:${id}`),
-        ...sampleFavoriteIds.map((id) => `sample:${id}`),
-      ])
-    )
-  }, [cloudFavoriteRecipeIds, sampleFavoriteIds])
+    const serialized = JSON.stringify([
+      ...cloudSavedRecipeIds.map((id) => `db:${id}`),
+      ...sampleSavedRecipeIds.map((id) => `sample:${id}`),
+    ])
+    localStorage.setItem('savedRecipeIds', serialized)
+    localStorage.setItem('favoriteRecipeIds', serialized)
+  }, [cloudSavedRecipeIds, sampleSavedRecipeIds])
 
-  const refreshCloudFavorites = useCallback(
+  const refreshCloudSavedRecipeIds = useCallback(
     async (userId: string) => {
       if (!user || userId !== user.id) {
-        console.error('refreshCloudFavorites called with mismatched user id:', userId)
+        console.error(
+          'refreshCloudSavedRecipeIds called with mismatched user id:',
+          userId
+        )
         return
       }
 
-      const fetchVersion = favoritesFetchVersionRef.current + 1
-      favoritesFetchVersionRef.current = fetchVersion
+      const fetchVersion = savedFetchVersionRef.current + 1
+      savedFetchVersionRef.current = fetchVersion
 
       try {
         const savedIds = await getSavedRecipeIdsByUser(userId)
-        if (fetchVersion !== favoritesFetchVersionRef.current) return
-        setCloudFavoriteRecipeIds(savedIds)
+        if (fetchVersion !== savedFetchVersionRef.current) return
+        setCloudSavedRecipeIds(savedIds)
       } catch (err) {
-        console.error('Failed to refresh saved favorites from Supabase:', err)
-        if (fetchVersion !== favoritesFetchVersionRef.current) return
-        notify.error('Failed to update favorites. Please try again.')
+        console.error('Failed to refresh saved recipes from Supabase:', err)
+        if (fetchVersion !== savedFetchVersionRef.current) return
+        notify.error('Failed to update saved recipes. Please try again.')
       }
     },
     [user]
   )
 
-  const removeCloudFavorite = useCallback((recipeId: number) => {
-    setCloudFavoriteRecipeIds((currentIds) =>
+  const removeCloudSavedRecipeId = useCallback((recipeId: number) => {
+    setCloudSavedRecipeIds((currentIds) =>
       currentIds.filter((id) => id !== recipeId)
     )
   }, [])
 
-  const toggleFavorite = useCallback(
+  const toggleSaved = useCallback(
     async (recipe: Recipe) => {
       const resolvedRecipe =
         recipeList.find((r) => getRecipeListKey(r) === getRecipeListKey(recipe)) ??
@@ -105,35 +107,40 @@ export function useFavorites(user: User | null, recipeList: Recipe[]) {
 
       if (isSampleRecipe(resolvedRecipe)) {
         const recipeId = resolvedRecipe.id
-        const next = sampleFavoriteIds.includes(recipeId)
-          ? sampleFavoriteIds.filter((id) => id !== recipeId)
-          : [...sampleFavoriteIds, recipeId]
+        const next = sampleSavedRecipeIds.includes(recipeId)
+          ? sampleSavedRecipeIds.filter((id) => id !== recipeId)
+          : [...sampleSavedRecipeIds, recipeId]
 
         try {
-          localStorage.setItem('favoriteSampleRecipeIds', JSON.stringify(next))
+          const serialized = JSON.stringify(next)
+          localStorage.setItem('savedSampleRecipeIds', serialized)
+          localStorage.setItem('favoriteSampleRecipeIds', serialized)
         } catch (err) {
-          console.error('Failed to persist sample favorites:', err)
+          console.error('Failed to persist sample saved recipes:', err)
         }
 
-        setSampleFavoriteIds(next)
+        setSampleSavedRecipeIds(next)
         return
       }
 
-      if (!user) return
+      if (!user) {
+        notify.info('Sign in to save recipes.')
+        return
+      }
 
       const supabaseRecipeId = getSupabaseRecipeId(resolvedRecipe)
       if (supabaseRecipeId === null) {
         console.error(
-          'Cannot favorite recipe without a valid Supabase id:',
+          'Cannot toggle saved recipe without a valid Supabase id:',
           resolvedRecipe
         )
         notify.error(
-          'This recipe cannot be saved to favorites yet. Try refreshing.'
+          'This recipe cannot be saved yet. Try refreshing.'
         )
         return
       }
 
-      const currentlySaved = cloudFavoriteRecipeIds.includes(supabaseRecipeId)
+      const currentlySaved = cloudSavedRecipeIds.includes(supabaseRecipeId)
 
       try {
         if (currentlySaved) {
@@ -142,22 +149,31 @@ export function useFavorites(user: User | null, recipeList: Recipe[]) {
           await saveRecipeForUser(user.id, supabaseRecipeId)
         }
 
-        await refreshCloudFavorites(user.id)
+        await refreshCloudSavedRecipeIds(user.id)
       } catch (err) {
-        console.error('Failed to update favorite in Supabase:', err)
-        notify.error('Failed to update favorites. Please try again.')
+        console.error('Failed to update saved recipe in Supabase:', err)
+        notify.error('Failed to update saved recipes. Please try again.')
       }
     },
-    [user, recipeList, sampleFavoriteIds, cloudFavoriteRecipeIds, refreshCloudFavorites]
+    [
+      user,
+      recipeList,
+      sampleSavedRecipeIds,
+      cloudSavedRecipeIds,
+      refreshCloudSavedRecipeIds,
+    ]
   )
 
-  const favoriteCount = sampleFavoriteIds.length + cloudFavoriteRecipeIds.length
+  const savedCount = sampleSavedRecipeIds.length + cloudSavedRecipeIds.length
 
   return {
-    cloudFavoriteRecipeIds,
-    sampleFavoriteIds,
-    favoriteCount,
-    toggleFavorite,
-    removeCloudFavorite,
+    cloudSavedRecipeIds,
+    sampleSavedRecipeIds,
+    savedCount,
+    toggleSaved,
+    removeCloudSavedRecipeId,
   }
 }
+
+/** @deprecated Use useSaved instead. */
+export const useFavorites = useSaved

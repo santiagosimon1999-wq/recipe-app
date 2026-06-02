@@ -1,5 +1,10 @@
 import type { Recipe } from '../types/Recipe'
 import { parseDbRecipeId } from '../utils/favorites'
+import {
+  getPrimaryCategory,
+  resolveLegacyCategoryNames,
+  toCategoryTag,
+} from '../utils/categories'
 import type { RecipeRowWithAuthor } from './recipeService'
 
 /**
@@ -52,13 +57,30 @@ export function mapDbRowToRecipe(
     currentUserId && row.user_id === currentUserId
   )
 
+  const mappedCategoryTags = (row.category_tags ?? []).map((tag) => ({
+    ...tag,
+    icon: tag.icon ?? null,
+  }))
+  const mappedCategoryNames =
+    mappedCategoryTags.length > 0
+      ? mappedCategoryTags.map((tag) => tag.name)
+      : resolveLegacyCategoryNames(row.category)
+  const primaryCategory = getPrimaryCategory(mappedCategoryNames)
+
   return {
     id: dbId ?? 0,
     title: row.title,
     image: row.image_url ?? '',
     imageFile: null,
     description: row.description ?? '',
-    category: row.category ?? 'Other',
+    category: primaryCategory,
+    categories: mappedCategoryNames,
+    categoryTags:
+      mappedCategoryTags.length > 0
+        ? mappedCategoryTags
+        : mappedCategoryNames
+            .map((name) => toCategoryTag(name))
+            .filter((tag): tag is NonNullable<typeof tag> => tag !== null),
     calories: row.calories ?? 0,
     protein: row.protein ?? 0,
     carbs: row.carbs ?? 0,
@@ -89,7 +111,17 @@ export function normalizeRecipeForUi(recipe: Recipe): Recipe {
     ...recipe,
     id,
     description: recipe.description ?? '',
-    category: recipe.category ?? 'Other',
+    category: recipe.category ?? getPrimaryCategory(recipe.categories ?? []),
+    categories:
+      recipe.categories && recipe.categories.length > 0
+        ? recipe.categories
+        : resolveLegacyCategoryNames(recipe.category),
+    categoryTags:
+      recipe.categoryTags && recipe.categoryTags.length > 0
+        ? recipe.categoryTags
+        : resolveLegacyCategoryNames(recipe.category)
+            .map((name) => toCategoryTag(name))
+            .filter((tag): tag is NonNullable<typeof tag> => tag !== null),
     calories: recipe.calories ?? 0,
     protein: recipe.protein ?? 0,
     carbs: recipe.carbs ?? 0,

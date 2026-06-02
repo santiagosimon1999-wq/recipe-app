@@ -10,15 +10,26 @@ type AuthGateProps = {
 }
 
 /**
- * Routes that must remain reachable while signed out so users can complete
- * password recovery flows even before/after a session exists.
+ * Routes that must remain reachable while signed out so people can discover
+ * public content and open shared recipe links.
  */
-const PUBLIC_AUTH_ROUTES = ['/forgot-password', '/reset-password']
+const PUBLIC_ROUTES = [
+  '/',
+  '/community',
+  '/search',
+  '/recipes',
+  '/users',
+  '/forgot-password',
+  '/reset-password',
+]
 
-function isPublicAuthRoute(pathname: string): boolean {
-  return PUBLIC_AUTH_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  )
+function isPublicRoute(pathname: string): boolean {
+  if (pathname === '/') return true
+
+  return PUBLIC_ROUTES.some((route) => {
+    if (route === '/') return false
+    return pathname === route || pathname.startsWith(`${route}/`)
+  })
 }
 
 export function AuthGate({ children, theme, onToggleTheme }: AuthGateProps) {
@@ -38,7 +49,7 @@ export function AuthGate({ children, theme, onToggleTheme }: AuthGateProps) {
     )
   }
 
-  if (!user && !isPublicAuthRoute(location.pathname)) {
+  if (!user && !isPublicRoute(location.pathname)) {
     return <AuthPage theme={theme} onToggleTheme={onToggleTheme} />
   }
 

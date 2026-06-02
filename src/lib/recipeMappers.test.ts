@@ -104,6 +104,39 @@ describe('mapDbRowToRecipe', () => {
     expect(recipe.likeCount).toBe(0)
     expect(recipe.liked).toBe(false)
   })
+
+  it('maps relation category tags when present', () => {
+    const recipe = mapDbRowToRecipe(
+      makeRow({
+        category: 'Dinner',
+        category_tags: [
+          {
+            id: 1,
+            name: 'Dinner',
+            slug: 'dinner',
+            icon: '🍽️',
+            groupKey: 'meal_type',
+            groupLabel: 'Meal Type',
+          },
+          {
+            id: 2,
+            name: 'Italian',
+            slug: 'italian',
+            icon: '🍝',
+            groupKey: 'cuisine',
+            groupLabel: 'Cuisine',
+          },
+        ],
+      })
+    )
+
+    expect(recipe.category).toBe('Dinner')
+    expect(recipe.categories).toEqual(['Dinner', 'Italian'])
+    expect(recipe.categoryTags?.map((tag) => tag.name)).toEqual([
+      'Dinner',
+      'Italian',
+    ])
+  })
 })
 
 describe('normalizeRecipeForUi', () => {
