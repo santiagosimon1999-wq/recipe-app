@@ -996,9 +996,37 @@ html.app--dark .recipe-modal {
 }
 
 @media (max-width: 760px) {
-  .app {
-    padding: 18px 12px 40px;
+  /* Show fixed bottom navigation */
+  .bottom-nav {
+    display: flex;
   }
+
+  /* Reserve space so content isn't hidden behind the bottom nav */
+  .app {
+    padding: 18px 12px calc(40px + 64px + env(safe-area-inset-bottom));
+  }
+
+  /* Hide the secondary nav row on mobile — Profile and Notifications
+     are now in the bottom tab bar */
+  .app-nav__actions--secondary {
+    display: none;
+  }
+}
+
+@media (display-mode: standalone) {
+  .app {
+    padding-top: calc(32px + env(safe-area-inset-top));
+  }
+}
+
+@media (max-width: 760px) and (display-mode: standalone) {
+  .app {
+    padding-top: calc(18px + env(safe-area-inset-top));
+    padding-bottom: calc(40px + 64px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 760px) {
 
   .app-hero,
   .discover-panel,
@@ -2889,6 +2917,145 @@ html.app--dark .recipe-modal {
   color: var(--text-soft);
 }
 
+/* ── Brand link ── */
+.app-nav__brand-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.app-nav__brand-link:hover .app__title {
+  opacity: 0.8;
+}
+
+/* ── Create Recipe nav button ── */
+.app-nav__create-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 42px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--button-text);
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(201, 111, 67, 0.3);
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.app-nav__create-button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.app-nav__create-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Recipe card edit button ── */
+.recipe-card__edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-solid);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.recipe-card__edit-button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Bottom navigation bar ── */
+.bottom-nav {
+  display: none; /* visible only on mobile via media query */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  background: var(--surface-solid);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.bottom-nav__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  padding: 6px 4px;
+  border: none;
+  background: none;
+  color: var(--text-soft);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.bottom-nav__tab:hover,
+.bottom-nav__tab--active {
+  color: var(--accent);
+}
+
+.bottom-nav__create {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  padding: 6px 4px;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+}
+
+.bottom-nav__bell-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.bottom-nav__badge {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 .app-nav__notifications-label {
   display: inline-flex;
   align-items: center;
@@ -2915,5 +3082,98 @@ html.app--dark .recipe-modal {
 
   .collections-page__layout {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── PWA install prompt ── */
+.install-prompt {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: 12px;
+  right: 12px;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-soft);
+}
+
+.install-prompt__content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  color: var(--accent);
+}
+
+.install-prompt__title {
+  margin: 0 0 2px;
+  color: var(--text-main);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.install-prompt__body {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.install-prompt__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.install-prompt__primary {
+  min-height: 36px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--button-text);
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.install-prompt__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-solid);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .install-prompt {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 761px) {
+  .install-prompt {
+    left: auto;
+    right: 16px;
+    max-width: 380px;
+  }
+}
+
+@media (display-mode: standalone) {
+  .install-prompt {
+    display: none;
   }
 }

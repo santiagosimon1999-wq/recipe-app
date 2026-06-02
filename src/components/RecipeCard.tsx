@@ -5,6 +5,7 @@ import {
   Flame,
   Globe,
   Heart,
+  Pencil,
   ThumbsUp,
   UtensilsCrossed,
   User,
@@ -28,6 +29,7 @@ type RecipeCardProps = {
   likeCount?: number
   onToggleLike?: (recipeId: number) => void
   onViewAuthor?: (username: string) => void
+  onEdit?: (recipe: Recipe) => void
 }
 
 function RecipeCard({
@@ -39,6 +41,7 @@ function RecipeCard({
   likeCount = 0,
   onToggleLike,
   onViewAuthor,
+  onEdit,
 }: RecipeCardProps) {
   const fallbackImage =
     'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&q=80&auto=format&fit=crop'
@@ -213,6 +216,20 @@ function RecipeCard({
             <span>{likeCount ?? 0}</span>
           </button>
         )}
+        {recipe.source === 'user' && onEdit ? (
+          <button
+            type="button"
+            className="recipe-card__edit-button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onEdit(recipe)
+            }}
+            aria-label={`Edit ${recipe.title}`}
+          >
+            <Pencil size={15} aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
     </article>
   )

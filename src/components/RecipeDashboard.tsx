@@ -14,6 +14,7 @@ type RecipeDashboardProps = {
   onStartCreateRecipe: () => void
   onToggleLike?: (recipeId: number) => void
   onViewAuthor?: (username: string) => void
+  onEdit?: (recipe: Recipe) => void
 }
 
 export default function RecipeDashboard({
@@ -29,6 +30,7 @@ export default function RecipeDashboard({
   onStartCreateRecipe,
   onToggleLike,
   onViewAuthor,
+  onEdit,
 }: RecipeDashboardProps) {
   return (
     <>
@@ -46,6 +48,7 @@ export default function RecipeDashboard({
           onSelectRecipe={onSelectRecipe}
           onToggleLike={onToggleLike}
           onViewAuthor={onViewAuthor}
+          onEdit={onEdit}
         />
       ) : (
         <section className="empty-profile-state">

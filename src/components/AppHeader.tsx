@@ -1,4 +1,4 @@
-import { Globe, Moon, Salad, Share2, Sun } from 'lucide-react'
+import { Globe, Moon, PlusCircle, Salad, Share2, Sun } from 'lucide-react'
 import { NavLink } from 'react-router'
 import ProfileCard from './ProfileCard'
 
@@ -43,10 +43,10 @@ export default function AppHeader({
     <header className="app-hero">
       <nav className="app-nav">
         <div className="app-nav__top">
-          <div className="app-nav__brand">
+          <NavLink to="/" className="app-nav__brand-link" aria-label="Go to home">
             <p className="app-eyebrow">Recipe social tracker</p>
             <h1 className="app__title">Savora</h1>
-          </div>
+          </NavLink>
 
           <div className="app-nav__utility">
             <button
@@ -81,7 +81,7 @@ export default function AppHeader({
         <div className="app-nav__routes" aria-label="Primary navigation">
           <div className="app-nav__actions app-nav__actions--primary">
             <NavLink to="/" end className={navLinkClass}>
-              Recipes
+              Discover
             </NavLink>
             <NavLink to="/community" className={navLinkClass}>
               Community
@@ -89,6 +89,19 @@ export default function AppHeader({
             <NavLink to="/search" className={navLinkClass}>
               Search
             </NavLink>
+
+            {isLoggedIn ? (
+              <button
+                type="button"
+                className="app-nav__create-button"
+                onClick={onStartCreateRecipe}
+                disabled={savingRecipe}
+                aria-label="Create a new recipe"
+              >
+                <PlusCircle size={16} aria-hidden="true" />
+                <span>New Recipe</span>
+              </button>
+            ) : null}
           </div>
 
           {isLoggedIn ? (
@@ -97,7 +110,7 @@ export default function AppHeader({
                 Creator
               </NavLink>
               <NavLink to="/following" className={navLinkClass}>
-                Activity
+                Following
               </NavLink>
               <NavLink to="/saved" className={navLinkClass}>
                 Saved
@@ -107,7 +120,7 @@ export default function AppHeader({
               </NavLink>
               <NavLink to="/notifications" className={navLinkClass}>
                 <span className="app-nav__notifications-label">
-                  Alerts
+                  Notifications
                   {unreadNotifications > 0 ? (
                     <span className="app-nav__badge">{unreadNotifications}</span>
                   ) : null}
@@ -152,17 +165,6 @@ export default function AppHeader({
             </span>
           </div>
         </div>
-
-        {isLoggedIn ? (
-          <button
-            type="button"
-            className="create-recipe-toggle-button"
-            onClick={onStartCreateRecipe}
-            disabled={savingRecipe}
-          >
-            + Create Recipe
-          </button>
-        ) : null}
       </section>
     </header>
   )

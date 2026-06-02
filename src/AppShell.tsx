@@ -8,6 +8,8 @@ import { captureBoundaryError } from './lib/sentry'
 import { useConfirm } from './context/ConfirmProvider'
 import { useAuth } from './context/useAuth'
 import AppHeader from './components/AppHeader'
+import BottomNav from './components/BottomNav'
+import InstallPrompt from './components/InstallPrompt'
 import DiscoverPanel from './components/DiscoverPanel'
 import RecipeDashboard from './components/RecipeDashboard'
 import RecipeForm from './components/RecipeForm'
@@ -520,6 +522,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                       onViewAuthor={handleViewAuthor}
                       likedRecipeIds={likedRecipeIds}
                       likeCountsByRecipeId={likeCountsByRecipeId}
+                      onEdit={handleStartEditRecipe}
                     />
                   </>
                 }
@@ -546,6 +549,14 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
           />
         ) : null}
         </div>
+
+        <BottomNav
+          isLoggedIn={Boolean(user)}
+          unreadNotifications={unreadNotifications}
+          onStartCreateRecipe={handleStartCreateRecipe}
+        />
+
+        <InstallPrompt />
       </main>
     </RecipeShellProvider>
   )
