@@ -15,6 +15,10 @@ export type Recipe = {
   protein: number
   carbs: number
   fat: number
+  /** Cooking time in minutes. Null means not set (displays as —). */
+  cookingTime?: number | null
+  /** Number of servings. Null means not set (displays as —). */
+  servings?: number | null
   ingredients: string[]
   instructions: string
   source?: RecipeSource

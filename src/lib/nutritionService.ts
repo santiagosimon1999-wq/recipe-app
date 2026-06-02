@@ -511,6 +511,99 @@ export function getNutritionCoverageReport(sampleIngredients: string[] = []): {
   }
 }
 
+type EstimateParams = {
+  title: string
+  ingredients: string[]
+  instructions: string
+}
+
+/**
+ * Estimate cooking time in minutes from recipe text.
+ * Scans instructions for explicit time mentions first.
+ * Falls back to method-keyword heuristics.
+ */
+export function estimateCookingTime(params: EstimateParams): number {
+  const instructions = params.instructions.toLowerCase()
+  const allText = [params.title, ...params.ingredients, params.instructions]
+    .join(' ')
+    .toLowerCase()
+
+  // Extract all explicit minute/hour mentions from instructions
+  let totalMinutes = 0
+  let foundExplicit = false
+
+  const hourPattern = /(\d+(?:\.\d+)?)\s*(?:hour|hr)s?/g
+  const minPattern = /(\d+)\s*(?:minute|min)s?/g
+
+  let match: RegExpExecArray | null
+  while ((match = hourPattern.exec(instructions)) !== null) {
+    totalMinutes += parseFloat(match[1]) * 60
+    foundExplicit = true
+  }
+  while ((match = minPattern.exec(instructions)) !== null) {
+    const value = parseInt(match[1], 10)
+    // Ignore implausibly small values (e.g. "step 1", "2 tbsp")
+    if (value >= 3 && value <= 480) {
+      totalMinutes += value
+      foundExplicit = true
+    }
+  }
+
+  if (foundExplicit && totalMinutes >= 5) {
+    return Math.min(Math.round(totalMinutes), 480)
+  }
+
+  // Method-keyword heuristics
+  const slow = ['slow cooker', 'crockpot', 'braise', 'roast', 'bake', 'broil', 'stew', 'overnight', 'marinate']
+  const medium = ['boil', 'steam', 'pressure cook', 'instant pot', 'poach', 'simmer']
+  const fast = ['sauté', 'saute', 'stir-fry', 'stir fry', 'pan-fry', 'pan fry', 'fry', 'grill', 'sear', 'toast']
+
+  if (slow.some((kw) => allText.includes(kw))) return 60
+  if (medium.some((kw) => allText.includes(kw))) return 30
+  if (fast.some((kw) => allText.includes(kw))) return 15
+
+  // Default: 30 minutes
+  return 30
+}
+
+/**
+ * Estimate serving count from recipe text and calorie total.
+ * Scans for "serves N" / "yields N" text first, then uses calorie-based heuristic.
+ */
+export function estimateServings(
+  params: EstimateParams,
+  totalCalories: number
+): number {
+  const allText = [params.title, ...params.ingredients, params.instructions]
+    .join(' ')
+    .toLowerCase()
+
+  // Explicit serving patterns: "serves 4", "yield 6", "4 servings", "makes 2 portions"
+  const patterns = [
+    /(?:serves?|yields?|makes?)\s+(\d+)/,
+    /(\d+)\s+(?:servings?|portions?|people)/,
+  ]
+
+  for (const pattern of patterns) {
+    const m = allText.match(pattern)
+    if (m) {
+      const count = parseInt(m[1], 10)
+      if (count >= 1 && count <= 24) return count
+    }
+  }
+
+  // Calorie-based heuristic: assume ~500 cal per serving
+  if (totalCalories > 0) {
+    return Math.max(1, Math.min(Math.round(totalCalories / 500), 12))
+  }
+
+  // Ingredient-count heuristic
+  const count = params.ingredients.length
+  if (count <= 4) return 2
+  if (count <= 8) return 4
+  return 6
+}
+
 export async function calculateNutrition(
   ingredients: string[]
 ): Promise<NutritionTotals> {

@@ -325,25 +325,30 @@ export function useRecipeMutations(
           console.groupEnd()
         }
 
-        const nutrition = await calculateNutrition(recipeData.ingredients)
-        console.info('[nutrition] calculated totals:', {
-          title: recipeData.title,
-          ingredientCount: recipeData.ingredients.length,
-          totals: nutrition,
-        })
+        // Use the nutrition values already set on recipeData (user-provided via
+        // the form's manual fields or the "Estimate with Savora" button).
+        // Only fall back to auto-calculation when all four macros are still 0
+        // (legacy path: form submitted without touching nutrition fields).
+        const hasUserProvidedNutrition =
+          recipeData.calories > 0 ||
+          recipeData.protein > 0 ||
+          recipeData.carbs > 0 ||
+          recipeData.fat > 0
 
-        if (
-          recipeData.ingredients.length > 0 &&
-          nutrition.calories === 0 &&
-          nutrition.protein === 0 &&
-          nutrition.carbs === 0 &&
-          nutrition.fat === 0
-        ) {
-          console.warn('[nutrition] zero totals for non-empty ingredients:', {
-            title: recipeData.title,
-            ingredients: recipeData.ingredients,
-          })
-        }
+        const macroPayload = hasUserProvidedNutrition
+          ? {
+              calories: recipeData.calories,
+              protein: recipeData.protein,
+              carbs: recipeData.carbs,
+              fat: recipeData.fat,
+            }
+          : await calculateNutrition(recipeData.ingredients)
+
+        console.info('[nutrition] macro payload:', {
+          title: recipeData.title,
+          source: hasUserProvidedNutrition ? 'user-provided' : 'auto-calculated',
+          totals: macroPayload,
+        })
 
         let imageUrl = recipeData.image || null
 
@@ -351,25 +356,11 @@ export function useRecipeMutations(
           imageUrl = await uploadRecipeImage(user.id, recipeData.imageFile)
         }
 
-        const macroPayload = {
-          calories: nutrition.calories,
-          protein: nutrition.protein,
-          carbs: nutrition.carbs,
-          fat: nutrition.fat,
-        }
-
         if (recipeBeingEdited) {
           if (recipeBeingEdited.source !== 'user') {
             notify.error('Only your own recipes can be edited.')
             return
           }
-
-          console.info('[recipe save] payload macros:', {
-            mode: 'edit',
-            recipeId: recipeBeingEdited.id,
-            title: recipeData.title,
-            macros: macroPayload,
-          })
 
           const updatedRow = await updateRecipeById(
             recipeBeingEdited.id,
@@ -386,6 +377,8 @@ export function useRecipeMutations(
               protein: macroPayload.protein,
               carbs: macroPayload.carbs,
               fat: macroPayload.fat,
+              cooking_time_minutes: recipeData.cookingTime ?? null,
+              servings: recipeData.servings ?? null,
               is_public: recipeData.isPublic,
             }
           )
@@ -415,12 +408,6 @@ export function useRecipeMutations(
           )
           notify.success('Recipe updated successfully.')
         } else {
-          console.info('[recipe save] payload macros:', {
-            mode: 'create',
-            title: recipeData.title,
-            macros: macroPayload,
-          })
-
           const createdRow = await createRecipe(user.id, {
             title: recipeData.title,
             description: recipeData.description,
@@ -433,6 +420,8 @@ export function useRecipeMutations(
             protein: macroPayload.protein,
             carbs: macroPayload.carbs,
             fat: macroPayload.fat,
+            cooking_time_minutes: recipeData.cookingTime ?? null,
+            servings: recipeData.servings ?? null,
             is_public: recipeData.isPublic,
           })
 

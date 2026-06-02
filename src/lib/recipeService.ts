@@ -51,6 +51,8 @@ export type RecipeCreateInput = {
   protein?: number
   carbs?: number
   fat?: number
+  cooking_time_minutes?: number | null
+  servings?: number | null
   is_public?: boolean
 }
 
@@ -595,6 +597,8 @@ export async function createRecipe(
       protein: recipe.protein ?? 0,
       carbs: recipe.carbs ?? 0,
       fat: recipe.fat ?? 0,
+      cooking_time_minutes: recipe.cooking_time_minutes ?? null,
+      servings: recipe.servings ?? null,
       is_public: recipe.is_public ?? true,
     })
     .select(RECIPES_WITH_AUTHOR_SELECT)
@@ -647,6 +651,10 @@ export async function updateRecipe(
     ...(updates.protein !== undefined ? { protein: updates.protein } : {}),
     ...(updates.carbs !== undefined ? { carbs: updates.carbs } : {}),
     ...(updates.fat !== undefined ? { fat: updates.fat } : {}),
+    ...(updates.cooking_time_minutes !== undefined
+      ? { cooking_time_minutes: updates.cooking_time_minutes }
+      : {}),
+    ...(updates.servings !== undefined ? { servings: updates.servings } : {}),
     ...(updates.is_public !== undefined ? { is_public: updates.is_public } : {}),
   }
 

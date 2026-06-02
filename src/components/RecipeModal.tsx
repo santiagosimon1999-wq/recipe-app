@@ -1,12 +1,19 @@
 import { useId } from 'react'
 import {
+  Clock,
   Drumstick,
   Flame,
   Heart,
   ThumbsUp,
+  UtensilsCrossed,
   User,
   Wheat,
 } from 'lucide-react'
+
+function formatNutritionValue(value: number, unit: string): string {
+  if (value <= 0) return '—'
+  return unit ? `${value}${unit}` : String(value)
+}
 import type { Recipe } from '../types/Recipe'
 import { getRecipeCategoryNames, toCategoryTag } from '../utils/categories'
 import { ErrorBoundary } from './ErrorBoundary'
@@ -109,7 +116,7 @@ function RecipeModal({
                 <Flame size={14} aria-hidden="true" /> Calories
               </div>
               <div className="recipe-modal__nutrition-value">
-                {recipe.calories}
+                {formatNutritionValue(recipe.calories, '')}
               </div>
             </div>
 
@@ -118,7 +125,7 @@ function RecipeModal({
                 <Drumstick size={14} aria-hidden="true" /> Protein
               </div>
               <div className="recipe-modal__nutrition-value">
-                {recipe.protein}g
+                {formatNutritionValue(recipe.protein, 'g')}
               </div>
             </div>
 
@@ -127,7 +134,7 @@ function RecipeModal({
                 <Wheat size={14} aria-hidden="true" /> Carbs
               </div>
               <div className="recipe-modal__nutrition-value">
-                {recipe.carbs}g
+                {formatNutritionValue(recipe.carbs, 'g')}
               </div>
             </div>
 
@@ -136,7 +143,29 @@ function RecipeModal({
                 <Heart size={14} aria-hidden="true" /> Fat
               </div>
               <div className="recipe-modal__nutrition-value">
-                {recipe.fat}g
+                {formatNutritionValue(recipe.fat, 'g')}
+              </div>
+            </div>
+
+            <div className="recipe-modal__nutrition-item">
+              <div className="recipe-modal__nutrition-label">
+                <Clock size={14} aria-hidden="true" /> Cook time
+              </div>
+              <div className="recipe-modal__nutrition-value">
+                {recipe.cookingTime != null && recipe.cookingTime > 0
+                  ? `${recipe.cookingTime} min`
+                  : '—'}
+              </div>
+            </div>
+
+            <div className="recipe-modal__nutrition-item">
+              <div className="recipe-modal__nutrition-label">
+                <UtensilsCrossed size={14} aria-hidden="true" /> Servings
+              </div>
+              <div className="recipe-modal__nutrition-value">
+                {recipe.servings != null && recipe.servings > 0
+                  ? recipe.servings
+                  : '—'}
               </div>
             </div>
           </div>

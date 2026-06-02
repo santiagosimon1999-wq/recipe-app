@@ -1,16 +1,23 @@
 import type { MouseEvent, SyntheticEvent } from 'react'
 import {
+  Clock,
   Drumstick,
   Flame,
   Globe,
   Heart,
   ThumbsUp,
+  UtensilsCrossed,
   User,
   Wheat,
 } from 'lucide-react'
 import type { Recipe } from '../types/Recipe'
 import { getRecipeCategoryNames, toCategoryTag } from '../utils/categories'
 import ShareRecipeButton from './ShareRecipeButton'
+
+function formatNutritionValue(value: number, unit: string): string {
+  if (value <= 0) return '—'
+  return unit ? `${value}${unit}` : String(value)
+}
 
 type RecipeCardProps = {
   recipe: Recipe
@@ -121,20 +128,32 @@ function RecipeCard({
           <div className="recipe-card__nutrition">
             <span className="recipe-card__nutrition-item">
               <Flame size={14} aria-hidden="true" />
-              {recipe.calories}
+              {formatNutritionValue(recipe.calories, '')}
             </span>
             <span className="recipe-card__nutrition-item">
               <Drumstick size={14} aria-hidden="true" />
-              {recipe.protein}g
+              {formatNutritionValue(recipe.protein, 'g')}
             </span>
             <span className="recipe-card__nutrition-item">
               <Wheat size={14} aria-hidden="true" />
-              {recipe.carbs}g
+              {formatNutritionValue(recipe.carbs, 'g')}
             </span>
             <span className="recipe-card__nutrition-item">
               <Heart size={14} aria-hidden="true" />
-              {recipe.fat}g
+              {formatNutritionValue(recipe.fat, 'g')}
             </span>
+            {recipe.cookingTime != null && recipe.cookingTime > 0 ? (
+              <span className="recipe-card__nutrition-item">
+                <Clock size={14} aria-hidden="true" />
+                {recipe.cookingTime}m
+              </span>
+            ) : null}
+            {recipe.servings != null && recipe.servings > 0 ? (
+              <span className="recipe-card__nutrition-item">
+                <UtensilsCrossed size={14} aria-hidden="true" />
+                {recipe.servings}
+              </span>
+            ) : null}
           </div>
         </div>
       </button>

@@ -362,6 +362,7 @@ export type Database = {
           calories: number
           carbs: number
           category: string
+          cooking_time_minutes: number | null
           created_at: string
           description: string
           fat: number
@@ -371,6 +372,7 @@ export type Database = {
           instructions: string
           is_public: boolean | null
           protein: number
+          servings: number | null
           title: string
           updated_at: string
           user_id: string
@@ -381,6 +383,7 @@ export type Database = {
           calories?: number
           carbs?: number
           category?: string
+          cooking_time_minutes?: number | null
           created_at?: string
           description?: string
           fat?: number
@@ -390,6 +393,7 @@ export type Database = {
           instructions?: string
           is_public?: boolean | null
           protein?: number
+          servings?: number | null
           title: string
           updated_at?: string
           user_id: string
@@ -400,6 +404,7 @@ export type Database = {
           calories?: number
           carbs?: number
           category?: string
+          cooking_time_minutes?: number | null
           created_at?: string
           description?: string
           fat?: number
@@ -409,6 +414,7 @@ export type Database = {
           instructions?: string
           is_public?: boolean | null
           protein?: number
+          servings?: number | null
           title?: string
           updated_at?: string
           user_id?: string
