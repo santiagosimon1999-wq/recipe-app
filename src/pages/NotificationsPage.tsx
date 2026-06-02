@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router'
 import { useAuth } from '../context/useAuth'
 import { supabase } from '../lib/supabaseClient'
 import { notify } from '../lib/toast'
+import { formatRelativeTime } from '../lib/formatRelativeTime'
+import {
+  formatNotificationMessage,
+  getNotificationIcon,
+} from '../lib/notificationDisplay'
 import {
   getNotificationsForUser,
   markAllNotificationsRead,
@@ -135,6 +140,11 @@ export default function NotificationsPage() {
       return
     }
 
+    if (item.type === 'follow' && item.actorUsername) {
+      navigate(`/users/${item.actorUsername}`)
+      return
+    }
+
     if (item.type === 'follow') {
       navigate('/following')
     }
@@ -183,25 +193,46 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <ul className="notifications-page__list">
-            {items.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className={`notifications-page__item ${
-                    item.readAt ? '' : 'notifications-page__item--unread'
-                  }`}
-                  onClick={() => void handleOpenNotification(item)}
-                >
-                  <span className="notifications-page__type">{item.type}</span>
-                  <span className="notifications-page__message">
-                    {item.message}
-                  </span>
-                  <time className="notifications-page__time" dateTime={item.createdAt}>
-                    {new Date(item.createdAt).toLocaleString()}
-                  </time>
-                </button>
-              </li>
-            ))}
+            {items.map((item) => {
+              const Icon = getNotificationIcon(item.type)
+              const message = formatNotificationMessage(item)
+
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className={`notifications-page__item ${
+                      item.readAt ? '' : 'notifications-page__item--unread'
+                    }`}
+                    onClick={() => void handleOpenNotification(item)}
+                  >
+                    <span
+                      className={`notifications-page__icon notifications-page__icon--${item.type}`}
+                      aria-hidden="true"
+                    >
+                      <Icon size={18} />
+                    </span>
+
+                    <span className="notifications-page__content">
+                      <span className="notifications-page__message">
+                        {message}
+                      </span>
+                      {item.recipeTitle ? (
+                        <span className="notifications-page__recipe">
+                          {item.recipeTitle}
+                        </span>
+                      ) : null}
+                      <time
+                        className="notifications-page__time"
+                        dateTime={item.createdAt}
+                      >
+                        {formatRelativeTime(item.createdAt)}
+                      </time>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

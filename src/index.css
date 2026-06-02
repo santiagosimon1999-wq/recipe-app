@@ -2891,8 +2891,9 @@ html.app--dark .recipe-modal {
   background: var(--surface-soft);
   color: var(--text-main);
   cursor: pointer;
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .notifications-page__item--unread {
@@ -2900,16 +2901,48 @@ html.app--dark .recipe-modal {
   background: var(--accent-soft);
 }
 
-.notifications-page__type {
-  font-size: 0.75rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-soft);
+.notifications-page__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--surface-solid);
+  color: var(--accent);
+}
+
+.notifications-page__icon--like {
+  color: #c44a4a;
+}
+
+.notifications-page__icon--comment {
+  color: var(--accent);
+}
+
+.notifications-page__icon--follow {
+  color: #2f4a38;
+}
+
+.notifications-page__content {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .notifications-page__message {
   font-weight: 700;
+  line-height: 1.45;
+}
+
+.notifications-page__recipe {
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notifications-page__time {

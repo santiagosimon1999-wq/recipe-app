@@ -8,7 +8,10 @@ export type AppNotification = {
   type: NotificationType
   message: string
   actorId: string | null
+  actorUsername: string | null
+  actorDisplayName: string | null
   recipeId: number | null
+  recipeTitle: string | null
   readAt: string | null
   createdAt: string
 }
@@ -56,7 +59,9 @@ export async function getNotificationsForUser(
 ): Promise<AppNotification[]> {
   const { data, error } = await supabase
     .from('notifications')
-    .select('id, type, message, actor_id, recipe_id, read_at, created_at')
+    .select(
+      'id, type, message, actor_id, recipe_id, read_at, created_at, actor:profiles!notifications_actor_id_fkey(username, display_name), recipe:recipes!notifications_recipe_id_fkey(title)'
+    )
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -72,6 +77,8 @@ export async function getNotificationsForUser(
       recipe_id: number | null
       read_at: string | null
       created_at: string
+      actor: { username: string | null; display_name: string | null } | null
+      recipe: { title: string | null } | null
     }
 
     return {
@@ -79,7 +86,10 @@ export async function getNotificationsForUser(
       type: record.type,
       message: record.message,
       actorId: record.actor_id,
+      actorUsername: record.actor?.username ?? null,
+      actorDisplayName: record.actor?.display_name ?? null,
       recipeId: record.recipe_id,
+      recipeTitle: record.recipe?.title ?? null,
       readAt: record.read_at,
       createdAt: record.created_at,
     }
