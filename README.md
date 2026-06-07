@@ -135,12 +135,23 @@ npm test
 npm run build
 ```
 
-### 5) Optional e2e setup
+### 5) Pre-deploy / launch checks
 
 ```bash
+npm run lint
+npm test
+npm run build
 npm run test:e2e:install
 npm run test:e2e
 ```
+
+Launch Phase 1 docs:
+
+- `docs/LAUNCH_PHASE1.md` — readiness summary
+- `db/PRODUCTION_MIGRATION_CHECKLIST.md` — verify Supabase migrations
+- `docs/PRODUCTION_SMOKE_TEST.md` — manual production smoke test
+- `docs/E2E_RELEASE_GATE.md` — Playwright credentials and commands
+- `docs/SENTRY_PRODUCTION.md` — error monitoring setup
 
 ---
 
@@ -148,7 +159,7 @@ npm run test:e2e
 
 - `VITE_SUPABASE_URL` (required): Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` (required): Supabase anon API key
-- `VITE_SENTRY_DSN` (optional): Sentry DSN for frontend error monitoring
+- `VITE_SENTRY_DSN` (optional, recommended for production): Browser Sentry DSN — see `docs/SENTRY_PRODUCTION.md`
 
 ---
 

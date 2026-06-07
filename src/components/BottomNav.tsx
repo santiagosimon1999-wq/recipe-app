@@ -1,5 +1,5 @@
 import { Bell, ChefHat, Home, PlusCircle, Users2 } from 'lucide-react'
-import { NavLink, useNavigate } from 'react-router'
+import { NavLink, useLocation, useNavigate } from 'react-router'
 
 type BottomNavProps = {
   isLoggedIn: boolean
@@ -19,10 +19,12 @@ export default function BottomNav({
   onStartCreateRecipe,
 }: BottomNavProps) {
   const navigate = useNavigate()
+  const location = useLocation()
 
   function handleCreate() {
     if (!isLoggedIn) {
-      void navigate('/auth')
+      // Protected route — AuthGate shows the existing login/sign-up screen.
+      void navigate('/profile', { state: { from: location.pathname } })
       return
     }
     onStartCreateRecipe()
@@ -44,7 +46,7 @@ export default function BottomNav({
         type="button"
         className="bottom-nav__create"
         onClick={handleCreate}
-        aria-label="Create new recipe"
+        aria-label="Create a new recipe"
       >
         <PlusCircle size={26} aria-hidden="true" />
         <span>Create</span>
@@ -59,7 +61,7 @@ export default function BottomNav({
             </span>
           ) : null}
         </span>
-        <span>Alerts</span>
+        <span>Notifications</span>
       </NavLink>
 
       <NavLink to="/profile" className={bottomNavLinkClass}>

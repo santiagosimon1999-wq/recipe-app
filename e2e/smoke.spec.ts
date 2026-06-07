@@ -9,6 +9,7 @@ const E2E_COMMENT_RECIPE_ID = process.env.E2E_TEST_COMMENT_RECIPE_ID ?? ''
 
 const HAS_PRIMARY_AUTH = Boolean(E2E_EMAIL && E2E_PASSWORD)
 const HAS_SECOND_AUTH = Boolean(E2E_SECOND_EMAIL && E2E_SECOND_PASSWORD)
+const CREATE_RECIPE_BUTTON = /Create a new recipe/i
 
 function uniqueLabel(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`
@@ -28,7 +29,7 @@ async function loginAs(page: Page, email: string, password: string) {
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: /^Log in$/i }).click()
-  await expect(page.getByRole('button', { name: /\+ Create Recipe/i })).toBeVisible({
+  await expect(page.getByRole('button', { name: CREATE_RECIPE_BUTTON })).toBeVisible({
     timeout: 20_000,
   })
 }
@@ -51,7 +52,7 @@ async function createRecipe(page: Page, options?: { isPublic?: boolean }) {
   const title = uniqueLabel(isPublic ? 'E2E-Public' : 'E2E-Private')
   const description = `Description for ${title}`
 
-  await page.getByRole('button', { name: /\+ Create Recipe/i }).click()
+  await page.getByRole('button', { name: CREATE_RECIPE_BUTTON }).click()
   await expect(page.getByRole('heading', { name: /Create Recipe/i })).toBeVisible()
 
   await page.getByLabel('Title').fill(title)
@@ -110,7 +111,9 @@ test.describe('release gate — signed out smoke', () => {
 
   test('search route smoke while signed out', async ({ page }) => {
     await page.goto('/search')
-    await expectAuthScreen(page)
+    await expect(
+      page.getByRole('heading', { name: /Find recipes across the community/i })
+    ).toBeVisible()
   })
 
   test('activity feed route smoke while signed out', async ({ page }) => {
