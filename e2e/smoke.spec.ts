@@ -138,6 +138,87 @@ test.describe('release gate — signed out smoke', () => {
     await expect(
       page.getByRole('heading', { name: /Find recipes across the community/i })
     ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: /Find your next meal/i })
+    ).toHaveCount(0)
+    await expect(page.getByTestId('discover-filters-toggle')).toBeVisible()
+  })
+
+  test('discover filters are collapsed by default on desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+    await expect(page.getByTestId('discover-filters-panel')).toBeHidden()
+    await expect(page.getByRole('button', { name: /^Breakfast$/i })).toHaveCount(0)
+  })
+
+  test('desktop filters toggle opens category groups', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+    await page.getByTestId('discover-filters-toggle').click()
+    await expect(page.getByTestId('discover-filters-panel')).toBeVisible()
+    await expect(page.getByText(/^Meal Type$/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Breakfast$/i })).toBeVisible()
+  })
+
+  test('selecting a filter shows chip and clear all', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+    await page.getByTestId('discover-filters-toggle').click()
+    await page.getByRole('button', { name: /^Breakfast$/i }).click()
+    await expect(page.getByTestId('discover-filter-chips')).toBeVisible()
+    await expect(page.getByRole('button', { name: /Remove Breakfast filter/i })).toBeVisible()
+    await expect(page.getByTestId('discover-filters-toggle-label')).toHaveText('1 filter')
+    await page.getByRole('button', { name: /^Clear all$/i }).click()
+    await expect(page.getByTestId('discover-filter-chips')).toHaveCount(0)
+    await expect(page.getByTestId('discover-filters-toggle-label')).toHaveText('Filters')
+  })
+
+  test('cuisine filter group is collapsed until expanded', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+    await page.getByTestId('discover-filters-toggle').click()
+    await expect(page.getByRole('button', { name: /^Italian$/i })).toHaveCount(0)
+    await page.getByTestId('category-filter-group-toggle-cuisine').click()
+    await expect(page.getByRole('button', { name: /^Italian$/i })).toBeVisible()
+  })
+
+  test('active cuisine filter keeps group expanded', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+    await page.getByTestId('discover-filters-toggle').click()
+    await page.getByTestId('category-filter-group-toggle-cuisine').click()
+    await page.getByRole('button', { name: /^Mexican$/i }).click()
+    await expect(page.getByTestId('discover-filter-chips')).toBeVisible()
+    await page.getByTestId('discover-filters-toggle').click()
+    await page.getByTestId('discover-filters-toggle').click()
+    await expect(page.getByRole('button', { name: /^Mexican$/i })).toBeVisible()
+  })
+
+  test('multiple filters can be selected across groups', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+    await page.getByTestId('discover-filters-toggle').click()
+    await page.getByRole('button', { name: /^Breakfast$/i }).click()
+    await page.getByTestId('category-filter-group-toggle-cuisine').click()
+    await page.getByRole('button', { name: /^Italian$/i }).click()
+    await expect(page.getByTestId('discover-filters-toggle-label')).toHaveText('2 filters')
+    await expect(
+      page.getByRole('button', { name: /Remove Breakfast filter/i }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: /Remove Italian filter/i }),
+    ).toBeVisible()
+  })
+
+  test('mobile filter sheet opens and closes', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+    await page.getByTestId('discover-filters-toggle').click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: /^Filters$/i })).toBeVisible()
+    await dialog.getByRole('button', { name: /^Close filters$/i }).click()
+    await expect(dialog).toHaveCount(0)
   })
 
   test('activity feed route smoke while signed out', async ({ page }) => {
@@ -197,6 +278,84 @@ test.describe('release gate — signed out smoke', () => {
     await expect(page.getByRole('button', { name: /^Log out$/i })).toHaveCount(0)
   })
 
+  test('desktop header shows primary nav and More dropdown', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+
+    const primaryNav = page.locator('.app-nav__routes')
+    await expect(primaryNav.getByRole('link', { name: /^Discover$/i })).toBeVisible()
+    await expect(primaryNav.getByRole('link', { name: /^Community$/i })).toBeVisible()
+    await expect(primaryNav.getByRole('link', { name: /^Search$/i })).toBeVisible()
+    await expect(
+      primaryNav.getByRole('button', { name: /^Open more menu$/i })
+    ).toBeVisible()
+    await expect(primaryNav.getByRole('link', { name: /^Creator$/i })).toHaveCount(0)
+    await expect(primaryNav.getByRole('link', { name: /^Saved$/i })).toHaveCount(0)
+    await expect(primaryNav.getByRole('link', { name: /^Profile$/i })).toHaveCount(0)
+  })
+
+  test('desktop More menu opens with account and app destinations', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+
+    const primaryNav = page.locator('.app-nav__routes')
+    await primaryNav.getByRole('button', { name: /^Open more menu$/i }).click()
+
+    const menu = page.getByRole('menu', { name: /^More menu$/i })
+    await expect(menu).toBeVisible()
+
+    for (const label of [
+      'Log in',
+      'Sign up',
+      'Saved Recipes',
+      'Notifications',
+      'Profile',
+      "What's New",
+      'About Savora',
+      'Privacy',
+      'Terms',
+      'Feedback',
+    ]) {
+      await expect(menu.getByRole('menuitem', { name: new RegExp(label, 'i') })).toBeVisible()
+    }
+  })
+
+  test('desktop More menu About navigates while signed out', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+
+    const primaryNav = page.locator('.app-nav__routes')
+    await primaryNav.getByRole('button', { name: /^Open more menu$/i }).click()
+    await page
+      .getByRole('menu', { name: /^More menu$/i })
+      .getByRole('menuitem', { name: /About Savora/i })
+      .click()
+
+    await expect(page).toHaveURL(/\/about\/?$/)
+    await expect(page.getByRole('menu', { name: /^More menu$/i })).toHaveCount(0)
+  })
+
+  test('desktop More menu protected item routes to auth while signed out', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+
+    const primaryNav = page.locator('.app-nav__routes')
+    await primaryNav.getByRole('button', { name: /^Open more menu$/i }).click()
+    await page
+      .getByRole('menu', { name: /^More menu$/i })
+      .getByRole('menuitem', { name: /Saved Recipes/i })
+      .click()
+
+    await expectAuthScreen(page)
+    await expect(
+      page.getByText(/save recipes and build your personal cookbook/i)
+    ).toBeVisible()
+  })
+
   test('mobile homepage limits repeated sign up buttons', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/')
@@ -207,6 +366,121 @@ test.describe('release gate — signed out smoke', () => {
     await expect(
       page.getByRole('button', { name: /Create your free account/i })
     ).toBeVisible()
+  })
+
+  test('mobile bottom nav is visible and navigates', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+    const bottomNav = page.locator('.bottom-nav')
+    await expect(bottomNav).toBeVisible()
+    await expect(bottomNav.getByRole('link', { name: /^Search$/i })).toBeVisible()
+    await expect(
+      bottomNav.getByRole('button', { name: /^Open more menu$/i })
+    ).toBeVisible()
+    await bottomNav.getByRole('link', { name: /^Community$/i }).click()
+    await expect(page).toHaveURL(/\/community\/?$/)
+    await bottomNav.getByRole('link', { name: /^Home$/i }).click()
+    await expect(page).toHaveURL(/\/\/?$/)
+  })
+
+  test('mobile More sheet opens with key destinations', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+    await page
+      .locator('.bottom-nav')
+      .getByRole('button', { name: /^Open more menu$/i })
+      .click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: /^More$/i })).toBeVisible()
+
+    for (const label of [
+      'Log in',
+      'Sign up',
+      'Saved Recipes',
+      'Notifications',
+      'Profile',
+      "What's New",
+      'About Savora',
+      'Privacy',
+      'Terms',
+      'Feedback',
+    ]) {
+      await expect(dialog.getByRole('button', { name: label })).toBeVisible()
+    }
+
+    await expect(
+      dialog.getByText(/Savora is currently in beta/i)
+    ).toBeVisible()
+  })
+
+  test('mobile More sheet About link navigates while signed out', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+    await page
+      .locator('.bottom-nav')
+      .getByRole('button', { name: /^Open more menu$/i })
+      .click()
+
+    await page.getByRole('dialog').getByRole('button', { name: /^About Savora$/i }).click()
+    await expect(page).toHaveURL(/\/about\/?$/)
+    await expect(page.getByRole('heading', { name: /^About Savora$/i })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+
+  test('mobile More sheet protected item routes to auth while signed out', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+    await page
+      .locator('.bottom-nav')
+      .getByRole('button', { name: /^Open more menu$/i })
+      .click()
+
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: /Saved Recipes/i })
+      .click()
+
+    await expectAuthScreen(page)
+    await expect(
+      page.getByText(/save recipes and build your personal cookbook/i)
+    ).toBeVisible()
+  })
+
+  test('mobile header search link reaches search page', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+    await expect(page.locator('.app-nav__mobile-search')).toBeVisible()
+    await page.locator('.app-nav__mobile-search').click()
+    await expect(page).toHaveURL(/\/search\/?$/)
+    await expect(
+      page.getByRole('heading', { name: /Find recipes across the community/i })
+    ).toBeVisible()
+  })
+
+  test('mobile search page loads while signed out', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto('/search')
+    await expect(page.getByRole('textbox', { name: 'Search recipes' })).toBeVisible()
+    await expect(page.locator('.bottom-nav')).toBeVisible()
+  })
+
+  test('mobile recipe modal opens and closes', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/community')
+    const cardButton = page.getByRole('button', { name: /^Open /i }).first()
+    test.skip((await cardButton.count()) === 0, 'No community recipes available')
+
+    await cardButton.click()
+    const recipeModal = page.locator('.recipe-modal')
+    await expect(recipeModal).toBeVisible({ timeout: 10_000 })
+    await recipeModal.getByRole('button', { name: /Close recipe/i }).click()
+    await expect(recipeModal).toHaveCount(0)
   })
 
   test('protected saved route shows guest teaser copy', async ({ page }) => {
@@ -327,6 +601,54 @@ test.describe('release gate — authenticated core flows', () => {
       page.getByRole('heading', { name: /Find recipes across the community/i })
     ).toBeVisible()
     await expect(page.getByLabel('Search recipes')).toBeVisible()
+  })
+
+  test('mobile More sheet shows logged-in account destinations', async ({ page }) => {
+    await loginAs(page, E2E_EMAIL, E2E_PASSWORD)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+    await page
+      .locator('.bottom-nav')
+      .getByRole('button', { name: /^Open more menu$/i })
+      .click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+
+    for (const label of [
+      'Profile',
+      'Saved Recipes',
+      'Collections',
+      'Following',
+      'Notifications',
+      'Creator Dashboard',
+    ]) {
+      await expect(dialog.getByRole('button', { name: label })).toBeVisible()
+    }
+  })
+
+  test('desktop More menu shows logged-in account destinations', async ({ page }) => {
+    await loginAs(page, E2E_EMAIL, E2E_PASSWORD)
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+
+    const primaryNav = page.locator('.app-nav__routes')
+    await expect(
+      primaryNav.getByRole('button', { name: /Create a new recipe/i })
+    ).toBeVisible()
+    await primaryNav.getByRole('button', { name: /^Open more menu$/i }).click()
+
+    const menu = page.getByRole('menu', { name: /^More menu$/i })
+    for (const label of [
+      'Creator',
+      'Following',
+      'Saved',
+      'Collections',
+      'Notifications',
+      'Profile',
+    ]) {
+      await expect(menu.getByRole('menuitem', { name: new RegExp(`^${label}$`, 'i') })).toBeVisible()
+    }
   })
 
   test('activity feed page smoke while signed in', async ({ page }) => {

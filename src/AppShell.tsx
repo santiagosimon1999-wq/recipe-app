@@ -100,9 +100,10 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
   const {
     searchTerm,
     setSearchTerm,
-    selectedCategory,
-    setSelectedCategory,
+    selectedCategories,
+    handleCategoryToggle,
     showSavedOnly,
+    filteredRecipes,
     userRecipes,
     communityRecipes,
     savoraInspirationRecipes,
@@ -482,12 +483,12 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                     sampleSavedRecipeIds={sampleSavedRecipeIds}
                     cloudSavedRecipeIds={cloudSavedRecipeIds}
                     searchTerm={searchTerm}
-                    selectedCategory={selectedCategory}
+                    selectedCategories={selectedCategories}
                     categoryOptions={categoryOptions}
                     showSavedOnly={showSavedOnly}
                     showClearFiltersButton={showClearFiltersButton}
                     onSearchChange={setSearchTerm}
-                    onCategoryChange={setSelectedCategory}
+                    onCategoryToggle={handleCategoryToggle}
                     onToggleShowSavedOnly={handleToggleShowSavedOnly}
                     onClearFilters={handleClearFilters}
                     onToggleSaved={toggleSaved}
@@ -511,14 +512,15 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                   <>
                     <DiscoverPanel
                       searchTerm={searchTerm}
-                      selectedCategory={selectedCategory}
+                      selectedCategories={selectedCategories}
                       categoryOptions={categoryOptions}
                       showSavedOnly={showSavedOnly}
                       showClearFiltersButton={showClearFiltersButton}
                       onSearchChange={setSearchTerm}
-                      onCategoryChange={setSelectedCategory}
+                      onCategoryToggle={handleCategoryToggle}
                       onToggleShowSavedOnly={handleToggleShowSavedOnly}
                       onClearFilters={handleClearFilters}
+                      resultCount={filteredRecipes.length}
                     />
 
                     <RecipeDashboard

@@ -12,12 +12,12 @@ type CommunityFeedPageProps = {
   likedRecipeIds?: number[]
   likeCountsByRecipeId?: Record<number, number>
   searchTerm: string
-  selectedCategory: string
+  selectedCategories: string[]
   categoryOptions?: Record<CategoryGroupKey, CategoryOption[]>
   showSavedOnly: boolean
   showClearFiltersButton: boolean
   onSearchChange: (searchTerm: string) => void
-  onCategoryChange: (category: string) => void
+  onCategoryToggle: (category: string) => void
   onToggleShowSavedOnly: () => void
   onClearFilters: () => void
   onToggleSaved: (recipe: Recipe) => void
@@ -39,12 +39,12 @@ export default function CommunityFeedPage({
   likedRecipeIds,
   likeCountsByRecipeId,
   searchTerm,
-  selectedCategory,
+  selectedCategories,
   categoryOptions,
   showSavedOnly,
   showClearFiltersButton,
   onSearchChange,
-  onCategoryChange,
+  onCategoryToggle,
   onToggleShowSavedOnly,
   onClearFilters,
   onToggleSaved,
@@ -114,12 +114,12 @@ export default function CommunityFeedPage({
 
       <DiscoverPanel
         searchTerm={searchTerm}
-        selectedCategory={selectedCategory}
+        selectedCategories={selectedCategories}
         categoryOptions={categoryOptions}
         showSavedOnly={showSavedOnly}
         showClearFiltersButton={showClearFiltersButton}
         onSearchChange={onSearchChange}
-        onCategoryChange={onCategoryChange}
+        onCategoryToggle={onCategoryToggle}
         onToggleShowSavedOnly={onToggleShowSavedOnly}
         onClearFilters={onClearFilters}
       />

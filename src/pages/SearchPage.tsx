@@ -9,11 +9,14 @@ import {
   getLikesCountsForRecipeIds,
   searchPublicRecipes,
 } from '../lib/recipeService'
-import DiscoverPanel from '../components/DiscoverPanel'
+import DiscoverPanel, {
+  type DiscoverFilterChip,
+} from '../components/DiscoverPanel'
 import RecipeGrid from '../components/RecipeGrid'
 import { RecipeGridSkeleton } from '../components/ui/RecipeCardSkeleton'
 import {
-  recipeMatchesSelectedCategory,
+  recipeMatchesSelectedCategories,
+  toggleSelectedCategories,
 } from '../utils/categories'
 import type { CategoryGroupKey } from '../types/Category'
 import type { CategoryOption } from '../utils/categories'
@@ -63,7 +66,7 @@ export default function SearchPage({
   const queryFromUrl = searchParams.get('q') ?? ''
 
   const [searchTerm, setSearchTerm] = useState(queryFromUrl)
-  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [showSavedOnly, setShowSavedOnly] = useState(false)
   const [maxCaloriesInput, setMaxCaloriesInput] = useState('')
   const [minProteinInput, setMinProteinInput] = useState('')
@@ -98,7 +101,8 @@ export default function SearchPage({
         try {
           const rows = await searchPublicRecipes(trimmed, {
             excludeUserId: userId,
-            category: selectedCategory === 'All' ? undefined : selectedCategory,
+            categories:
+              selectedCategories.length > 0 ? selectedCategories : undefined,
             maxCalories,
             minProtein,
             sortBy: sortBy === 'most-liked' ? 'newest' : sortBy,
@@ -151,7 +155,7 @@ export default function SearchPage({
   }, [
     searchTerm,
     userId,
-    selectedCategory,
+    selectedCategories,
     maxCaloriesInput,
     minProteinInput,
     sortBy,
@@ -175,9 +179,9 @@ export default function SearchPage({
     const maxCalories = parseNonNegativeNumber(maxCaloriesInput)
     const minProtein = parseNonNegativeNumber(minProteinInput)
 
-    const matchesCategory = recipeMatchesSelectedCategory(
+    const matchesCategory = recipeMatchesSelectedCategories(
       recipe,
-      selectedCategory
+      selectedCategories,
     )
     const matchesCalories =
       maxCalories === undefined || recipe.calories <= maxCalories
@@ -194,11 +198,111 @@ export default function SearchPage({
   })
 
   const showClearFiltersButton =
-    selectedCategory !== 'All' ||
+    selectedCategories.length > 0 ||
     showSavedOnly ||
     maxCaloriesInput.trim() !== '' ||
     minProteinInput.trim() !== '' ||
     sortBy !== 'newest'
+
+  function handleCategoryToggle(category: string) {
+    setSelectedCategories((current) => toggleSelectedCategories(current, category))
+  }
+
+  function handleClearFilters() {
+    setSelectedCategories([])
+    setShowSavedOnly(false)
+    setMaxCaloriesInput('')
+    setMinProteinInput('')
+    setSortBy('newest')
+  }
+
+  const sortLabels: Record<SearchSort, string> = {
+    newest: 'Newest',
+    oldest: 'Oldest',
+    'most-liked': 'Most liked',
+  }
+
+  const extraFilterChips: DiscoverFilterChip[] = []
+
+  if (sortBy !== 'newest') {
+    extraFilterChips.push({
+      id: 'sort',
+      label: `Sort: ${sortLabels[sortBy]}`,
+      onRemove: () => setSortBy('newest'),
+    })
+  }
+
+  if (maxCaloriesInput.trim() !== '') {
+    extraFilterChips.push({
+      id: 'max-calories',
+      label: `Max ${maxCaloriesInput} cal`,
+      onRemove: () => setMaxCaloriesInput(''),
+    })
+  }
+
+  if (minProteinInput.trim() !== '') {
+    extraFilterChips.push({
+      id: 'min-protein',
+      label: `Min ${minProteinInput}g protein`,
+      onRemove: () => setMinProteinInput(''),
+    })
+  }
+
+  const advancedFilters = (
+    <section className="search-page__advanced-filters">
+      <div className="search-page__filter-group">
+        <label className="search-page__filter-label" htmlFor="search-sort">
+          Sort results
+        </label>
+        <select
+          id="search-sort"
+          className="search-page__filter-input"
+          value={sortBy}
+          onChange={(event) => setSortBy(event.target.value as SearchSort)}
+        >
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="most-liked">Most liked</option>
+        </select>
+      </div>
+
+      <div className="search-page__nutrition-filters">
+        <div className="search-page__filter-group">
+          <label className="search-page__filter-label" htmlFor="max-calories">
+            Max calories
+          </label>
+          <input
+            id="max-calories"
+            className="search-page__filter-input"
+            type="number"
+            min="0"
+            step="1"
+            inputMode="numeric"
+            placeholder="e.g. 500"
+            value={maxCaloriesInput}
+            onChange={(event) => setMaxCaloriesInput(event.target.value)}
+          />
+        </div>
+
+        <div className="search-page__filter-group">
+          <label className="search-page__filter-label" htmlFor="min-protein">
+            Min protein (g)
+          </label>
+          <input
+            id="min-protein"
+            className="search-page__filter-input"
+            type="number"
+            min="0"
+            step="1"
+            inputMode="numeric"
+            placeholder="e.g. 20"
+            value={minProteinInput}
+            onChange={(event) => setMinProteinInput(event.target.value)}
+          />
+        </div>
+      </div>
+    </section>
+  )
 
   return (
     <section className="recipe-section search-page">
@@ -210,78 +314,23 @@ export default function SearchPage({
       </div>
 
       <DiscoverPanel
+        variant="search"
         searchTerm={searchTerm}
-        selectedCategory={selectedCategory}
+        selectedCategories={selectedCategories}
         categoryOptions={categoryOptions}
         showSavedOnly={showSavedOnly}
         showClearFiltersButton={showClearFiltersButton}
         onSearchChange={setSearchTerm}
-        onCategoryChange={setSelectedCategory}
-        onToggleShowSavedOnly={() =>
-          setShowSavedOnly((value) => !value)
+        onCategoryToggle={handleCategoryToggle}
+        onToggleShowSavedOnly={() => setShowSavedOnly((value) => !value)}
+        onClearFilters={handleClearFilters}
+        resultCount={
+          searchTerm.trim() !== '' && !loading ? filteredResults.length : undefined
         }
-        onClearFilters={() => {
-          setSelectedCategory('All')
-          setShowSavedOnly(false)
-          setMaxCaloriesInput('')
-          setMinProteinInput('')
-          setSortBy('newest')
-        }}
-      />
-
-      <section className="search-page__advanced-filters">
-        <div className="search-page__filter-group">
-          <label className="search-page__filter-label" htmlFor="search-sort">
-            Sort results
-          </label>
-          <select
-            id="search-sort"
-            className="search-page__filter-input"
-            value={sortBy}
-            onChange={(event) => setSortBy(event.target.value as SearchSort)}
-          >
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="most-liked">Most liked</option>
-          </select>
-        </div>
-
-        <div className="search-page__nutrition-filters">
-          <div className="search-page__filter-group">
-            <label className="search-page__filter-label" htmlFor="max-calories">
-              Max calories
-            </label>
-            <input
-              id="max-calories"
-              className="search-page__filter-input"
-              type="number"
-              min="0"
-              step="1"
-              inputMode="numeric"
-              placeholder="e.g. 500"
-              value={maxCaloriesInput}
-              onChange={(event) => setMaxCaloriesInput(event.target.value)}
-            />
-          </div>
-
-          <div className="search-page__filter-group">
-            <label className="search-page__filter-label" htmlFor="min-protein">
-              Min protein (g)
-            </label>
-            <input
-              id="min-protein"
-              className="search-page__filter-input"
-              type="number"
-              min="0"
-              step="1"
-              inputMode="numeric"
-              placeholder="e.g. 20"
-              value={minProteinInput}
-              onChange={(event) => setMinProteinInput(event.target.value)}
-            />
-          </div>
-        </div>
-      </section>
+        extraFilterChips={extraFilterChips}
+      >
+        {advancedFilters}
+      </DiscoverPanel>
 
       {loading ? (
         <RecipeGridSkeleton count={6} />
@@ -305,13 +354,7 @@ export default function SearchPage({
             <button
               type="button"
               className="clear-filters-button"
-              onClick={() => {
-                setSelectedCategory('All')
-                setShowSavedOnly(false)
-                setMaxCaloriesInput('')
-                setMinProteinInput('')
-                setSortBy('newest')
-              }}
+              onClick={handleClearFilters}
             >
               Clear filters
             </button>

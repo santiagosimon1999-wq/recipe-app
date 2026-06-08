@@ -76,6 +76,7 @@ export type SearchPublicRecipesOptions = {
   limit?: number
   excludeUserId?: string
   category?: string
+  categories?: string[]
   maxCalories?: number
   minProtein?: number
   sortBy?: PublicRecipeSearchSort
@@ -260,6 +261,25 @@ async function getRecipeIdsForCategory(categoryName: string): Promise<number[]> 
   }
 
   return [...new Set((data ?? []).map((row) => Number((row as { recipe_id: number }).recipe_id)).filter((id) => Number.isFinite(id) && id > 0))]
+}
+
+async function getRecipeIdsForCategories(
+  categoryNames: string[],
+): Promise<number[]> {
+  if (categoryNames.length === 0) return []
+
+  const idSets = await Promise.all(
+    categoryNames.map((name) => getRecipeIdsForCategory(name)),
+  )
+
+  if (idSets.some((ids) => ids.length === 0)) {
+    return []
+  }
+
+  const [firstSet, ...remainingSets] = idSets
+  return firstSet.filter((id) =>
+    remainingSets.every((set) => set.includes(id)),
+  )
 }
 
 async function syncRecipeCategories(
@@ -464,9 +484,16 @@ export async function searchPublicRecipes(
   const pattern = `"%${escaped}%"`
 
   const ascending = options?.sortBy === 'oldest'
+  const categoryNames =
+    options?.categories && options.categories.length > 0
+      ? options.categories
+      : options?.category && options.category !== 'All'
+        ? [options.category]
+        : []
+
   const categoryRecipeIds =
-    options?.category && options.category !== 'All'
-      ? await getRecipeIdsForCategory(options.category)
+    categoryNames.length > 0
+      ? await getRecipeIdsForCategories(categoryNames)
       : null
 
   if (categoryRecipeIds && categoryRecipeIds.length === 0) {

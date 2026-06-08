@@ -1,11 +1,13 @@
+.search-page .recipe-section__header {
+  margin-bottom: 0;
+}
+
 .search-page__advanced-filters {
   display: grid;
   gap: 12px;
-  margin: 6px 0 18px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background-color: var(--surface-solid);
+  margin: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--border);
 }
 
 .search-page__nutrition-filters {
@@ -35,6 +37,7 @@
   border-radius: 12px;
   background-color: var(--surface);
   color: var(--text-main);
+  font-size: 1rem;
   outline: none;
 }
 

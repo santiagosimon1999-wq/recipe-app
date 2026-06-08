@@ -4,8 +4,10 @@ import {
   dedupeCategoryNames,
   getPrimaryCategory,
   getRecipeCategoryNames,
+  recipeMatchesSelectedCategories,
   recipeMatchesSelectedCategory,
   resolveLegacyCategoryNames,
+  toggleSelectedCategories,
 } from './categories'
 
 function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
@@ -62,5 +64,34 @@ describe('categories utils', () => {
     expect(recipeMatchesSelectedCategory(recipe, 'All')).toBe(true)
     expect(recipeMatchesSelectedCategory(recipe, 'Italian')).toBe(true)
     expect(recipeMatchesSelectedCategory(recipe, 'Vegan')).toBe(false)
+  })
+
+  it('matches all selected categories with AND logic', () => {
+    const recipe = makeRecipe({
+      category: 'Dinner',
+      categories: ['Dinner', 'Italian', 'High Protein'],
+    })
+
+    expect(recipeMatchesSelectedCategories(recipe, [])).toBe(true)
+    expect(recipeMatchesSelectedCategories(recipe, ['Dinner', 'Italian'])).toBe(
+      true,
+    )
+    expect(
+      recipeMatchesSelectedCategories(recipe, ['Dinner', 'Vegan']),
+    ).toBe(false)
+  })
+
+  it('toggles categories and replaces same-group selections', () => {
+    expect(toggleSelectedCategories([], 'Breakfast')).toEqual(['Breakfast'])
+    expect(
+      toggleSelectedCategories(['Breakfast'], 'Italian'),
+    ).toEqual(['Breakfast', 'Italian'])
+    expect(
+      toggleSelectedCategories(['Breakfast', 'Italian'], 'Lunch'),
+    ).toEqual(['Italian', 'Lunch'])
+    expect(
+      toggleSelectedCategories(['Lunch', 'Italian'], 'Italian'),
+    ).toEqual(['Lunch'])
+    expect(toggleSelectedCategories(['Lunch'], 'All')).toEqual([])
   })
 })

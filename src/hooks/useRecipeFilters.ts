@@ -3,7 +3,8 @@ import { isSavoraTeamRecipe } from '../lib/savoraTeam'
 import type { Recipe } from '../types/Recipe'
 import {
   recipeCategorySearchText,
-  recipeMatchesSelectedCategory,
+  recipeMatchesSelectedCategories,
+  toggleSelectedCategories,
 } from '../utils/categories'
 import { isRecipeSaved } from '../utils/favorites'
 
@@ -13,7 +14,7 @@ export function useRecipeFilters(
   cloudSavedRecipeIds: number[]
 ) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [showSavedOnly, setShowSavedOnly] = useState(false)
 
   const filteredRecipes = useMemo(() => {
@@ -27,9 +28,9 @@ export function useRecipeFilters(
           ingredient.toLowerCase().includes(normalizedSearch)
         )
 
-      const matchesCategory = recipeMatchesSelectedCategory(
+      const matchesCategory = recipeMatchesSelectedCategories(
         recipe,
-        selectedCategory
+        selectedCategories,
       )
 
       const matchesSaved =
@@ -41,7 +42,7 @@ export function useRecipeFilters(
   }, [
     recipeList,
     searchTerm,
-    selectedCategory,
+    selectedCategories,
     showSavedOnly,
     sampleSavedRecipeIds,
     cloudSavedRecipeIds,
@@ -84,11 +85,15 @@ export function useRecipeFilters(
   }, [allUserRecipes])
 
   const showClearFiltersButton =
-    searchTerm !== '' || selectedCategory !== 'All' || showSavedOnly
+    searchTerm !== '' || selectedCategories.length > 0 || showSavedOnly
+
+  function handleCategoryToggle(category: string) {
+    setSelectedCategories((current) => toggleSelectedCategories(current, category))
+  }
 
   function handleClearFilters() {
     setSearchTerm('')
-    setSelectedCategory('All')
+    setSelectedCategories([])
     setShowSavedOnly(false)
   }
 
@@ -99,8 +104,8 @@ export function useRecipeFilters(
   return {
     searchTerm,
     setSearchTerm,
-    selectedCategory,
-    setSelectedCategory,
+    selectedCategories,
+    handleCategoryToggle,
     showSavedOnly,
     filteredRecipes,
     userRecipes,

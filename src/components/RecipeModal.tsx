@@ -95,6 +95,7 @@ function RecipeModal({
               type="button"
               className="recipe-modal__close-button"
               onClick={onClose}
+              aria-label="Close recipe"
             >
               Close
             </button>
@@ -105,6 +106,8 @@ function RecipeModal({
               src={recipe.image}
               alt={recipe.title}
               className="recipe-modal__image"
+              loading="lazy"
+              decoding="async"
             />
           ) : null}
 

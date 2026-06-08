@@ -1,8 +1,10 @@
 import { Globe, Moon, PlusCircle, Salad, Share2, Sun } from 'lucide-react'
-import { NavLink } from 'react-router'
+import { NavLink, useLocation } from 'react-router'
 import GuestWelcomeCard from './GuestWelcomeCard'
+import MoreMenuDropdown from './MoreMenuDropdown'
 import ProfileCard from './ProfileCard'
 import { useAuthNavigation } from '../hooks/useAuthNavigation'
+import { isMoreMenuActiveRoute } from '../lib/moreMenu'
 
 type AppHeaderProps = {
   theme: 'light' | 'dark'
@@ -41,7 +43,9 @@ export default function AppHeader({
   isLoggedIn,
   unreadNotifications = 0,
 }: AppHeaderProps) {
+  const location = useLocation()
   const { goToLogin, goToSignUp } = useAuthNavigation()
+  const isMoreActive = isMoreMenuActiveRoute(location.pathname)
 
   return (
     <header className="app-hero">
@@ -73,6 +77,14 @@ export default function AppHeader({
                 </>
               )}
             </button>
+
+            <NavLink
+              to="/search"
+              className="app-nav__mobile-search theme-toggle-button"
+              aria-label="Go to search page"
+            >
+              Search
+            </NavLink>
 
             {isLoggedIn ? (
               <button type="button" className="logout-button" onClick={onLogout}>
@@ -125,35 +137,13 @@ export default function AppHeader({
                 <span>New Recipe</span>
               </button>
             ) : null}
-          </div>
 
-          {isLoggedIn ? (
-            <div className="app-nav__actions app-nav__actions--secondary">
-              <NavLink to="/creator" className={navLinkClass}>
-                Creator
-              </NavLink>
-              <NavLink to="/following" className={navLinkClass}>
-                Following
-              </NavLink>
-              <NavLink to="/saved" className={navLinkClass}>
-                Saved
-              </NavLink>
-              <NavLink to="/collections" className={navLinkClass}>
-                Collections
-              </NavLink>
-              <NavLink to="/notifications" className={navLinkClass}>
-                <span className="app-nav__notifications-label">
-                  Notifications
-                  {unreadNotifications > 0 ? (
-                    <span className="app-nav__badge">{unreadNotifications}</span>
-                  ) : null}
-                </span>
-              </NavLink>
-              <NavLink to="/profile" className={navLinkClass}>
-                Profile
-              </NavLink>
-            </div>
-          ) : null}
+            <MoreMenuDropdown
+              isLoggedIn={isLoggedIn}
+              unreadNotifications={unreadNotifications}
+              isActive={isMoreActive}
+            />
+          </div>
         </div>
       </nav>
 

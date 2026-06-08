@@ -157,9 +157,46 @@ export function getRecipeCategoryNames(recipe: Recipe): string[] {
   return dedupeCategoryNames(resolveLegacyCategoryNames(recipe.category))
 }
 
+export function toggleSelectedCategories(
+  current: string[],
+  category: string,
+): string[] {
+  if (category === 'All') {
+    return []
+  }
+
+  const option = getCategoryOption(category)
+  if (!option) {
+    return current
+  }
+
+  if (current.includes(option.name)) {
+    return current.filter((name) => name !== option.name)
+  }
+
+  const withoutSameGroup = current.filter((name) => {
+    const existing = getCategoryOption(name)
+    return !existing || existing.groupKey !== option.groupKey
+  })
+
+  return [...withoutSameGroup, option.name]
+}
+
+export function recipeMatchesSelectedCategories(
+  recipe: Recipe,
+  selectedCategories: string[],
+): boolean {
+  if (selectedCategories.length === 0) return true
+
+  const recipeCategories = getRecipeCategoryNames(recipe)
+  return selectedCategories.every((category) =>
+    recipeCategories.includes(category),
+  )
+}
+
 export function recipeMatchesSelectedCategory(recipe: Recipe, selectedCategory: string): boolean {
   if (selectedCategory === 'All') return true
-  return getRecipeCategoryNames(recipe).includes(selectedCategory)
+  return recipeMatchesSelectedCategories(recipe, [selectedCategory])
 }
 
 export function recipeCategorySearchText(recipe: Recipe): string {

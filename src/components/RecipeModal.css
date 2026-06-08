@@ -258,11 +258,13 @@
   }
 
   .recipe-comments__form-footer {
-    flex-direction: row;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
   .recipe-comments__submit {
-    width: auto;
+    width: 100%;
+    min-height: 44px;
   }
 }

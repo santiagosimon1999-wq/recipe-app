@@ -1,7 +1,9 @@
-import { Bell, ChefHat, Home, PlusCircle, Users2 } from 'lucide-react'
+import { Home, Menu, PlusCircle, Search, Users2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router'
 import { useAuthNavigation } from '../hooks/useAuthNavigation'
 import { buildAuthReturnPath } from '../lib/authNavigation'
+import MoreMenuSheet from './MoreMenuSheet'
 
 type BottomNavProps = {
   isLoggedIn: boolean
@@ -22,11 +24,25 @@ export default function BottomNav({
 }: BottomNavProps) {
   const location = useLocation()
   const { goToProtectedRoute } = useAuthNavigation()
+  const [moreOpen, setMoreOpen] = useState(false)
   const currentPath = buildAuthReturnPath(
     location.pathname,
     location.search,
     location.hash,
   )
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 761px)')
+
+    function handleViewportChange(event: MediaQueryListEvent) {
+      if (event.matches) {
+        setMoreOpen(false)
+      }
+    }
+
+    mediaQuery.addEventListener('change', handleViewportChange)
+    return () => mediaQuery.removeEventListener('change', handleViewportChange)
+  }, [])
 
   function handleCreate() {
     if (!isLoggedIn) {
@@ -40,93 +56,57 @@ export default function BottomNav({
     onStartCreateRecipe()
   }
 
-  function handleNotifications() {
-    if (!isLoggedIn) {
-      goToProtectedRoute(
-        '/notifications',
-        'login',
-        'Log in to see likes, comments, and follows.',
-      )
-    }
-  }
-
-  function handleProfile() {
-    if (!isLoggedIn) {
-      goToProtectedRoute(
-        '/profile',
-        'login',
-        'Create your profile to share recipes and follow creators.',
-      )
-    }
-  }
-
   return (
-    <nav className="bottom-nav" aria-label="Mobile navigation">
-      <NavLink to="/" end className={bottomNavLinkClass}>
-        <Home size={22} aria-hidden="true" />
-        <span>Home</span>
-      </NavLink>
-
-      <NavLink to="/community" className={bottomNavLinkClass}>
-        <Users2 size={22} aria-hidden="true" />
-        <span>Community</span>
-      </NavLink>
-
-      <button
-        type="button"
-        className="bottom-nav__create"
-        onClick={handleCreate}
-        aria-label="Create a new recipe"
-      >
-        <PlusCircle size={26} aria-hidden="true" />
-        <span>Create</span>
-      </button>
-
-      {isLoggedIn ? (
-        <NavLink to="/notifications" className={bottomNavLinkClass}>
-          <span
-            className="bottom-nav__bell-wrapper"
-            aria-label={`Notifications${unreadNotifications > 0 ? `, ${unreadNotifications} unread` : ''}`}
-          >
-            <Bell size={22} aria-hidden="true" />
-            {unreadNotifications > 0 ? (
-              <span className="bottom-nav__badge" aria-hidden="true">
-                {unreadNotifications > 9 ? '9+' : unreadNotifications}
-              </span>
-            ) : null}
-          </span>
-          <span>Notifications</span>
+    <>
+      <nav className="bottom-nav" aria-label="Mobile navigation">
+        <NavLink to="/" end className={bottomNavLinkClass}>
+          <Home size={22} aria-hidden="true" />
+          <span>Home</span>
         </NavLink>
-      ) : (
+
+        <NavLink to="/search" className={bottomNavLinkClass}>
+          <Search size={22} aria-hidden="true" />
+          <span>Search</span>
+        </NavLink>
+
         <button
           type="button"
-          className="bottom-nav__tab"
-          onClick={handleNotifications}
-          aria-label="Log in to view notifications"
+          className="bottom-nav__create"
+          onClick={handleCreate}
+          aria-label="Create a new recipe"
         >
-          <span className="bottom-nav__bell-wrapper" aria-hidden="true">
-            <Bell size={22} aria-hidden="true" />
-          </span>
-          <span>Notifications</span>
+          <PlusCircle size={26} aria-hidden="true" />
+          <span>Create</span>
         </button>
-      )}
 
-      {isLoggedIn ? (
-        <NavLink to="/profile" className={bottomNavLinkClass}>
-          <ChefHat size={22} aria-hidden="true" />
-          <span>Profile</span>
+        <NavLink to="/community" className={bottomNavLinkClass}>
+          <Users2 size={22} aria-hidden="true" />
+          <span>Community</span>
         </NavLink>
-      ) : (
+
         <button
           type="button"
-          className="bottom-nav__tab"
-          onClick={handleProfile}
-          aria-label="Log in to view profile"
+          className={
+            moreOpen
+              ? 'bottom-nav__tab bottom-nav__tab--active'
+              : 'bottom-nav__tab'
+          }
+          onClick={() => setMoreOpen(true)}
+          aria-label="Open more menu"
+          aria-expanded={moreOpen}
+          aria-haspopup="dialog"
         >
-          <ChefHat size={22} aria-hidden="true" />
-          <span>Profile</span>
+          <Menu size={22} aria-hidden="true" />
+          <span>More</span>
         </button>
-      )}
-    </nav>
+      </nav>
+
+      <MoreMenuSheet
+        isOpen={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        isLoggedIn={isLoggedIn}
+        unreadNotifications={unreadNotifications}
+      />
+    </>
   )
 }
