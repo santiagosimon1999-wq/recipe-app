@@ -135,6 +135,8 @@ test.describe('release gate — signed out smoke', () => {
 
   test('search route smoke while signed out', async ({ page }) => {
     await page.goto('/search')
+    await expect(page.getByTestId('app-compact-header')).toBeVisible()
+    await expect(page.getByTestId('app-full-header')).toHaveCount(0)
     await expect(
       page.getByRole('heading', { name: /Find recipes across the community/i })
     ).toBeVisible()
@@ -142,6 +144,23 @@ test.describe('release gate — signed out smoke', () => {
       page.getByRole('heading', { name: /Find your next meal/i })
     ).toHaveCount(0)
     await expect(page.getByTestId('discover-filters-toggle')).toBeVisible()
+  })
+
+  test('home route uses full hero header', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('app-full-header')).toBeVisible()
+    await expect(page.getByTestId('app-compact-header')).toHaveCount(0)
+    await expect(page.getByText(/Social recipe sharing/i)).toBeVisible()
+  })
+
+  test('community route uses compact header', async ({ page }) => {
+    await page.goto('/community')
+    await expect(page.getByTestId('app-compact-header')).toBeVisible()
+    await expect(page.getByTestId('app-full-header')).toHaveCount(0)
+    await expect(page.getByText(/Social recipe sharing/i)).toHaveCount(0)
+    await expect(
+      page.getByRole('heading', { name: /Public recipes from the community/i })
+    ).toBeVisible()
   })
 
   test('discover filters are collapsed by default on desktop', async ({ page }) => {
@@ -274,7 +293,10 @@ test.describe('release gate — signed out smoke', () => {
 
   test('signed-out user can access community page', async ({ page }) => {
     await page.goto('/community')
-    await expect(page.getByRole('heading', { name: /^Savora$/i }).first()).toBeVisible()
+    await expect(page.getByTestId('app-compact-header')).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: /Go to Savora home/i })
+    ).toBeVisible()
     await expect(page.getByRole('button', { name: /^Log out$/i })).toHaveCount(0)
   })
 

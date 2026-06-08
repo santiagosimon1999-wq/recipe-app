@@ -9,6 +9,7 @@ import { useConfirm } from './context/ConfirmProvider'
 import { useAuth } from './context/useAuth'
 import AppFooter from './components/AppFooter'
 import AppHeader from './components/AppHeader'
+import { isFullHeroRoute } from './lib/headerRoutes'
 import BottomNav from './components/BottomNav'
 import InstallPrompt from './components/InstallPrompt'
 import DiscoverPanel from './components/DiscoverPanel'
@@ -350,6 +351,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
       <main className={`app app--${theme}`}>
         <div className="app__container">
           <AppHeader
+            variant={isFullHeroRoute(location.pathname) ? 'full' : 'compact'}
             theme={theme}
             onToggleTheme={onToggleTheme}
             onLogout={() => void logout()}
