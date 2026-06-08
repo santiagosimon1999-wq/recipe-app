@@ -6,6 +6,7 @@ import {
   saveRecipeForUser,
   unsaveRecipeForUser,
 } from '../lib/recipeService'
+import { useAuthPrompt } from '../context/useAuthPrompt'
 import { notify } from '../lib/toast'
 import {
   getRecipeListKey,
@@ -14,6 +15,7 @@ import {
 } from '../utils/favorites'
 
 export function useSaved(user: User | null, recipeList: Recipe[]) {
+  const { promptAuth } = useAuthPrompt()
   const [cloudSavedRecipeIds, setCloudSavedRecipeIds] = useState<number[]>([])
   const [sampleSavedRecipeIds, setSampleSavedRecipeIds] = useState<number[]>(() => {
     try {
@@ -124,7 +126,7 @@ export function useSaved(user: User | null, recipeList: Recipe[]) {
       }
 
       if (!user) {
-        notify.info('Sign in to save recipes.')
+        promptAuth({ reason: 'Create an account to save recipes to your collection.' })
         return
       }
 
@@ -161,6 +163,7 @@ export function useSaved(user: User | null, recipeList: Recipe[]) {
       sampleSavedRecipeIds,
       cloudSavedRecipeIds,
       refreshCloudSavedRecipeIds,
+      promptAuth,
     ]
   )
 

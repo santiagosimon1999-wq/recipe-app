@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Trash2 } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
+import { useAuthPrompt } from '../context/useAuthPrompt'
 import { notify } from '../lib/toast'
 import { getAvatarInitials } from '../lib/userUtils'
 import {
@@ -63,6 +64,7 @@ export default function RecipeComments({
   onViewAuthor,
 }: RecipeCommentsProps) {
   const { user } = useAuth()
+  const { promptAuth } = useAuthPrompt()
   const [comments, setComments] = useState<RecipeComment[]>([])
   const [loading, setLoading] = useState(false)
   const [posting, setPosting] = useState(false)
@@ -158,6 +160,12 @@ export default function RecipeComments({
     const trimmed = username?.trim()
     if (!trimmed) return
     onViewAuthor?.(trimmed)
+  }
+
+  function handleGuestCommentPrompt() {
+    promptAuth({
+      reason: 'Create an account to join the conversation and comment on recipes.',
+    })
   }
 
   return (
@@ -288,7 +296,19 @@ export default function RecipeComments({
       ) : null}
 
       {supportsComments && !user ? (
-        <p className="recipe-comments__notice">Sign in to write a comment.</p>
+        <div className="recipe-comments__guest-prompt">
+          <p className="recipe-comments__notice">
+            Create an account to join the conversation.
+          </p>
+          <button
+            type="button"
+            className="auth-cta-button auth-cta-button--primary"
+            onClick={handleGuestCommentPrompt}
+            aria-label="Join Savora"
+          >
+            Join Savora
+          </button>
+        </div>
       ) : null}
     </section>
   )

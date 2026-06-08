@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { NavLink, useNavigate } from 'react-router'
 import type { Recipe } from '../types/Recipe'
 import type { Profile } from '../types/Profile'
 import { useAuth } from '../context/useAuth'
@@ -522,6 +522,16 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
           </section>
 
           {error ? <p className="profile-page__error">{error}</p> : null}
+
+          <section className="profile-page__support-links" aria-label="About and legal">
+            <p className="profile-page__stat-label">About Savora</p>
+            <nav className="profile-page__legal-links">
+              <NavLink to="/about">About</NavLink>
+              <NavLink to="/privacy">Privacy</NavLink>
+              <NavLink to="/terms">Terms</NavLink>
+              <NavLink to="/feedback">Feedback</NavLink>
+            </nav>
+          </section>
 
           <section
             className="profile-page__danger-zone"

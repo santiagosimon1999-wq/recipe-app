@@ -32,6 +32,8 @@ type RecipeModalProps = {
   canManage?: boolean
   liked: boolean
   likeCount: number
+  isSaved?: boolean
+  onToggleSaved?: (recipe: Recipe) => void
   onToggleLike?: (recipeId: number) => void
   onViewAuthor?: (username: string) => void
 }
@@ -45,6 +47,8 @@ function RecipeModal({
   canManage = false,
   liked,
   likeCount,
+  isSaved = false,
+  onToggleSaved,
   onToggleLike,
   onViewAuthor,
 }: RecipeModalProps) {
@@ -245,6 +249,19 @@ function RecipeModal({
                   <span>{likeCount}</span>
                 </button>
               )}
+              <button
+                type="button"
+                className={isSaved ? 'save-button save-button--active' : 'save-button'}
+                onClick={() => onToggleSaved?.(recipe)}
+                aria-label={isSaved ? 'Unsave recipe' : 'Save recipe'}
+              >
+                <Heart
+                  size={16}
+                  aria-hidden="true"
+                  fill={isSaved ? 'currentColor' : 'none'}
+                />
+                <span>{isSaved ? 'Saved' : 'Save'}</span>
+              </button>
               <ShareRecipeButton recipe={recipe} />
               <SaveToCollectionButton recipe={recipe} />
             </div>

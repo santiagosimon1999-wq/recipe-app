@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router'
 import { Toaster } from 'sonner'
 import './index.css'
 import { AuthGate } from './components/auth/AuthGate'
+import { AuthPromptProvider } from './context/AuthPromptProvider'
 import AppShell from './AppShell'
 import { useTheme } from './hooks/useTheme'
 
@@ -40,8 +41,10 @@ export default function App() {
 
   return (
     <AuthGate theme={theme} onToggleTheme={toggleTheme}>
-      <Toaster theme={theme} richColors closeButton position="top-center" />
-      <AppShell theme={theme} onToggleTheme={toggleTheme} />
+      <AuthPromptProvider>
+        <Toaster theme={theme} richColors closeButton position="top-center" />
+        <AppShell theme={theme} onToggleTheme={toggleTheme} />
+      </AuthPromptProvider>
     </AuthGate>
   )
 }

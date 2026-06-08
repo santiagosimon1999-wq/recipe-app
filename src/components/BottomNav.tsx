@@ -1,5 +1,7 @@
 import { Bell, ChefHat, Home, PlusCircle, Users2 } from 'lucide-react'
-import { NavLink, useLocation, useNavigate } from 'react-router'
+import { NavLink, useLocation } from 'react-router'
+import { useAuthNavigation } from '../hooks/useAuthNavigation'
+import { buildAuthReturnPath } from '../lib/authNavigation'
 
 type BottomNavProps = {
   isLoggedIn: boolean
@@ -18,16 +20,44 @@ export default function BottomNav({
   unreadNotifications,
   onStartCreateRecipe,
 }: BottomNavProps) {
-  const navigate = useNavigate()
   const location = useLocation()
+  const { goToProtectedRoute } = useAuthNavigation()
+  const currentPath = buildAuthReturnPath(
+    location.pathname,
+    location.search,
+    location.hash,
+  )
 
   function handleCreate() {
     if (!isLoggedIn) {
-      // Protected route — AuthGate shows the existing login/sign-up screen.
-      void navigate('/profile', { state: { from: location.pathname } })
+      goToProtectedRoute(
+        currentPath,
+        'signup',
+        'Create an account to publish your own recipes.',
+      )
       return
     }
     onStartCreateRecipe()
+  }
+
+  function handleNotifications() {
+    if (!isLoggedIn) {
+      goToProtectedRoute(
+        '/notifications',
+        'login',
+        'Log in to see likes, comments, and follows.',
+      )
+    }
+  }
+
+  function handleProfile() {
+    if (!isLoggedIn) {
+      goToProtectedRoute(
+        '/profile',
+        'login',
+        'Create your profile to share recipes and follow creators.',
+      )
+    }
   }
 
   return (
@@ -52,22 +82,51 @@ export default function BottomNav({
         <span>Create</span>
       </button>
 
-      <NavLink to="/notifications" className={bottomNavLinkClass}>
-        <span className="bottom-nav__bell-wrapper" aria-label={`Notifications${unreadNotifications > 0 ? `, ${unreadNotifications} unread` : ''}`}>
-          <Bell size={22} aria-hidden="true" />
-          {unreadNotifications > 0 ? (
-            <span className="bottom-nav__badge" aria-hidden="true">
-              {unreadNotifications > 9 ? '9+' : unreadNotifications}
-            </span>
-          ) : null}
-        </span>
-        <span>Notifications</span>
-      </NavLink>
+      {isLoggedIn ? (
+        <NavLink to="/notifications" className={bottomNavLinkClass}>
+          <span
+            className="bottom-nav__bell-wrapper"
+            aria-label={`Notifications${unreadNotifications > 0 ? `, ${unreadNotifications} unread` : ''}`}
+          >
+            <Bell size={22} aria-hidden="true" />
+            {unreadNotifications > 0 ? (
+              <span className="bottom-nav__badge" aria-hidden="true">
+                {unreadNotifications > 9 ? '9+' : unreadNotifications}
+              </span>
+            ) : null}
+          </span>
+          <span>Notifications</span>
+        </NavLink>
+      ) : (
+        <button
+          type="button"
+          className="bottom-nav__tab"
+          onClick={handleNotifications}
+          aria-label="Log in to view notifications"
+        >
+          <span className="bottom-nav__bell-wrapper" aria-hidden="true">
+            <Bell size={22} aria-hidden="true" />
+          </span>
+          <span>Notifications</span>
+        </button>
+      )}
 
-      <NavLink to="/profile" className={bottomNavLinkClass}>
-        <ChefHat size={22} aria-hidden="true" />
-        <span>Profile</span>
-      </NavLink>
+      {isLoggedIn ? (
+        <NavLink to="/profile" className={bottomNavLinkClass}>
+          <ChefHat size={22} aria-hidden="true" />
+          <span>Profile</span>
+        </NavLink>
+      ) : (
+        <button
+          type="button"
+          className="bottom-nav__tab"
+          onClick={handleProfile}
+          aria-label="Log in to view profile"
+        >
+          <ChefHat size={22} aria-hidden="true" />
+          <span>Profile</span>
+        </button>
+      )}
     </nav>
   )
 }

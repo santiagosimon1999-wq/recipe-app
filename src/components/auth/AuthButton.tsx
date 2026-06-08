@@ -11,6 +11,7 @@ export function AuthButton({ loading = false, loadingLabel, children }: AuthButt
       className={`auth-button${loading ? ' auth-button--loading' : ''}`}
       disabled={loading}
       aria-busy={loading}
+      aria-label={loading ? loadingLabel : children}
     >
       {loading ? (
         <>

@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import type { Recipe } from '../types/Recipe'
 import { notifyRecipeOwner } from '../lib/notifyRecipeOwner'
 import { likeRecipe, unlikeRecipe } from '../lib/recipeService'
+import { useAuthPrompt } from '../context/useAuthPrompt'
 import { notify } from '../lib/toast'
 
 type UseLikesParams = {
@@ -30,6 +31,8 @@ export function useLikes({
   likedRecipeIds,
   setLikedRecipeIds,
 }: UseLikesParams) {
+  const { promptAuth } = useAuthPrompt()
+
   function getLikeErrorMessage(error: unknown): string {
     if (!error || typeof error !== 'object') {
       return 'Failed to update like. Please try again.'
@@ -47,7 +50,7 @@ export function useLikes({
   const toggleLike = useCallback(
     async (recipeId: number) => {
       if (!user) {
-        notify.info('Sign in to like recipes.')
+        promptAuth({ reason: 'Create an account to like recipes and support creators.' })
         return
       }
 
@@ -155,6 +158,7 @@ export function useLikes({
       setLikeCountsByRecipeId,
       setSelectedRecipe,
       setLikedRecipeIds,
+      promptAuth,
     ]
   )
 

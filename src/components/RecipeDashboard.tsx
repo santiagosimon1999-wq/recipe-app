@@ -1,5 +1,7 @@
 import type { Recipe } from '../types/Recipe'
+import AuthPromptCard from './AuthPromptCard'
 import RecipeSection from './RecipeSection'
+import { useAuthNavigation } from '../hooks/useAuthNavigation'
 
 type RecipeDashboardProps = {
   userRecipes: Recipe[]
@@ -9,6 +11,7 @@ type RecipeDashboardProps = {
   cloudSavedRecipeIds: number[]
   likedRecipeIds?: number[]
   likeCountsByRecipeId?: Record<number, number>
+  isLoggedIn: boolean
   onToggleSaved: (recipe: Recipe) => void
   onSelectRecipe: (recipe: Recipe) => void
   onStartCreateRecipe: () => void
@@ -25,6 +28,7 @@ export default function RecipeDashboard({
   cloudSavedRecipeIds,
   likedRecipeIds,
   likeCountsByRecipeId,
+  isLoggedIn,
   onToggleSaved,
   onSelectRecipe,
   onStartCreateRecipe,
@@ -32,34 +36,59 @@ export default function RecipeDashboard({
   onViewAuthor,
   onEdit,
 }: RecipeDashboardProps) {
+  const { goToLogin, goToSignUp } = useAuthNavigation()
+
   return (
     <>
-      {userRecipes.length > 0 ? (
-        <RecipeSection
-          eyebrow="Your kitchen"
-          title="Your Recipes"
-          countLabel="recipes"
-          recipes={userRecipes}
-          sampleSavedRecipeIds={sampleSavedRecipeIds}
-          cloudSavedRecipeIds={cloudSavedRecipeIds}
-          likedRecipeIds={likedRecipeIds}
-          likeCountsByRecipeId={likeCountsByRecipeId}
-          onToggleSaved={onToggleSaved}
-          onSelectRecipe={onSelectRecipe}
-          onToggleLike={onToggleLike}
-          onViewAuthor={onViewAuthor}
-          onEdit={onEdit}
-        />
+      {isLoggedIn ? (
+        userRecipes.length > 0 ? (
+          <RecipeSection
+            eyebrow="Your kitchen"
+            title="Your Recipes"
+            countLabel="recipes"
+            recipes={userRecipes}
+            sampleSavedRecipeIds={sampleSavedRecipeIds}
+            cloudSavedRecipeIds={cloudSavedRecipeIds}
+            likedRecipeIds={likedRecipeIds}
+            likeCountsByRecipeId={likeCountsByRecipeId}
+            onToggleSaved={onToggleSaved}
+            onSelectRecipe={onSelectRecipe}
+            onToggleLike={onToggleLike}
+            onViewAuthor={onViewAuthor}
+            onEdit={onEdit}
+          />
+        ) : (
+          <section className="empty-profile-state">
+            <h2>Your recipe board is empty</h2>
+            <p>
+              Create your first recipe with ingredients, macros, instructions,
+              and a real image.
+            </p>
+            <button type="button" onClick={onStartCreateRecipe}>
+              Create your first recipe
+            </button>
+          </section>
+        )
       ) : (
-        <section className="empty-profile-state">
-          <h2>Your recipe board is empty</h2>
+        <section className="empty-profile-state empty-profile-state--guest">
+          <h2>Your personal recipe board lives here</h2>
           <p>
-            Create your first recipe with ingredients, macros, instructions,
-            and a real image.
+            Sign up to save favorites, publish your own recipes, and track what
+            you cook.
           </p>
-          <button type="button" onClick={onStartCreateRecipe}>
-            Create your first recipe
-          </button>
+          <p className="empty-profile-state__guest-hint guest-cta-mobile-only">
+            Create your free account from the hero above when you are ready.
+          </p>
+          <div className="guest-cta-desktop-only">
+            <AuthPromptCard
+              compact
+              message="Create a free account to build your recipe collection."
+              onLogin={() => goToLogin()}
+              onSignUp={() =>
+                goToSignUp('Create a free account to build your recipe collection.')
+              }
+            />
+          </div>
         </section>
       )}
 

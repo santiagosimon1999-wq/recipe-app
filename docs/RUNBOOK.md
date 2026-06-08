@@ -8,9 +8,16 @@ Copy `.env.example` to `.env` and set:
 |---|---|---|
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Anon/public key only |
-| `VITE_SENTRY_DSN` | No | Production error monitoring — see `docs/SENTRY_PRODUCTION.md` |
+| `VITE_SENTRY_DSN` | No (recommended) | Production error monitoring — see `docs/SENTRY_PRODUCTION.md` |
+| `VITE_FEEDBACK_EMAIL` | No (recommended) | Beta feedback mailto on `/feedback` — e.g. `your-beta-inbox@example.com` |
 
 Never commit `.env` or use the `service_role` key in the frontend.
+
+**Vercel Production:** set `VITE_FEEDBACK_EMAIL` to your real beta inbox so testers can reach you from the Feedback page.
+
+**Legal:** Privacy/Terms are beta placeholders — `docs/LAUNCH_LEGAL_CHECKLIST.md`.
+
+**Cookies/analytics:** Sentry only today — no cookie banner required — `docs/ANALYTICS_AND_COOKIES.md`.
 
 ## Database migrations
 

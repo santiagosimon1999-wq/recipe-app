@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { captureBoundaryError } from './lib/sentry'
 import { useConfirm } from './context/ConfirmProvider'
 import { useAuth } from './context/useAuth'
+import AppFooter from './components/AppFooter'
 import AppHeader from './components/AppHeader'
 import BottomNav from './components/BottomNav'
 import InstallPrompt from './components/InstallPrompt'
@@ -27,6 +28,7 @@ import {
 } from './hooks/useRecipes'
 import { useUnreadNotifications } from './hooks/useUnreadNotifications'
 import RecipeDetailRoute from './components/RecipeDetailRoute'
+import { isRecipeSaved } from './utils/favorites'
 import { normalizeRecipeForUi } from './lib/recipeMappers'
 import { getCategoryRegistry } from './lib/recipeService'
 import { getUserInitial } from './lib/userUtils'
@@ -48,6 +50,11 @@ const SearchPage = lazy(() => import('./pages/SearchPage'))
 const CollectionsPage = lazy(() => import('./pages/CollectionsPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const SavedRecipesPage = lazy(() => import('./pages/SavedRecipesPage'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
+const FeedbackPage = lazy(() => import('./pages/FeedbackPage'))
+const WhatsNewPage = lazy(() => import('./pages/WhatsNewPage'))
 
 type AppShellProps = {
   theme: Theme
@@ -462,6 +469,11 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                 }
               />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/feedback" element={<FeedbackPage />} />
+              <Route path="/whats-new" element={<WhatsNewPage />} />
               <Route
                 path="/community"
                 element={
@@ -515,6 +527,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                       savoraInspirationRecipes={savoraInspirationRecipes}
                       sampleSavedRecipeIds={sampleSavedRecipeIds}
                       cloudSavedRecipeIds={cloudSavedRecipeIds}
+                      isLoggedIn={Boolean(user)}
                       onToggleSaved={toggleSaved}
                       onSelectRecipe={handleSelectRecipe}
                       onStartCreateRecipe={handleStartCreateRecipe}
@@ -544,10 +557,18 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
             likeCount={
               likeCountsByRecipeId[selectedRecipe.id] ?? selectedRecipe.likeCount ?? 0
             }
+            isSaved={isRecipeSaved(
+              selectedRecipe,
+              sampleSavedRecipeIds,
+              cloudSavedRecipeIds,
+            )}
+            onToggleSaved={toggleSaved}
             onToggleLike={toggleLike}
             onViewAuthor={handleViewAuthor}
           />
         ) : null}
+
+          <AppFooter />
         </div>
 
         <BottomNav

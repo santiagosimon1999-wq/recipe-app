@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { UserPlus, UserMinus } from 'lucide-react'
+import { useAuthPrompt } from '../context/useAuthPrompt'
 import { useAuth } from '../context/useAuth'
 import { notify } from '../lib/toast'
 import {
@@ -21,6 +22,7 @@ export default function FollowButton({
   className = '',
 }: FollowButtonProps) {
   const { user } = useAuth()
+  const { promptAuth } = useAuthPrompt()
   const [following, setFollowing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -95,7 +97,9 @@ export default function FollowButton({
       <button
         type="button"
         className={`follow-button ${className}`.trim()}
-        onClick={() => notify.info('Sign in to follow chefs.')}
+        onClick={() =>
+          promptAuth({ reason: 'Create an account to follow creators and see their recipes.' })
+        }
       >
         <UserPlus size={16} aria-hidden="true" />
         Follow

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useLocation } from 'react-router'
 import { AuthPage } from './AuthPage'
+import PostAuthRedirect from './PostAuthRedirect'
 import { useAuth } from '../../context/useAuth'
 
 type AuthGateProps = {
@@ -19,6 +20,11 @@ const PUBLIC_ROUTES = [
   '/search',
   '/recipes',
   '/users',
+  '/about',
+  '/privacy',
+  '/terms',
+  '/feedback',
+  '/whats-new',
   '/forgot-password',
   '/reset-password',
 ]
@@ -53,5 +59,10 @@ export function AuthGate({ children, theme, onToggleTheme }: AuthGateProps) {
     return <AuthPage theme={theme} onToggleTheme={onToggleTheme} />
   }
 
-  return <>{children}</>
+  return (
+    <>
+      {user ? <PostAuthRedirect /> : null}
+      {children}
+    </>
+  )
 }

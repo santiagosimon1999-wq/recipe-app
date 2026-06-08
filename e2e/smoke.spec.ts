@@ -10,6 +10,8 @@ const E2E_COMMENT_RECIPE_ID = process.env.E2E_TEST_COMMENT_RECIPE_ID ?? ''
 const HAS_PRIMARY_AUTH = Boolean(E2E_EMAIL && E2E_PASSWORD)
 const HAS_SECOND_AUTH = Boolean(E2E_SECOND_EMAIL && E2E_SECOND_PASSWORD)
 const CREATE_RECIPE_BUTTON = /Create a new recipe/i
+const LOGIN_SUBMIT_BUTTON = /log in/i
+const AUTH_PROTECTED_ROUTE = '/profile'
 
 function uniqueLabel(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`
@@ -19,16 +21,38 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/** Protected routes trigger AuthGate → AuthPage for signed-out users. */
+async function gotoAuthScreen(page: Page) {
+  await page.goto(AUTH_PROTECTED_ROUTE)
+}
+
 async function expectAuthScreen(page: Page) {
   await expect(page.getByRole('heading', { name: /^Savora$/i }).first()).toBeVisible()
-  await expect(page.getByRole('button', { name: /^Log in$/i })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /^Login$/i })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /^Sign Up$/i })).toBeVisible()
+
+  const loginTabSelected =
+    (await page.getByRole('tab', { name: /^Login$/i }).getAttribute('aria-selected')) ===
+    'true'
+
+  if (loginTabSelected) {
+    await expect(page.locator('#login-email')).toBeVisible()
+    await expect(page.locator('#login-password')).toBeVisible()
+    await expect(page.getByRole('button', { name: LOGIN_SUBMIT_BUTTON })).toBeVisible()
+  } else {
+    await expect(page.getByRole('button', { name: /^Create account$/i })).toBeVisible()
+  }
+}
+
+async function expectSignedOut(page: Page) {
+  await expect(page.getByRole('button', { name: /^Log out$/i })).toHaveCount(0)
 }
 
 async function loginAs(page: Page, email: string, password: string) {
-  await page.goto('/')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: /^Log in$/i }).click()
+  await gotoAuthScreen(page)
+  await page.locator('#login-email').fill(email)
+  await page.locator('#login-password').fill(password)
+  await page.getByRole('button', { name: LOGIN_SUBMIT_BUTTON }).click()
   await expect(page.getByRole('button', { name: CREATE_RECIPE_BUTTON })).toBeVisible({
     timeout: 20_000,
   })
@@ -36,7 +60,7 @@ async function loginAs(page: Page, email: string, password: string) {
 
 async function logout(page: Page) {
   await page.getByRole('button', { name: /^Log out$/i }).click()
-  await expectAuthScreen(page)
+  await expectSignedOut(page)
 }
 
 async function logoutIfPossible(page: Page) {
@@ -44,7 +68,7 @@ async function logoutIfPossible(page: Page) {
   if ((await logoutButton.count()) === 0) return
 
   await logoutButton.first().click()
-  await expect(page.getByRole('button', { name: /^Log in$/i })).toBeVisible()
+  await expectSignedOut(page)
 }
 
 async function createRecipe(page: Page, options?: { isPublic?: boolean }) {
@@ -103,7 +127,7 @@ async function deleteRecipeByTitleIfPresent(page: Page, title: string) {
 
 test.describe('release gate — signed out smoke', () => {
   test('auth smoke: app loads and login/sign-up UI is reachable', async ({ page }) => {
-    await page.goto('/')
+    await gotoAuthScreen(page)
     await expectAuthScreen(page)
     await page.getByRole('tab', { name: /^Sign Up$/i }).click()
     await expect(page.getByRole('button', { name: /^Create account$/i })).toBeVisible()
@@ -124,6 +148,149 @@ test.describe('release gate — signed out smoke', () => {
   test('creator dashboard route smoke while signed out', async ({ page }) => {
     await page.goto('/creator')
     await expectAuthScreen(page)
+  })
+
+  test('home route smoke while signed out', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: /^Savora$/i }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Log out$/i })).toHaveCount(0)
+    await expect(
+      page.getByRole('navigation').getByRole('button', { name: /^Log in$/i })
+    ).toBeVisible()
+    await expect(
+      page.getByRole('navigation').getByRole('button', { name: /^Sign up$/i })
+    ).toBeVisible()
+    await expect(
+      page.getByText(/Discover, save, and share recipes with a food-loving community/i)
+    ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: /Create your free account/i })
+    ).toBeVisible()
+  })
+
+  test('signed-out header CTA reaches auth screen', async ({ page }) => {
+    await page.goto('/')
+    await page
+      .getByRole('navigation')
+      .getByRole('button', { name: /^Sign up$/i })
+      .click()
+    await expectAuthScreen(page)
+    await expect(page.getByRole('tab', { name: /^Sign Up$/i })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+  })
+
+  test('signed-out create action reaches auth screen', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+    await page.locator('.bottom-nav').getByLabel(CREATE_RECIPE_BUTTON).click()
+    await expectAuthScreen(page)
+    await expect(
+      page.getByText(/Create an account to publish your own recipes/i)
+    ).toBeVisible()
+  })
+
+  test('signed-out user can access community page', async ({ page }) => {
+    await page.goto('/community')
+    await expect(page.getByRole('heading', { name: /^Savora$/i }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Log out$/i })).toHaveCount(0)
+  })
+
+  test('mobile homepage limits repeated sign up buttons', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/')
+    await expect(
+      page.getByRole('navigation').getByRole('button', { name: /^Sign up$/i })
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Sign up$/i })).toHaveCount(1)
+    await expect(
+      page.getByRole('button', { name: /Create your free account/i })
+    ).toBeVisible()
+  })
+
+  test('protected saved route shows guest teaser copy', async ({ page }) => {
+    await page.goto('/saved')
+    await expect(
+      page.getByText(/save recipes and build your personal cookbook/i)
+    ).toBeVisible()
+  })
+
+  test('footer trust links are visible on home', async ({ page }) => {
+    await page.goto('/')
+    const footer = page.locator('.app-footer')
+    await footer.scrollIntoViewIfNeeded()
+    await expect(footer.getByRole('link', { name: /^About$/i })).toBeVisible()
+    await expect(footer.getByRole('link', { name: /^Privacy$/i })).toBeVisible()
+    await expect(footer.getByRole('link', { name: /^Terms$/i })).toBeVisible()
+    await expect(footer.getByRole('link', { name: /^Feedback$/i })).toBeVisible()
+    await expect(footer.getByRole('link', { name: /What'?s New/i })).toBeVisible()
+    await expect(footer.getByText(/currently in beta/i)).toBeVisible()
+  })
+
+  test('auth screen shows minimal footer links', async ({ page }) => {
+    await gotoAuthScreen(page)
+    const footer = page.locator('.auth-trust-footer')
+    await expect(footer.getByRole('link', { name: /^About$/i })).toBeVisible()
+    await expect(footer.getByRole('link', { name: /^Privacy$/i })).toBeVisible()
+    await expect(footer.getByRole('link', { name: /^Terms$/i })).toBeVisible()
+    await expect(footer.getByRole('link', { name: /^Feedback$/i })).toBeVisible()
+  })
+
+  test('about page loads while signed out', async ({ page }) => {
+    await page.goto('/about')
+    await expect(page.getByRole('heading', { name: /^About Savora$/i })).toBeVisible()
+    await expect(page.getByText(/social recipe app/i)).toBeVisible()
+  })
+
+  test('privacy page loads while signed out', async ({ page }) => {
+    await page.goto('/privacy')
+    await expect(
+      page.getByRole('heading', { name: /Privacy notice \(beta\)/i })
+    ).toBeVisible()
+    await expect(page.getByText(/may be updated before public launch/i)).toBeVisible()
+  })
+
+  test('terms page loads while signed out', async ({ page }) => {
+    await page.goto('/terms')
+    await expect(
+      page.getByRole('heading', { name: /Terms of use \(beta\)/i })
+    ).toBeVisible()
+    await expect(page.getByText(/informational only/i)).toBeVisible()
+  })
+
+  test('feedback page loads while signed out', async ({ page }) => {
+    await page.goto('/feedback')
+    await expect(page.getByRole('heading', { name: /^Feedback$/i })).toBeVisible()
+
+    const emailLink = page.getByRole('link', { name: /^Email feedback$/i })
+    const unconfigured = page.getByText(/Feedback email is not configured yet/i)
+
+    if ((await emailLink.count()) > 0) {
+      await expect(emailLink).toBeVisible()
+    } else {
+      await expect(unconfigured).toBeVisible()
+    }
+  })
+
+  test('whats-new page loads while signed out', async ({ page }) => {
+    await page.goto('/whats-new')
+    await expect(page.getByRole('heading', { name: /What'?s New/i })).toBeVisible()
+    await expect(page.getByText(/Savora Beta/i)).toBeVisible()
+    await expect(page.getByText(/public recipe browsing/i)).toBeVisible()
+  })
+
+  test('signed-out like opens Join Savora prompt', async ({ page }) => {
+    await page.goto('/community')
+    const likeButton = page.getByRole('button', { name: /^Like recipe$/i }).first()
+    test.skip((await likeButton.count()) === 0, 'No community recipes available to like')
+
+    await likeButton.click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await expect(page.getByRole('button', { name: /Continue to sign up/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Continue to login/i })).toBeVisible()
+    await page.getByRole('button', { name: /Close Join Savora dialog/i }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 })
 
@@ -174,6 +341,23 @@ test.describe('release gate — authenticated core flows', () => {
     await loginAs(page, E2E_EMAIL, E2E_PASSWORD)
     await page.goto('/creator')
     await expect(page.getByRole('heading', { name: /Creator Dashboard/i })).toBeVisible()
+  })
+
+  test('post-login redirect returns guest to previous page', async ({ page }) => {
+    await page.goto('/community')
+    const likeButton = page.getByRole('button', { name: /^Like recipe$/i }).first()
+    test.skip((await likeButton.count()) === 0, 'No community recipes available to like')
+
+    await likeButton.click()
+    await page.getByRole('button', { name: /Continue to login/i }).click()
+    await expectAuthScreen(page)
+
+    await page.locator('#login-email').fill(E2E_EMAIL)
+    await page.locator('#login-password').fill(E2E_PASSWORD)
+    await page.getByRole('button', { name: LOGIN_SUBMIT_BUTTON }).click()
+
+    await expect(page).toHaveURL(/\/community\/?$/, { timeout: 20_000 })
+    await expect(page.getByRole('button', { name: /^Log out$/i })).toBeVisible()
   })
 })
 

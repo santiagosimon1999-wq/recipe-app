@@ -119,6 +119,7 @@ Create `.env` in project root:
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 VITE_SENTRY_DSN=optional_sentry_dsn
+VITE_FEEDBACK_EMAIL=your_beta_inbox@example.com
 ```
 
 ### 3) Start development server
@@ -148,6 +149,8 @@ npm run test:e2e
 Launch Phase 1 docs:
 
 - `docs/LAUNCH_PHASE1.md` — readiness summary
+- `docs/LAUNCH_LEGAL_CHECKLIST.md` — legal review before public launch
+- `docs/ANALYTICS_AND_COOKIES.md` — when a cookie notice is needed
 - `db/PRODUCTION_MIGRATION_CHECKLIST.md` — verify Supabase migrations
 - `docs/PRODUCTION_SMOKE_TEST.md` — manual production smoke test
 - `docs/E2E_RELEASE_GATE.md` — Playwright credentials and commands
@@ -157,9 +160,20 @@ Launch Phase 1 docs:
 
 ## Environment Variables
 
-- `VITE_SUPABASE_URL` (required): Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` (required): Supabase anon API key
-- `VITE_SENTRY_DSN` (optional, recommended for production): Browser Sentry DSN — see `docs/SENTRY_PRODUCTION.md`
+### Required (production)
+
+- `VITE_SUPABASE_URL` — Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` — Supabase anon API key
+
+### Recommended (production)
+
+- `VITE_SENTRY_DSN` — Browser error monitoring — see `docs/SENTRY_PRODUCTION.md`
+- `VITE_FEEDBACK_EMAIL` — Beta feedback inbox for the `/feedback` mailto link (e.g. `your-beta-inbox@example.com`). If unset, the Feedback page shows a friendly “not configured” message.
+
+### Legal / analytics notes
+
+- Privacy and Terms pages are **beta placeholders** — review before public launch (`docs/LAUNCH_LEGAL_CHECKLIST.md`).
+- No cookie consent banner is needed unless you add analytics beyond Sentry (`docs/ANALYTICS_AND_COOKIES.md`).
 
 ---
 

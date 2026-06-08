@@ -26,7 +26,8 @@ Phase 1 focuses on **safe pre-launch fixes** — no new features, no redesign.
 | Run production smoke test on live URL | You | `docs/PRODUCTION_SMOKE_TEST.md` |
 | Run E2E with test credentials before deploy | You | `docs/E2E_RELEASE_GATE.md` |
 | Confirm Supabase Auth (email confirm, OAuth redirects) for prod domain | You | Supabase Dashboard |
-| Privacy Policy / Terms (Phase 2+ legal) | You | Not in Phase 1 |
+| Set `VITE_FEEDBACK_EMAIL` in Vercel Production | You | `/feedback` mailto |
+| Legal review of Privacy/Terms before public launch | You | `docs/LAUNCH_LEGAL_CHECKLIST.md` |
 
 ## Production environment variables
 
@@ -42,6 +43,7 @@ Phase 1 focuses on **safe pre-launch fixes** — no new features, no redesign.
 | Variable | Purpose |
 |---|---|
 | `VITE_SENTRY_DSN` | Browser error monitoring (optional but recommended) |
+| `VITE_FEEDBACK_EMAIL` | Beta feedback mailto on `/feedback` (e.g. `your-beta-inbox@example.com`) |
 
 ### Optional
 
@@ -90,9 +92,10 @@ npm run test:e2e
 2. ☐ Confirm migrations **016–019** on production Supabase
 3. ☐ Deploy to Vercel with `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`
 4. ☐ (Recommended) Set `VITE_SENTRY_DSN` in production
-5. ☐ Complete `docs/PRODUCTION_SMOKE_TEST.md` on live URL
-6. ☐ Invite a small test group (5–20 users)
+5. ☐ (Recommended) Set `VITE_FEEDBACK_EMAIL` in production
+6. ☐ Complete `docs/PRODUCTION_SMOKE_TEST.md` on live URL
+7. ☐ Invite a small test group (5–20 users)
 
-**Not required for closed beta but recommended soon:** Privacy Policy, Terms of Service, product analytics.
+**Beta placeholders in app:** `/privacy`, `/terms`, `/about`, `/whats-new`, `/feedback` — require legal review before public launch (`docs/LAUNCH_LEGAL_CHECKLIST.md`). No cookie banner needed unless analytics beyond Sentry are added (`docs/ANALYTICS_AND_COOKIES.md`).
 
 **Verdict:** Savora is **ready for closed beta** once production migrations are verified and the manual smoke test passes. The codebase and docs are in place; remaining work is **ops verification**, not app rewrites.
