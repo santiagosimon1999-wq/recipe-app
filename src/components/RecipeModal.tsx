@@ -35,6 +35,7 @@ type RecipeModalProps = {
   likeCount: number
   isSaved?: boolean
   onToggleSaved?: (recipe: Recipe) => void
+  onEnsureSaved?: (recipe: Recipe) => Promise<boolean>
   onToggleLike?: (recipeId: number) => void
   onViewAuthor?: (username: string) => void
 }
@@ -46,6 +47,7 @@ type RecipeModalEngagementActionsProps = {
   isSaved: boolean
   onToggleLike?: (recipeId: number) => void
   onToggleSaved?: (recipe: Recipe) => void
+  onEnsureSaved?: (recipe: Recipe) => Promise<boolean>
   variant?: 'default' | 'sticky'
 }
 
@@ -56,6 +58,7 @@ function RecipeModalEngagementActions({
   isSaved,
   onToggleLike,
   onToggleSaved,
+  onEnsureSaved,
   variant = 'default',
 }: RecipeModalEngagementActionsProps) {
   const isSticky = variant === 'sticky'
@@ -110,7 +113,11 @@ function RecipeModalEngagementActions({
           isSticky ? 'recipe-modal__sticky-action share-recipe-button--sticky' : ''
         }
       />
-      <SaveToCollectionButton recipe={recipe} compact={isSticky} />
+      <SaveToCollectionButton
+        recipe={recipe}
+        compact={isSticky}
+        onEnsureSaved={onEnsureSaved}
+      />
     </div>
   )
 }
@@ -126,6 +133,7 @@ function RecipeModal({
   likeCount,
   isSaved = false,
   onToggleSaved,
+  onEnsureSaved,
   onToggleLike,
   onViewAuthor,
 }: RecipeModalProps) {
@@ -319,6 +327,7 @@ function RecipeModal({
               isSaved={isSaved}
               onToggleLike={onToggleLike}
               onToggleSaved={onToggleSaved}
+              onEnsureSaved={onEnsureSaved}
               variant="default"
             />
 
@@ -381,6 +390,7 @@ function RecipeModal({
               isSaved={isSaved}
               onToggleLike={onToggleLike}
               onToggleSaved={onToggleSaved}
+              onEnsureSaved={onEnsureSaved}
               variant="sticky"
             />
           </div>

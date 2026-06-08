@@ -48,7 +48,7 @@ export default function SavedRecipesPage({
   if (loading) {
     return (
       <section className="profile-page__state-screen" aria-busy="true">
-        <p>Loading your saved recipes…</p>
+        <p>Loading your cookbook…</p>
       </section>
     )
   }
@@ -69,22 +69,22 @@ export default function SavedRecipesPage({
   }
 
   return (
-    <section className="recipe-section">
+    <section className="recipe-section saved-recipes-page">
       <div className="recipe-section__header">
         <div>
-          <p className="app-eyebrow">Saved</p>
+          <p className="app-eyebrow">Your cookbook</p>
           <h2>Saved recipes</h2>
         </div>
         <span>{recipes.length} saved</span>
       </div>
 
-      <p className="community-feed__intro">
-        Every recipe you save appears here. Collections are optional folders for
-        organizing your saved recipes.
+      <p className="community-feed__intro" data-testid="saved-recipes-intro">
+        Save recipes to build your personal cookbook. Use collections to organize
+        saved recipes into folders like Weeknight dinners or High protein.
       </p>
 
-      <p className="profile-page__recipes-hint">
-        <Link to="/collections">Open collections</Link> to organize saved recipes.
+      <p className="profile-page__recipes-hint saved-recipes-page__collections-cta">
+        <Link to="/collections">Organize with collections</Link>
       </p>
 
       <RecipeGrid
@@ -97,8 +97,21 @@ export default function SavedRecipesPage({
         onSelectRecipe={onSelectRecipe}
         onToggleLike={onToggleLike}
         onViewAuthor={onViewAuthor}
-        emptyTitle="You haven’t saved any recipes yet."
-        emptyBody="Save recipes from cards, then use collections to organize them."
+        emptyTitle="Save recipes to build your personal cookbook."
+        emptyBody="Tap Save on any recipe card or open a recipe and save it here. Then use collections to organize what you keep."
+        emptyActions={
+          <>
+            <Link
+              to="/community"
+              className="auth-cta-button auth-cta-button--secondary"
+            >
+              Explore recipes
+            </Link>
+            <Link to="/search" className="auth-cta-button auth-cta-button--primary">
+              Search recipes
+            </Link>
+          </>
+        }
       />
     </section>
   )

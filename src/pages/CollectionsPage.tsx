@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import { FolderPlus, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
+import { useConfirm } from '../context/ConfirmProvider'
 import { mapDbRowToRecipe } from '../lib/recipeMappers'
 import {
   getLikedRecipeIdsByUser,
@@ -12,6 +14,7 @@ import {
   deleteCollection,
   getCollectionRecipeRows,
   getCollectionsForUser,
+  removeRecipeFromCollection,
   type CollectionSummary,
 } from '../services/collections'
 import type { Recipe } from '../types/Recipe'
@@ -25,6 +28,10 @@ type CollectionsPageProps = {
   onMergeLikedRecipeIds?: (recipeIds: number[]) => void
 }
 
+function formatRecipeCount(count: number): string {
+  return count === 1 ? '1 recipe' : `${count} recipes`
+}
+
 export default function CollectionsPage({
   userId,
   onSelectRecipe,
@@ -32,6 +39,7 @@ export default function CollectionsPage({
   onMergeLikedRecipeIds,
 }: CollectionsPageProps) {
   const { user } = useAuth()
+  const confirm = useConfirm()
   const activeUserId = userId ?? user?.id
   const [collections, setCollections] = useState<CollectionSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -40,6 +48,10 @@ export default function CollectionsPage({
   const [loadingRecipes, setLoadingRecipes] = useState(false)
   const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState(false)
+
+  const selectedCollection = collections.find(
+    (collection) => collection.id === selectedId,
+  )
 
   const loadCollections = useCallback(async () => {
     if (!activeUserId) return
@@ -138,15 +150,26 @@ export default function CollectionsPage({
     }
   }
 
-  async function handleDeleteCollection(collectionId: string) {
+  async function handleDeleteCollection(collection: CollectionSummary) {
     if (!activeUserId || busy) return
+
+    const confirmed = await confirm({
+      title: `Delete “${collection.name}”?`,
+      message:
+        'Recipes stay in your saved cookbook. Only this collection folder and its organization are removed.',
+      confirmLabel: 'Delete collection',
+      cancelLabel: 'Keep collection',
+      variant: 'danger',
+    })
+
+    if (!confirmed) return
 
     setBusy(true)
     try {
-      await deleteCollection(activeUserId, collectionId)
+      await deleteCollection(activeUserId, collection.id)
       setCollections((current) => {
-        const next = current.filter((item) => item.id !== collectionId)
-        if (selectedId === collectionId) {
+        const next = current.filter((item) => item.id !== collection.id)
+        if (selectedId === collection.id) {
           setSelectedId(next[0]?.id ?? null)
         }
         return next
@@ -160,10 +183,38 @@ export default function CollectionsPage({
     }
   }
 
+  async function handleRemoveRecipe(recipe: Recipe) {
+    if (!activeUserId || !selectedId || busy) return
+
+    setBusy(true)
+    try {
+      await removeRecipeFromCollection(activeUserId, selectedId, recipe.id)
+      setRecipes((current) => current.filter((item) => item.id !== recipe.id))
+      setCollections((current) =>
+        current.map((collection) => {
+          if (collection.id !== selectedId) return collection
+
+          const recipeIds = collection.recipeIds.filter((id) => id !== recipe.id)
+          return {
+            ...collection,
+            recipeIds,
+            recipeCount: recipeIds.length,
+          }
+        })
+      )
+      notify.success('Removed from collection.')
+    } catch (error) {
+      console.error('Remove recipe from collection failed:', error)
+      notify.error('Could not remove recipe from collection.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (!activeUserId) {
     return (
       <section className="profile-page__state-screen">
-        <p>Sign in to save recipes and organize them into collections.</p>
+        <p>Sign in to organize saved recipes into collections.</p>
       </section>
     )
   }
@@ -176,12 +227,15 @@ export default function CollectionsPage({
     <section className="collections-page profile-page">
       <div className="profile-page__layout collections-page__layout">
         <aside className="collections-page__sidebar">
+          <p className="app-eyebrow">Organize saved recipes</p>
           <h1 className="profile-page__display-name">Collections</h1>
-          <p className="profile-page__bio">
-            Organize your saved recipes into collections.
+          <p className="community-feed__intro" data-testid="collections-page-intro">
+            Use collections to organize saved recipes into folders like Weeknight
+            dinners, High protein, or Desserts. Save a recipe first, then add it
+            to a collection from the recipe view.
           </p>
           <p className="profile-page__recipes-hint">
-            Collections help organize recipes you have already saved.
+            <Link to="/saved">View your saved cookbook</Link>
           </p>
 
           <form
@@ -198,6 +252,7 @@ export default function CollectionsPage({
               value={newName}
               onChange={(event) => setNewName(event.target.value)}
               maxLength={80}
+              aria-label="New collection name"
             />
             <button
               type="submit"
@@ -205,7 +260,7 @@ export default function CollectionsPage({
               disabled={busy || !newName.trim()}
             >
               <FolderPlus size={16} aria-hidden="true" />
-              Create
+              Create collection
             </button>
           </form>
 
@@ -220,17 +275,21 @@ export default function CollectionsPage({
                       : ''
                   }`}
                   onClick={() => setSelectedId(collection.id)}
+                  aria-label={`View ${collection.name} collection, ${formatRecipeCount(collection.recipeCount)}`}
                 >
-                  <span>{collection.name}</span>
+                  <span className="collections-page__list-label">
+                    <span>{collection.name}</span>
+                    <span className="collections-page__view-label">View collection</span>
+                  </span>
                   <span className="collections-page__count">
-                    {collection.recipeCount}
+                    {formatRecipeCount(collection.recipeCount)}
                   </span>
                 </button>
                 <button
                   type="button"
                   className="collections-page__delete"
-                  aria-label={`Delete ${collection.name}`}
-                  onClick={() => void handleDeleteCollection(collection.id)}
+                  aria-label={`Delete ${collection.name} collection`}
+                  onClick={() => void handleDeleteCollection(collection)}
                   disabled={busy}
                 >
                   <Trash2 size={14} aria-hidden="true" />
@@ -241,21 +300,40 @@ export default function CollectionsPage({
         </aside>
 
         <div className="profile-page__main">
-          {selectedId ? (
+          {selectedId && selectedCollection ? (
             loadingRecipes ? (
               <ProfilePageSkeleton />
             ) : (
-              <ProfileRecipeGrid
-                recipes={recipes}
-                onSelectRecipe={onSelectRecipe}
-                emptyHeading="This collection is empty."
-                emptyBody="Add saved recipes to this collection from the recipe modal."
-              />
+              <>
+                <div className="collections-page__detail-header">
+                  <h2 className="profile-page__recipes-title">
+                    {selectedCollection.name}
+                  </h2>
+                  <p className="profile-page__recipes-hint">
+                    {formatRecipeCount(selectedCollection.recipeCount)} · Organize
+                    saved recipes
+                  </p>
+                </div>
+                <ProfileRecipeGrid
+                  recipes={recipes}
+                  onSelectRecipe={onSelectRecipe}
+                  onRemoveRecipe={handleRemoveRecipe}
+                  emptyHeading="No recipes in this collection yet."
+                  emptyBody="Save a recipe, then use Add to collection from the recipe modal to file it here."
+                />
+              </>
             )
           ) : (
-            <div className="profile-page__empty">
+            <div className="profile-page__empty" data-testid="collections-empty-state">
               <p className="profile-page__empty-heading">No collections yet.</p>
-              <p>Collections are optional folders for your saved recipes.</p>
+              <p>
+                Collections are folders for organizing saved recipes. Create one
+                like Weeknight dinners or Desserts, then add saved recipes from
+                any recipe view.
+              </p>
+              <p className="profile-page__recipes-hint">
+                <Link to="/saved">Go to your saved cookbook</Link>
+              </p>
             </div>
           )}
         </div>

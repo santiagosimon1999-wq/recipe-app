@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Recipe } from "../types/Recipe";
 import { getRecipeListKey, isRecipeSaved } from "../utils/favorites";
 import RecipeCard from "./RecipeCard";
@@ -10,6 +11,7 @@ type RecipeGridProps = {
   likeCountsByRecipeId?: Record<number, number>;
   emptyTitle?: string;
   emptyBody?: string;
+  emptyActions?: ReactNode;
   onToggleSaved: (recipe: Recipe) => void;
   onSelectRecipe: (recipe: Recipe) => void;
   onToggleLike?: (recipeId: number) => void;
@@ -25,6 +27,7 @@ function RecipeGrid({
   likeCountsByRecipeId,
   emptyTitle = "No recipes found",
   emptyBody = "Try a different search or choose another category.",
+  emptyActions,
   onToggleSaved,
   onSelectRecipe,
   onToggleLike,
@@ -33,9 +36,12 @@ function RecipeGrid({
 }: RecipeGridProps) {
   if (recipes.length === 0) {
     return (
-      <section className="recipe-grid-empty">
+      <section className="recipe-grid-empty" data-testid="recipe-grid-empty">
         <h2>{emptyTitle}</h2>
         <p>{emptyBody}</p>
+        {emptyActions ? (
+          <div className="recipe-grid-empty__actions">{emptyActions}</div>
+        ) : null}
       </section>
     );
   }

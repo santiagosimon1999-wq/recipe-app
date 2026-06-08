@@ -500,8 +500,8 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
           <section className="profile-page__saved-actions">
             <p className="profile-page__stat-label">Saved recipes</p>
             <p className="profile-page__recipes-hint">
-              Every recipe you save appears in Saved. Collections help organize
-              recipes you have already saved.
+              Save recipes to build your cookbook. Use collections to organize
+              saved recipes into folders.
             </p>
             <div className="profile-page__saved-action-buttons">
               <button
@@ -509,14 +509,14 @@ export default function ProfilePage({ onSelectRecipe }: ProfilePageProps) {
                 className="profile-page__edit-profile-button"
                 onClick={() => navigate('/saved')}
               >
-                View saved recipes
+                View saved cookbook
               </button>
               <button
                 type="button"
                 className="profile-page__cancel-button"
                 onClick={() => navigate('/collections')}
               >
-                Manage collections
+                Organize with collections
               </button>
             </div>
           </section>

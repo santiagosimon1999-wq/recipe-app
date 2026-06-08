@@ -24,6 +24,9 @@ describe('resolveSafeRedirectPath', () => {
 describe('getProtectedRouteAuthReason', () => {
   it('returns contextual copy for protected routes', () => {
     expect(getProtectedRouteAuthReason('/saved')).toMatch(/save recipes/i)
+    expect(getProtectedRouteAuthReason('/collections')).toMatch(
+      /organize saved recipes/i
+    )
     expect(getProtectedRouteAuthReason('/notifications')).toMatch(/likes, comments/i)
     expect(getProtectedRouteAuthReason('/profile')).toMatch(/share recipes/i)
   })

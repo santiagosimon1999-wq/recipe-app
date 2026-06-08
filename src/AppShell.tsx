@@ -101,6 +101,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     sampleSavedRecipeIds,
     savedCount,
     toggleSaved,
+    ensureRecipeSaved,
     removeCloudSavedRecipeId,
   } = useSaved(user, recipeList)
 
@@ -613,6 +614,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
               cloudSavedRecipeIds,
             )}
             onToggleSaved={toggleSaved}
+            onEnsureSaved={ensureRecipeSaved}
             onToggleLike={toggleLike}
             onViewAuthor={handleViewAuthor}
           />

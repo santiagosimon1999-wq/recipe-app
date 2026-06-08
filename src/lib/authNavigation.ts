@@ -23,7 +23,7 @@ const PROTECTED_ROUTE_REASONS: Record<string, string> = {
   '/following':
     'Log in to see posts, follows, likes, and comments from people you follow.',
   '/collections':
-    'Create an account to save recipes and organize them into collections.',
+    'Create an account to organize saved recipes into collections.',
 }
 
 /**

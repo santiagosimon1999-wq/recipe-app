@@ -107,6 +107,21 @@ function getRecipeCardButton(page: Page, title: string) {
     .first()
 }
 
+async function getFirstCommunityRecipeCardButton(page: Page) {
+  const cardButton = page
+    .locator('main article.recipe-card')
+    .getByRole('button', { name: /^Open /i })
+    .first()
+
+  try {
+    await cardButton.waitFor({ state: 'visible', timeout: 15_000 })
+  } catch {
+    // Community feed may be empty in some environments.
+  }
+
+  return cardButton
+}
+
 async function confirmDeleteRecipe(page: Page) {
   await page.getByRole('button', { name: /^Delete$/i }).first().click()
   const confirmDialog = page.getByRole('dialog')
@@ -519,7 +534,7 @@ test.describe('release gate — signed out smoke', () => {
   test('mobile recipe modal opens and closes', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/community')
-    const cardButton = page.getByRole('button', { name: /^Open /i }).first()
+    const cardButton = await getFirstCommunityRecipeCardButton(page)
     test.skip((await cardButton.count()) === 0, 'No community recipes available')
 
     await cardButton.click()
@@ -533,7 +548,7 @@ test.describe('release gate — signed out smoke', () => {
   test('desktop recipe modal does not show sticky action bar', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto('/community')
-    const cardButton = page.getByRole('button', { name: /^Open /i }).first()
+    const cardButton = await getFirstCommunityRecipeCardButton(page)
     test.skip((await cardButton.count()) === 0, 'No community recipes available')
 
     await cardButton.click()
@@ -551,7 +566,7 @@ test.describe('release gate — signed out smoke', () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/community')
-    const cardButton = page.getByRole('button', { name: /^Open /i }).first()
+    const cardButton = await getFirstCommunityRecipeCardButton(page)
     test.skip((await cardButton.count()) === 0, 'No community recipes available')
 
     await cardButton.click()
@@ -567,6 +582,16 @@ test.describe('release gate — signed out smoke', () => {
     await page.goto('/saved')
     await expect(
       page.getByText(/save recipes and build your personal cookbook/i)
+    ).toBeVisible()
+  })
+
+  test('protected collections route shows organize-saved-recipes teaser', async ({
+    page,
+  }) => {
+    await page.goto('/collections')
+    await expectAuthScreen(page)
+    await expect(
+      page.getByText(/organize saved recipes into collections/i)
     ).toBeVisible()
   })
 
@@ -743,6 +768,59 @@ test.describe('release gate — authenticated core flows', () => {
     await loginAs(page, E2E_EMAIL, E2E_PASSWORD)
     await page.goto('/creator')
     await expect(page.getByRole('heading', { name: /Creator Dashboard/i })).toBeVisible()
+  })
+
+  test('saved page shows cookbook copy while signed in', async ({ page }) => {
+    await loginAs(page, E2E_EMAIL, E2E_PASSWORD)
+    await page.goto('/saved')
+    await expect(page.getByText(/Your cookbook/i)).toBeVisible()
+    await expect(page.getByTestId('saved-recipes-intro')).toContainText(
+      /Use collections to organize saved recipes/i
+    )
+    await expect(page.getByRole('link', { name: /Organize with collections/i })).toBeVisible()
+  })
+
+  test('collections page shows organize copy while signed in', async ({ page }) => {
+    await loginAs(page, E2E_EMAIL, E2E_PASSWORD)
+    await page.goto('/collections')
+    await expect(page.getByTestId('collections-page-intro')).toContainText(
+      /organize saved recipes/i
+    )
+    await expect(
+      page.getByRole('link', { name: /View your saved cookbook/i })
+    ).toBeVisible()
+  })
+
+  test('collections delete asks for confirmation', async ({ page }) => {
+    await loginAs(page, E2E_EMAIL, E2E_PASSWORD)
+    await page.goto('/collections')
+
+    const collectionName = uniqueLabel('E2E-Collection')
+    await page.getByLabel('New collection name').fill(collectionName)
+    await page.getByRole('button', { name: /Create collection/i }).click()
+    await expect(page.getByRole('heading', { name: collectionName })).toBeVisible({
+      timeout: 10_000,
+    })
+
+    await page
+      .getByRole('button', { name: new RegExp(`Delete ${escapeRegex(collectionName)} collection`, 'i') })
+      .click()
+
+    const confirmDialog = page.getByRole('dialog')
+    await expect(confirmDialog).toBeVisible()
+    await expect(confirmDialog).toContainText(/stay in your saved cookbook/i)
+    await confirmDialog.getByRole('button', { name: /Keep collection/i }).click()
+    await expect(confirmDialog).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: collectionName })).toBeVisible()
+
+    await page
+      .getByRole('button', { name: new RegExp(`Delete ${escapeRegex(collectionName)} collection`, 'i') })
+      .click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.getByRole('button', { name: /Delete collection/i }).click()
+    await expect(page.getByTestId('collections-empty-state')).toBeVisible({
+      timeout: 10_000,
+    })
   })
 
   test('post-login redirect returns guest to previous page', async ({ page }) => {

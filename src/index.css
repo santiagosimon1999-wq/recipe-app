@@ -1016,6 +1016,14 @@ html.app--light,
   text-align: center;
 }
 
+.recipe-grid-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 .empty-profile-state p {
   max-width: 520px;
   margin: 12px auto 18px;
@@ -2228,6 +2236,7 @@ html.app--dark .recipe-modal {
 }
 
 .profile-page__recipe-card {
+  position: relative;
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -2237,6 +2246,21 @@ html.app--dark .recipe-modal {
     transform 0.2s ease,
     box-shadow 0.2s ease,
     border-color 0.2s ease;
+}
+
+.profile-page__recipe-remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(248, 243, 234, 0.95);
+  color: var(--danger);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .profile-page__recipe-card:hover {
@@ -3494,9 +3518,26 @@ html.app--dark .recipe-modal {
   background: var(--accent-soft);
 }
 
+.collections-page__list-label {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.collections-page__view-label {
+  color: var(--text-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .collections-page__count {
   color: var(--text-soft);
   font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.collections-page__detail-header {
+  margin-bottom: 1rem;
 }
 
 .collections-page__delete {

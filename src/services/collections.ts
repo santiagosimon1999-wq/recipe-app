@@ -93,6 +93,30 @@ export async function deleteCollection(
   if (error) throw error
 }
 
+export async function removeRecipeFromCollection(
+  userId: string,
+  collectionId: string,
+  recipeId: number
+): Promise<void> {
+  const { data: collection, error: collectionError } = await supabase
+    .from('collections')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('id', collectionId)
+    .maybeSingle()
+
+  if (collectionError) throw collectionError
+  if (!collection) return
+
+  const { error } = await supabase
+    .from('collection_recipes')
+    .delete()
+    .eq('collection_id', collectionId)
+    .eq('recipe_id', recipeId)
+
+  if (error) throw error
+}
+
 export async function addRecipeToCollection(
   userId: string,
   collectionId: string,

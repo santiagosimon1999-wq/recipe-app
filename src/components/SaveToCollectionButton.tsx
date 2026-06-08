@@ -17,11 +17,13 @@ const DEFAULT_COLLECTION_NAME = 'Saved recipes'
 type SaveToCollectionButtonProps = {
   recipe: Recipe
   compact?: boolean
+  onEnsureSaved?: (recipe: Recipe) => Promise<boolean>
 }
 
 export default function SaveToCollectionButton({
   recipe,
   compact = false,
+  onEnsureSaved,
 }: SaveToCollectionButtonProps) {
   const { user } = useAuth()
   const [collections, setCollections] = useState<CollectionSummary[]>([])
@@ -57,12 +59,12 @@ export default function SaveToCollectionButton({
     }
   }, [user, recipeId])
 
-  const savedCollections = useMemo(() => {
+  const collectionsContainingRecipe = useMemo(() => {
     if (recipeId === null) return []
     return getCollectionsContainingRecipe(collections, recipeId)
   }, [collections, recipeId])
 
-  const isSaved = savedCollections.length > 0
+  const inCollection = collectionsContainingRecipe.length > 0
 
   if (!user || recipeId === null || recipe.source === 'sample') {
     return null
@@ -70,24 +72,29 @@ export default function SaveToCollectionButton({
 
   async function persistToCollection(
     collectionId: string,
-    collectionName: string
+    collectionName: string,
   ) {
     if (!user || recipeId === null) return
 
     const alreadyInList = collections.some(
       (collection) =>
         collection.id === collectionId &&
-        collection.recipeIds.includes(recipeId)
+        collection.recipeIds.includes(recipeId),
     )
 
     if (alreadyInList) {
-      notify.success(`Already in collection “${collectionName}”.`)
+      notify.success(`Already in “${collectionName}”.`)
       setOpen(false)
       return
     }
 
+    if (onEnsureSaved) {
+      const saved = await onEnsureSaved(recipe)
+      if (!saved) return
+    }
+
     await addRecipeToCollection(user.id, collectionId, recipeId)
-    notify.success(`Added to collection “${collectionName}”.`)
+    notify.success(`Saved and added to “${collectionName}”.`)
     setOpen(false)
     await loadCollections()
   }
@@ -113,7 +120,7 @@ export default function SaveToCollectionButton({
 
       if (rows.length === 1) {
         if (containing.length > 0) {
-          notify.success(`Already in collection “${rows[0].name}”.`)
+          notify.success(`Already in “${rows[0].name}”.`)
           return
         }
         await persistToCollection(rows[0].id, rows[0].name)
@@ -123,9 +130,7 @@ export default function SaveToCollectionButton({
       setOpen(true)
     } catch (error) {
       console.error('Save to collection failed:', error)
-      notify.error(
-          'Could not add to your collection. If this keeps happening, run migration 010 in Supabase.'
-      )
+      notify.error('Could not add to your collection. Try again in a moment.')
     } finally {
       setBusy(false)
     }
@@ -145,25 +150,19 @@ export default function SaveToCollectionButton({
     }
   }
 
-  const savedLabel = compact
-    ? 'Saved'
-    : savedCollections.length === 1
-      ? `In collection · ${savedCollections[0].name}`
-      : savedCollections.length > 1
-        ? `In ${savedCollections.length} collections`
-        : 'Added to collection'
+  const collectionLabel = compact
+    ? inCollection
+      ? collectionsContainingRecipe.length > 1
+        ? `${collectionsContainingRecipe.length} folders`
+        : 'In folder'
+      : 'Organize'
+    : inCollection
+      ? collectionsContainingRecipe.length === 1
+        ? `In · ${collectionsContainingRecipe[0].name}`
+        : `In ${collectionsContainingRecipe.length} collections`
+      : 'Add to collection'
 
-  const buttonLabel = compact
-    ? busy
-      ? 'Adding…'
-      : isSaved
-        ? savedLabel
-        : 'Collection'
-    : busy
-      ? 'Adding…'
-      : isSaved
-        ? savedLabel
-        : 'Add to collection'
+  const buttonLabel = busy ? 'Adding…' : collectionLabel
 
   return (
     <div
@@ -173,24 +172,26 @@ export default function SaveToCollectionButton({
     >
       <button
         type="button"
-        className={
-          [
-            'recipe-modal__edit-button',
-            'save-to-collection__toggle',
-            compact ? 'recipe-modal__sticky-action' : '',
-            isSaved ? 'save-to-collection__toggle--saved' : '',
-          ]
-            .filter(Boolean)
-            .join(' ')
-        }
+        className={[
+          'recipe-modal__edit-button',
+          'save-to-collection__toggle',
+          compact ? 'recipe-modal__sticky-action' : '',
+          inCollection ? 'save-to-collection__toggle--saved' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         onClick={() => void handleSaveClick()}
         aria-expanded={open}
-        aria-pressed={isSaved}
+        aria-pressed={inCollection}
         aria-haspopup={collections.length > 1 ? 'menu' : undefined}
         disabled={busy}
-        aria-label="Add to collection"
+        aria-label={
+          inCollection
+            ? `In ${collectionsContainingRecipe.length} collection${collectionsContainingRecipe.length === 1 ? '' : 's'}`
+            : 'Add to collection'
+        }
       >
-        {isSaved ? (
+        {inCollection ? (
           <BookmarkCheck size={16} aria-hidden="true" />
         ) : (
           <Bookmark size={16} aria-hidden="true" />
@@ -199,7 +200,8 @@ export default function SaveToCollectionButton({
       </button>
       {compact ? null : (
         <p className="save-to-collection__hint">
-          Collections help organize recipes you have already saved.
+          Organize saved recipes into collections like Weeknight dinners or High
+          protein.
         </p>
       )}
 

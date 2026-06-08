@@ -101,6 +101,42 @@ export function useSaved(user: User | null, recipeList: Recipe[]) {
     )
   }, [])
 
+  const ensureRecipeSaved = useCallback(
+    async (recipe: Recipe): Promise<boolean> => {
+      const resolvedRecipe =
+        recipeList.find((r) => getRecipeListKey(r) === getRecipeListKey(recipe)) ??
+        recipe
+
+      if (isSampleRecipe(resolvedRecipe)) {
+        return false
+      }
+
+      if (!user) {
+        return false
+      }
+
+      const supabaseRecipeId = getSupabaseRecipeId(resolvedRecipe)
+      if (supabaseRecipeId === null) {
+        return false
+      }
+
+      if (cloudSavedRecipeIds.includes(supabaseRecipeId)) {
+        return true
+      }
+
+      try {
+        await saveRecipeForUser(user.id, supabaseRecipeId)
+        await refreshCloudSavedRecipeIds(user.id)
+        return true
+      } catch (err) {
+        console.error('Failed to save recipe before collection add:', err)
+        notify.error('Could not save this recipe. Try again.')
+        return false
+      }
+    },
+    [user, recipeList, cloudSavedRecipeIds, refreshCloudSavedRecipeIds],
+  )
+
   const toggleSaved = useCallback(
     async (recipe: Recipe) => {
       const resolvedRecipe =
@@ -126,7 +162,7 @@ export function useSaved(user: User | null, recipeList: Recipe[]) {
       }
 
       if (!user) {
-        promptAuth({ reason: 'Create an account to save recipes to your collection.' })
+        promptAuth({ reason: 'Create an account to save recipes to your cookbook.' })
         return
       }
 
@@ -174,6 +210,7 @@ export function useSaved(user: User | null, recipeList: Recipe[]) {
     sampleSavedRecipeIds,
     savedCount,
     toggleSaved,
+    ensureRecipeSaved,
     removeCloudSavedRecipeId,
   }
 }

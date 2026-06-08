@@ -8,6 +8,7 @@ const FALLBACK_THUMB =
 type ProfileRecipeGridProps = {
   recipes: Recipe[]
   onSelectRecipe: (recipe: Recipe) => void
+  onRemoveRecipe?: (recipe: Recipe) => void
   emptyHeading?: string
   emptyBody?: string
 }
@@ -15,6 +16,7 @@ type ProfileRecipeGridProps = {
 export default function ProfileRecipeGrid({
   recipes,
   onSelectRecipe,
+  onRemoveRecipe,
   emptyHeading = 'No public recipes yet.',
   emptyBody = 'Check back soon for new shared recipes.',
 }: ProfileRecipeGridProps) {
@@ -36,6 +38,16 @@ export default function ProfileRecipeGrid({
           key={getRecipeListKey(recipe)}
           className="profile-page__recipe-card"
         >
+          {onRemoveRecipe ? (
+            <button
+              type="button"
+              className="profile-page__recipe-remove"
+              onClick={() => onRemoveRecipe(recipe)}
+              aria-label={`Remove ${recipe.title} from collection`}
+            >
+              Remove
+            </button>
+          ) : null}
           <button
             type="button"
             className="profile-page__recipe-card-button"

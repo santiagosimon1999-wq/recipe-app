@@ -189,6 +189,7 @@ function RecipeCard({
           }
           onClick={handleSaveClick}
           aria-label={isSaved ? 'Unsave recipe' : 'Save recipe'}
+          aria-pressed={isSaved}
         >
           <Heart
             size={16}

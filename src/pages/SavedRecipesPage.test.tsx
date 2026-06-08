@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ReactNode } from 'react'
+import { MemoryRouter } from 'react-router'
 import SavedRecipesPage from './SavedRecipesPage'
 import { useSavedRecipes } from '../hooks/useSavedRecipes'
 
@@ -16,6 +17,14 @@ type SavedHookReturn = {
 }
 
 const mockedUseSavedRecipes = vi.mocked(useSavedRecipes)
+
+function renderPage(props = defaultProps()) {
+  return renderToStaticMarkup(
+    <MemoryRouter>
+      <SavedRecipesPage {...props} />
+    </MemoryRouter>
+  )
+}
 
 function defaultProps() {
   return {
@@ -72,9 +81,9 @@ describe('SavedRecipesPage', () => {
       retry: vi.fn(),
     } as SavedHookReturn as ReturnType<typeof useSavedRecipes>)
 
-    const html = renderToStaticMarkup(<SavedRecipesPage {...defaultProps()} />)
+    const html = renderPage()
 
-    expect(html).toContain('Loading your saved recipes…')
+    expect(html).toContain('Loading your cookbook…')
   })
 
   it('renders empty state when no saved recipes are returned', () => {
@@ -85,9 +94,12 @@ describe('SavedRecipesPage', () => {
       retry: vi.fn(),
     } as SavedHookReturn as ReturnType<typeof useSavedRecipes>)
 
-    const html = renderToStaticMarkup(<SavedRecipesPage {...defaultProps()} />)
+    const html = renderPage()
 
-    expect(html).toContain('You haven’t saved any recipes yet.')
+    expect(html).toContain('Save recipes to build your personal cookbook.')
+    expect(html).toContain('Organize with collections')
+    expect(html).toContain('Explore recipes')
+    expect(html).toContain('Search recipes')
   })
 
   it('renders error state when retrieval fails', () => {
@@ -98,7 +110,7 @@ describe('SavedRecipesPage', () => {
       retry: vi.fn(),
     } as SavedHookReturn as ReturnType<typeof useSavedRecipes>)
 
-    const html = renderToStaticMarkup(<SavedRecipesPage {...defaultProps()} />)
+    const html = renderPage()
 
     expect(html).toContain('Could not load your saved recipes right now.')
     expect(html).toContain('Retry')
