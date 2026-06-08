@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router'
 import type { Recipe } from '../types/Recipe'
 import AuthPromptCard from './AuthPromptCard'
 import RecipeSection from './RecipeSection'
@@ -5,8 +6,9 @@ import { useAuthNavigation } from '../hooks/useAuthNavigation'
 
 type RecipeDashboardProps = {
   userRecipes: Recipe[]
-  communityRecipes: Recipe[]
-  savoraInspirationRecipes: Recipe[]
+  communityPreview: Recipe[]
+  savoraInspirationPreview: Recipe[]
+  savedRecipesPreview: Recipe[]
   sampleSavedRecipeIds: number[]
   cloudSavedRecipeIds: number[]
   likedRecipeIds?: number[]
@@ -22,8 +24,9 @@ type RecipeDashboardProps = {
 
 export default function RecipeDashboard({
   userRecipes,
-  communityRecipes,
-  savoraInspirationRecipes,
+  communityPreview,
+  savoraInspirationPreview,
+  savedRecipesPreview,
   sampleSavedRecipeIds,
   cloudSavedRecipeIds,
   likedRecipeIds,
@@ -39,12 +42,60 @@ export default function RecipeDashboard({
   const { goToLogin, goToSignUp } = useAuthNavigation()
 
   return (
-    <>
+    <div className="home-dashboard" data-testid="home-dashboard">
+      {isLoggedIn ? (
+        <section className="home-dashboard__intro">
+          <p className="app-eyebrow">Your kitchen</p>
+          <h2 className="home-dashboard__title">Your cooking dashboard</h2>
+          <p className="home-dashboard__copy">
+            Create recipes, revisit what you have saved, and jump back into the
+            community when you want fresh inspiration.
+          </p>
+          <div className="home-dashboard__actions">
+            <button type="button" onClick={onStartCreateRecipe}>
+              New recipe
+            </button>
+            <NavLink to="/saved" className="home-dashboard__link-button">
+              Saved recipes
+            </NavLink>
+            <NavLink to="/community" className="home-dashboard__link-button">
+              Explore community
+            </NavLink>
+          </div>
+        </section>
+      ) : (
+        <section
+          className="home-dashboard__intro home-dashboard__intro--guest"
+          data-testid="home-dashboard-welcome"
+        >
+          <p className="app-eyebrow">Welcome</p>
+          <h2 className="home-dashboard__title">Welcome to your kitchen</h2>
+          <p className="home-dashboard__copy">
+            Browse public recipes on Savora, then create a free account to save
+            favorites, follow creators, comment, and share your own dishes.
+          </p>
+          <div className="home-dashboard__actions">
+            <NavLink
+              to="/community"
+              className="auth-cta-button auth-cta-button--secondary"
+            >
+              Explore the community
+            </NavLink>
+            <NavLink
+              to="/search"
+              className="auth-cta-button auth-cta-button--primary"
+            >
+              Search recipes
+            </NavLink>
+          </div>
+        </section>
+      )}
+
       {isLoggedIn ? (
         userRecipes.length > 0 ? (
           <RecipeSection
-            eyebrow="Your kitchen"
-            title="Your Recipes"
+            eyebrow="Your recipes"
+            title="From your kitchen"
             countLabel="recipes"
             recipes={userRecipes}
             sampleSavedRecipeIds={sampleSavedRecipeIds}
@@ -92,27 +143,12 @@ export default function RecipeDashboard({
         </section>
       )}
 
-      <RecipeSection
-        eyebrow="Community feed"
-        title="Shared Recipes"
-        countLabel="shared"
-        recipes={communityRecipes}
-        sampleSavedRecipeIds={sampleSavedRecipeIds}
-        cloudSavedRecipeIds={cloudSavedRecipeIds}
-        likedRecipeIds={likedRecipeIds}
-        likeCountsByRecipeId={likeCountsByRecipeId}
-        onToggleSaved={onToggleSaved}
-        onSelectRecipe={onSelectRecipe}
-        onToggleLike={onToggleLike}
-        onViewAuthor={onViewAuthor}
-      />
-
-      {savoraInspirationRecipes.length > 0 ? (
+      {isLoggedIn && savedRecipesPreview.length > 0 ? (
         <RecipeSection
-          eyebrow="Savora inspiration"
-          title="Explore Recipes"
-          countLabel="ideas"
-          recipes={savoraInspirationRecipes}
+          eyebrow="Saved"
+          title="Recently saved"
+          countLabel="saved"
+          recipes={savedRecipesPreview}
           sampleSavedRecipeIds={sampleSavedRecipeIds}
           cloudSavedRecipeIds={cloudSavedRecipeIds}
           likedRecipeIds={likedRecipeIds}
@@ -123,6 +159,50 @@ export default function RecipeDashboard({
           onViewAuthor={onViewAuthor}
         />
       ) : null}
-    </>
+
+      {communityPreview.length > 0 ? (
+        <>
+          <RecipeSection
+            eyebrow="From the community"
+            title="Recently shared"
+            countLabel="preview"
+            recipes={communityPreview}
+            sampleSavedRecipeIds={sampleSavedRecipeIds}
+            cloudSavedRecipeIds={cloudSavedRecipeIds}
+            likedRecipeIds={likedRecipeIds}
+            likeCountsByRecipeId={likeCountsByRecipeId}
+            onToggleSaved={onToggleSaved}
+            onSelectRecipe={onSelectRecipe}
+            onToggleLike={onToggleLike}
+            onViewAuthor={onViewAuthor}
+          />
+          <div className="home-dashboard__cta">
+            <NavLink
+              to="/community"
+              className="auth-cta-button auth-cta-button--secondary"
+            >
+              Explore Community
+            </NavLink>
+          </div>
+        </>
+      ) : null}
+
+      {savoraInspirationPreview.length > 0 ? (
+        <RecipeSection
+          eyebrow="Savora inspiration"
+          title="Ideas to try next"
+          countLabel="ideas"
+          recipes={savoraInspirationPreview}
+          sampleSavedRecipeIds={sampleSavedRecipeIds}
+          cloudSavedRecipeIds={cloudSavedRecipeIds}
+          likedRecipeIds={likedRecipeIds}
+          likeCountsByRecipeId={likeCountsByRecipeId}
+          onToggleSaved={onToggleSaved}
+          onSelectRecipe={onSelectRecipe}
+          onToggleLike={onToggleLike}
+          onViewAuthor={onViewAuthor}
+        />
+      ) : null}
+    </div>
   )
 }

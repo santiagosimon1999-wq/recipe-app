@@ -663,6 +663,76 @@ html.app--light,
   margin-top: 12px;
 }
 
+.discover-panel--home {
+  margin-top: 0;
+}
+
+.discover-panel__header--home h2 {
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
+}
+
+.home-dashboard {
+  display: grid;
+  gap: 18px;
+}
+
+.home-dashboard__intro {
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--surface), var(--surface-soft));
+  box-shadow: var(--shadow);
+}
+
+.home-dashboard__title {
+  margin: 0 0 8px;
+  line-height: 1.2;
+}
+
+.home-dashboard__copy {
+  margin: 0 0 14px;
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+
+.home-dashboard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-dashboard__actions > button,
+.home-dashboard__link-button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-main);
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.home-dashboard__actions > button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.home-dashboard__link-button:hover,
+.home-dashboard__actions > button:hover {
+  filter: brightness(0.98);
+}
+
+.home-dashboard__cta {
+  display: flex;
+  justify-content: center;
+  margin-top: -6px;
+  margin-bottom: 4px;
+}
+
 .discover-panel__result-count--inline {
   margin-left: auto;
 }
@@ -1481,6 +1551,24 @@ html.app--dark .recipe-modal {
     min-height: 40px;
     padding: 6px 12px;
     font-size: 0.82rem;
+  }
+
+  .home-dashboard__intro {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .home-dashboard__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .home-dashboard__actions > button,
+  .home-dashboard__link-button,
+  .home-dashboard__cta .auth-cta-button {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
   }
 
   /* Reserve space so content isn't hidden behind the bottom nav */

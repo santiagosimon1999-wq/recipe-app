@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Routes, Route, useLocation, useNavigate } from 'react-router'
 import { RecipeShellProvider } from './context/RecipeShellContext'
 import ProfilePage from './pages/ProfilePage'
@@ -29,6 +29,12 @@ import {
 } from './hooks/useRecipes'
 import { useUnreadNotifications } from './hooks/useUnreadNotifications'
 import RecipeDetailRoute from './components/RecipeDetailRoute'
+import {
+  HOME_COMMUNITY_PREVIEW_LIMIT,
+  HOME_INSPIRATION_PREVIEW_LIMIT,
+  HOME_SAVED_PREVIEW_LIMIT,
+} from './lib/homeDashboard'
+import { isSavoraTeamRecipe } from './lib/savoraTeam'
 import { isRecipeSaved } from './utils/favorites'
 import { normalizeRecipeForUi } from './lib/recipeMappers'
 import { getCategoryRegistry } from './lib/recipeService'
@@ -98,22 +104,58 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
     removeCloudSavedRecipeId,
   } = useSaved(user, recipeList)
 
+  const homeFilters = useRecipeFilters(
+    recipeList,
+    sampleSavedRecipeIds,
+    cloudSavedRecipeIds,
+  )
+  const communityFilters = useRecipeFilters(
+    recipeList,
+    sampleSavedRecipeIds,
+    cloudSavedRecipeIds,
+  )
+
   const {
-    searchTerm,
-    setSearchTerm,
-    selectedCategories,
-    handleCategoryToggle,
-    showSavedOnly,
-    filteredRecipes,
-    userRecipes,
-    communityRecipes,
-    savoraInspirationRecipes,
     allUserRecipes,
     averageCalories,
-    showClearFiltersButton,
-    handleClearFilters,
-    handleToggleShowSavedOnly,
-  } = useRecipeFilters(recipeList, sampleSavedRecipeIds, cloudSavedRecipeIds)
+  } = homeFilters
+
+  const homeUserRecipes = useMemo(
+    () =>
+      recipeList.filter(
+        (recipe) =>
+          recipe.source === 'user' && !isSavoraTeamRecipe(recipe),
+      ),
+    [recipeList],
+  )
+
+  const homeCommunityPreview = useMemo(
+    () =>
+      homeFilters.communityRecipes.slice(0, HOME_COMMUNITY_PREVIEW_LIMIT),
+    [homeFilters.communityRecipes],
+  )
+
+  const homeInspirationPreview = useMemo(
+    () =>
+      homeFilters.savoraInspirationRecipes.slice(
+        0,
+        HOME_INSPIRATION_PREVIEW_LIMIT,
+      ),
+    [homeFilters.savoraInspirationRecipes],
+  )
+
+  const savedRecipesPreview = useMemo(
+    () =>
+      recipeList
+        .filter((recipe) =>
+          isRecipeSaved(recipe, sampleSavedRecipeIds, cloudSavedRecipeIds),
+        )
+        .slice(0, HOME_SAVED_PREVIEW_LIMIT),
+    [recipeList, sampleSavedRecipeIds, cloudSavedRecipeIds],
+  )
+
+  const homePreviewCount =
+    homeCommunityPreview.length + homeInspirationPreview.length
 
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
   const [showRecipeForm, setShowRecipeForm] = useState(false)
@@ -481,18 +523,18 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                 path="/community"
                 element={
                   <CommunityFeedPage
-                    recipes={communityRecipes}
+                    recipes={communityFilters.communityRecipes}
                     sampleSavedRecipeIds={sampleSavedRecipeIds}
                     cloudSavedRecipeIds={cloudSavedRecipeIds}
-                    searchTerm={searchTerm}
-                    selectedCategories={selectedCategories}
+                    searchTerm={communityFilters.searchTerm}
+                    selectedCategories={communityFilters.selectedCategories}
                     categoryOptions={categoryOptions}
-                    showSavedOnly={showSavedOnly}
-                    showClearFiltersButton={showClearFiltersButton}
-                    onSearchChange={setSearchTerm}
-                    onCategoryToggle={handleCategoryToggle}
-                    onToggleShowSavedOnly={handleToggleShowSavedOnly}
-                    onClearFilters={handleClearFilters}
+                    showSavedOnly={communityFilters.showSavedOnly}
+                    showClearFiltersButton={communityFilters.showClearFiltersButton}
+                    onSearchChange={communityFilters.setSearchTerm}
+                    onCategoryToggle={communityFilters.handleCategoryToggle}
+                    onToggleShowSavedOnly={communityFilters.handleToggleShowSavedOnly}
+                    onClearFilters={communityFilters.handleClearFilters}
                     onToggleSaved={toggleSaved}
                     onSelectRecipe={handleSelectRecipe}
                     onToggleLike={toggleLike}
@@ -513,22 +555,26 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
                 element={
                   <>
                     <DiscoverPanel
-                      searchTerm={searchTerm}
-                      selectedCategories={selectedCategories}
+                      variant="home"
+                      searchTerm={homeFilters.searchTerm}
+                      selectedCategories={homeFilters.selectedCategories}
                       categoryOptions={categoryOptions}
-                      showSavedOnly={showSavedOnly}
-                      showClearFiltersButton={showClearFiltersButton}
-                      onSearchChange={setSearchTerm}
-                      onCategoryToggle={handleCategoryToggle}
-                      onToggleShowSavedOnly={handleToggleShowSavedOnly}
-                      onClearFilters={handleClearFilters}
-                      resultCount={filteredRecipes.length}
+                      showSavedOnly={homeFilters.showSavedOnly}
+                      showClearFiltersButton={homeFilters.showClearFiltersButton}
+                      onSearchChange={homeFilters.setSearchTerm}
+                      onCategoryToggle={homeFilters.handleCategoryToggle}
+                      onToggleShowSavedOnly={homeFilters.handleToggleShowSavedOnly}
+                      onClearFilters={homeFilters.handleClearFilters}
+                      resultCount={
+                        homePreviewCount > 0 ? homePreviewCount : undefined
+                      }
                     />
 
                     <RecipeDashboard
-                      userRecipes={userRecipes}
-                      communityRecipes={communityRecipes}
-                      savoraInspirationRecipes={savoraInspirationRecipes}
+                      userRecipes={homeUserRecipes}
+                      communityPreview={homeCommunityPreview}
+                      savoraInspirationPreview={homeInspirationPreview}
+                      savedRecipesPreview={savedRecipesPreview}
                       sampleSavedRecipeIds={sampleSavedRecipeIds}
                       cloudSavedRecipeIds={cloudSavedRecipeIds}
                       isLoggedIn={Boolean(user)}

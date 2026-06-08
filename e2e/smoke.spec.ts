@@ -159,8 +159,32 @@ test.describe('release gate — signed out smoke', () => {
     await expect(page.getByTestId('app-full-header')).toHaveCount(0)
     await expect(page.getByText(/Social recipe sharing/i)).toHaveCount(0)
     await expect(
-      page.getByRole('heading', { name: /Public recipes from the community/i })
+      page.getByRole('heading', { name: /See what the Savora community is cooking/i })
     ).toBeVisible()
+    await expect(page.getByTestId('community-feed-intro')).toBeVisible()
+  })
+
+  test('home signed-out shows dashboard welcome copy', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('home-dashboard-welcome')).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: /Welcome to your kitchen/i })
+    ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: /See what the Savora community is cooking/i })
+    ).toHaveCount(0)
+  })
+
+  test('home and community filters stay independent', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/')
+    await page.getByTestId('discover-filters-toggle').click()
+    await page.getByRole('button', { name: /^Breakfast$/i }).click()
+    await expect(page.getByTestId('discover-filters-toggle-label')).toHaveText('1 filter')
+
+    await page.goto('/community')
+    await expect(page.getByTestId('discover-filters-toggle-label')).toHaveText('Filters')
+    await expect(page.getByTestId('discover-filter-chips')).toHaveCount(0)
   })
 
   test('discover filters are collapsed by default on desktop', async ({ page }) => {

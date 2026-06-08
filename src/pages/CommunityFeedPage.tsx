@@ -64,15 +64,17 @@ export default function CommunityFeedPage({
     <section className="recipe-section community-feed-page">
       <div className="recipe-section__header">
         <div>
-          <p className="app-eyebrow">Community feed</p>
-          <h2>Public recipes from the community</h2>
+          <p className="app-eyebrow">Community</p>
+          <h2>See what the Savora community is cooking</h2>
         </div>
         <span>{recipes.length} items</span>
       </div>
 
-      <p className="community-feed__intro">
-        Browse recipes that people have shared publicly. Sign in to share your own
-        recipes and help the community discover new meal ideas.
+      <p className="community-feed__intro" data-testid="community-feed-intro">
+        Discover public recipes, follow creators, and join the conversation.
+        {isLoggedIn
+          ? ' Switch to Following to see recipes from chefs you follow.'
+          : ' Sign in to like, save, comment, and share your own recipes.'}
       </p>
 
       {isLoggedIn && onCommunityFeedModeChange ? (
@@ -126,8 +128,8 @@ export default function CommunityFeedPage({
 
       {recipes.length === 0 ? (
         <p className="community-feed__hint">
-          No community recipes have been shared yet. Publish a public recipe or
-          ask your admin to seed @savora-team inspiration recipes.
+          No public recipes match your filters yet. Try a broader search, clear
+          filters, or check back as more creators share their dishes.
         </p>
       ) : null}
 

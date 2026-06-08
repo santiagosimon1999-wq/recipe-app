@@ -32,8 +32,8 @@ type DiscoverPanelProps = {
   resultCount?: number
   extraFilterChips?: DiscoverFilterChip[]
   children?: ReactNode
-  /** Hides the Discover heading when embedded on /search */
-  variant?: 'discover' | 'search'
+  /** Adjusts heading/copy for home dashboard vs search vs default discover */
+  variant?: 'discover' | 'search' | 'home'
 }
 
 function getInitialDesktopFiltersOpen(hasActiveFilters: boolean): boolean {
@@ -165,7 +165,9 @@ export default function DiscoverPanel({
       className={
         variant === 'search'
           ? 'discover-panel discover-panel--search'
-          : 'discover-panel'
+          : variant === 'home'
+            ? 'discover-panel discover-panel--home'
+            : 'discover-panel'
       }
     >
       {variant === 'discover' ? (
@@ -177,6 +179,20 @@ export default function DiscoverPanel({
           {resultCount !== undefined ? (
             <span className="discover-panel__result-count">
               {resultCount} result{resultCount === 1 ? '' : 's'}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {variant === 'home' ? (
+        <div className="discover-panel__header discover-panel__header--home">
+          <div>
+            <p className="app-eyebrow">Your kitchen</p>
+            <h2>Plan, save, and cook</h2>
+          </div>
+          {resultCount !== undefined ? (
+            <span className="discover-panel__result-count">
+              {resultCount} preview{resultCount === 1 ? '' : 's'}
             </span>
           ) : null}
         </div>
