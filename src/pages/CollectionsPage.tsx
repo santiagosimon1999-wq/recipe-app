@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { FolderPlus, Trash2 } from 'lucide-react'
+import { FolderPlus, Pencil, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { useConfirm } from '../context/ConfirmProvider'
 import { mapDbRowToRecipe } from '../lib/recipeMappers'
@@ -15,6 +15,7 @@ import {
   getCollectionRecipeRows,
   getCollectionsForUser,
   removeRecipeFromCollection,
+  renameCollection,
   type CollectionSummary,
 } from '../services/collections'
 import type { Recipe } from '../types/Recipe'
@@ -48,6 +49,10 @@ export default function CollectionsPage({
   const [loadingRecipes, setLoadingRecipes] = useState(false)
   const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState(false)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
+  const [renameError, setRenameError] = useState('')
+  const renameInputRef = useRef<HTMLInputElement>(null)
 
   const selectedCollection = collections.find(
     (collection) => collection.id === selectedId,
@@ -129,6 +134,70 @@ export default function CollectionsPage({
     onMergeLikeCounts,
     onMergeLikedRecipeIds,
   ])
+
+  useEffect(() => {
+    if (!renamingId) return
+
+    const frameId = window.requestAnimationFrame(() => {
+      renameInputRef.current?.focus()
+      renameInputRef.current?.select()
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [renamingId])
+
+  function handleStartRename(collection: CollectionSummary) {
+    if (busy) return
+
+    setRenamingId(collection.id)
+    setRenameDraft(collection.name)
+    setRenameError('')
+  }
+
+  function handleCancelRename() {
+    setRenamingId(null)
+    setRenameDraft('')
+    setRenameError('')
+  }
+
+  async function handleSaveRename(collectionId: string) {
+    if (!activeUserId || busy) return
+
+    const trimmed = renameDraft.trim()
+    if (!trimmed) {
+      setRenameError('Collection name is required.')
+      return
+    }
+
+    const existing = collections.find((collection) => collection.id === collectionId)
+    if (existing && trimmed === existing.name) {
+      handleCancelRename()
+      return
+    }
+
+    setBusy(true)
+    setRenameError('')
+
+    try {
+      const updated = await renameCollection(activeUserId, collectionId, trimmed)
+      setCollections((current) =>
+        current.map((collection) =>
+          collection.id === collectionId
+            ? { ...collection, name: updated.name }
+            : collection
+        )
+      )
+      handleCancelRename()
+      notify.success('Collection renamed.')
+    } catch (error) {
+      console.error('Rename collection failed:', error)
+      notify.error(
+        error instanceof Error ? error.message : 'Could not rename collection.'
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function handleCreateCollection() {
     if (!activeUserId || busy) return
@@ -266,34 +335,117 @@ export default function CollectionsPage({
 
           <ul className="collections-page__list">
             {collections.map((collection) => (
-              <li key={collection.id}>
-                <button
-                  type="button"
-                  className={`collections-page__list-button ${
-                    selectedId === collection.id
-                      ? 'collections-page__list-button--active'
-                      : ''
-                  }`}
-                  onClick={() => setSelectedId(collection.id)}
-                  aria-label={`View ${collection.name} collection, ${formatRecipeCount(collection.recipeCount)}`}
-                >
-                  <span className="collections-page__list-label">
-                    <span>{collection.name}</span>
-                    <span className="collections-page__view-label">View collection</span>
-                  </span>
-                  <span className="collections-page__count">
-                    {formatRecipeCount(collection.recipeCount)}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="collections-page__delete"
-                  aria-label={`Delete ${collection.name} collection`}
-                  onClick={() => void handleDeleteCollection(collection)}
-                  disabled={busy}
-                >
-                  <Trash2 size={14} aria-hidden="true" />
-                </button>
+              <li
+                key={collection.id}
+                className={
+                  renamingId === collection.id
+                    ? 'collections-page__list-item collections-page__list-item--editing'
+                    : 'collections-page__list-item'
+                }
+              >
+                {renamingId === collection.id ? (
+                  <form
+                    className="collections-page__rename-form"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      void handleSaveRename(collection.id)
+                    }}
+                  >
+                    <label
+                      className="collections-page__rename-label"
+                      htmlFor={`rename-collection-${collection.id}`}
+                    >
+                      Rename {collection.name} collection
+                    </label>
+                    <input
+                      ref={renameInputRef}
+                      id={`rename-collection-${collection.id}`}
+                      type="text"
+                      className="collections-page__rename-input"
+                      value={renameDraft}
+                      onChange={(event) => {
+                        setRenameDraft(event.target.value)
+                        if (renameError) setRenameError('')
+                      }}
+                      maxLength={80}
+                      disabled={busy}
+                      aria-invalid={Boolean(renameError)}
+                      aria-describedby={
+                        renameError
+                          ? `rename-collection-error-${collection.id}`
+                          : undefined
+                      }
+                    />
+                    {renameError ? (
+                      <p
+                        id={`rename-collection-error-${collection.id}`}
+                        className="collections-page__rename-error"
+                        role="alert"
+                      >
+                        {renameError}
+                      </p>
+                    ) : null}
+                    <div className="collections-page__rename-actions">
+                      <button
+                        type="submit"
+                        className="collections-page__rename-save"
+                        disabled={busy}
+                        aria-busy={busy}
+                      >
+                        {busy ? 'Saving…' : 'Save name'}
+                      </button>
+                      <button
+                        type="button"
+                        className="collections-page__rename-cancel"
+                        onClick={handleCancelRename}
+                        disabled={busy}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={`collections-page__list-button ${
+                        selectedId === collection.id
+                          ? 'collections-page__list-button--active'
+                          : ''
+                      }`}
+                      onClick={() => setSelectedId(collection.id)}
+                      aria-label={`View ${collection.name} collection, ${formatRecipeCount(collection.recipeCount)}`}
+                    >
+                      <span className="collections-page__list-label">
+                        <span>{collection.name}</span>
+                        <span className="collections-page__view-label">
+                          View collection
+                        </span>
+                      </span>
+                      <span className="collections-page__count">
+                        {formatRecipeCount(collection.recipeCount)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="collections-page__rename"
+                      aria-label={`Rename ${collection.name} collection`}
+                      onClick={() => handleStartRename(collection)}
+                      disabled={busy}
+                    >
+                      <Pencil size={14} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="collections-page__delete"
+                      aria-label={`Delete ${collection.name} collection`}
+                      onClick={() => void handleDeleteCollection(collection)}
+                      disabled={busy}
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
+                    </button>
+                  </>
+                )}
               </li>
             ))}
           </ul>

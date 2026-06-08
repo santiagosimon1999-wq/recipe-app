@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 let collectionLookup: { id: string } | null = { id: 'collection-1' }
 let deleteError: { message: string } | null = null
+let renameResult: { data: { id: string; name: string } | null; error: unknown } = {
+  data: { id: 'collection-1', name: 'Weeknight Dinners' },
+  error: null,
+}
 
 const { fromMock } = vi.hoisted(() => ({
   fromMock: vi.fn((table: string) => {
@@ -9,10 +13,12 @@ const { fromMock } = vi.hoisted(() => ({
       const query = {
         select: vi.fn(() => query),
         eq: vi.fn(() => query),
+        update: vi.fn(() => query),
         maybeSingle: vi.fn(async () => ({
           data: collectionLookup,
           error: null,
         })),
+        single: vi.fn(async () => renameResult),
       }
       return query
     }
@@ -41,7 +47,54 @@ vi.mock('../lib/supabaseClient', () => ({
   },
 }))
 
-import { removeRecipeFromCollection } from './collections'
+import {
+  removeRecipeFromCollection,
+  renameCollection,
+  validateCollectionName,
+} from './collections'
+
+describe('validateCollectionName', () => {
+  it('trims whitespace and returns a valid name', () => {
+    expect(validateCollectionName('  Weeknight Dinners  ')).toBe('Weeknight Dinners')
+  })
+
+  it('rejects empty names', () => {
+    expect(() => validateCollectionName('   ')).toThrow(/required/i)
+  })
+})
+
+describe('renameCollection', () => {
+  beforeEach(() => {
+    collectionLookup = { id: 'collection-1' }
+    deleteError = null
+    renameResult = {
+      data: { id: 'collection-1', name: 'Weeknight Dinners' },
+      error: null,
+    }
+    fromMock.mockClear()
+  })
+
+  it('updates the collection name for the current user', async () => {
+    const result = await renameCollection(
+      'user-1',
+      'collection-1',
+      '  Weeknight Dinners  '
+    )
+
+    expect(result).toEqual({
+      id: 'collection-1',
+      name: 'Weeknight Dinners',
+    })
+    expect(fromMock).toHaveBeenCalledWith('collections')
+  })
+
+  it('rejects empty names before calling Supabase', async () => {
+    await expect(renameCollection('user-1', 'collection-1', '   ')).rejects.toThrow(
+      /required/i
+    )
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+})
 
 describe('removeRecipeFromCollection', () => {
   beforeEach(() => {

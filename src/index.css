@@ -3555,10 +3555,15 @@ html.app--dark .recipe-modal {
   gap: 8px;
 }
 
-.collections-page__list li {
+.collections-page__list-item {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.collections-page__list-item--editing {
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .collections-page__list-button {
@@ -3602,13 +3607,103 @@ html.app--dark .recipe-modal {
   margin-bottom: 1rem;
 }
 
+.collections-page__rename,
 .collections-page__delete {
+  flex-shrink: 0;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0.45rem;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-soft);
-  color: var(--danger);
   cursor: pointer;
+}
+
+.collections-page__rename {
+  color: var(--text-main);
+}
+
+.collections-page__delete {
+  color: var(--danger);
+}
+
+.collections-page__rename:disabled,
+.collections-page__delete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.collections-page__rename-form {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.collections-page__rename-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-soft);
+}
+
+.collections-page__rename-input {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text-main);
+  font-size: 1rem;
+}
+
+.collections-page__rename-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  outline: none;
+}
+
+.collections-page__rename-error {
+  margin: 0;
+  color: var(--error-text);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.collections-page__rename-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.collections-page__rename-save,
+.collections-page__rename-cancel {
+  min-height: 40px;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.collections-page__rename-save {
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--button-text);
+}
+
+.collections-page__rename-save:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.collections-page__rename-cancel {
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text-main);
+}
+
+.collections-page__rename-cancel:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .notifications-page__list {

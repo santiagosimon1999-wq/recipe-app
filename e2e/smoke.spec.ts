@@ -791,6 +791,52 @@ test.describe('release gate — authenticated core flows', () => {
     ).toBeVisible()
   })
 
+  test('collections rename updates collection name', async ({ page }) => {
+    await loginAs(page, E2E_EMAIL, E2E_PASSWORD)
+    await page.goto('/collections')
+
+    const originalName = uniqueLabel('E2E-Rename')
+    const renamedName = `${originalName}-updated`
+
+    await page.getByLabel('New collection name').fill(originalName)
+    await page.getByRole('button', { name: /Create collection/i }).click()
+    await expect(page.getByRole('heading', { name: originalName })).toBeVisible({
+      timeout: 10_000,
+    })
+
+    await page
+      .getByRole('button', {
+        name: new RegExp(`Rename ${escapeRegex(originalName)} collection`, 'i'),
+      })
+      .click()
+
+    const renameInput = page.getByLabel(
+      new RegExp(`Rename ${escapeRegex(originalName)} collection`, 'i')
+    )
+    await expect(renameInput).toBeVisible()
+    await renameInput.fill(renamedName)
+    await page.getByRole('button', { name: /^Save name$/i }).click()
+
+    await expect(page.getByRole('heading', { name: renamedName })).toBeVisible({
+      timeout: 10_000,
+    })
+    await expect(
+      page.getByRole('button', {
+        name: new RegExp(`Rename ${escapeRegex(renamedName)} collection`, 'i'),
+      })
+    ).toBeVisible()
+
+    await page
+      .getByRole('button', {
+        name: new RegExp(`Delete ${escapeRegex(renamedName)} collection`, 'i'),
+      })
+      .click()
+    await page.getByRole('button', { name: /Delete collection/i }).click()
+    await expect(page.getByTestId('collections-empty-state')).toBeVisible({
+      timeout: 10_000,
+    })
+  })
+
   test('collections delete asks for confirmation', async ({ page }) => {
     await loginAs(page, E2E_EMAIL, E2E_PASSWORD)
     await page.goto('/collections')

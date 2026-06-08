@@ -52,14 +52,40 @@ export function getCollectionsContainingRecipe(
   )
 }
 
-export async function createCollection(
-  userId: string,
-  name: string
-): Promise<CollectionSummary> {
+export function validateCollectionName(name: string): string {
   const trimmed = name.trim()
   if (!trimmed) {
     throw new Error('Collection name is required.')
   }
+  return trimmed
+}
+
+export async function renameCollection(
+  userId: string,
+  collectionId: string,
+  name: string
+): Promise<{ id: string; name: string }> {
+  const trimmed = validateCollectionName(name)
+
+  const { data, error } = await supabase
+    .from('collections')
+    .update({ name: trimmed })
+    .eq('user_id', userId)
+    .eq('id', collectionId)
+    .select('id, name')
+    .single()
+
+  if (error) throw error
+
+  const record = data as { id: string; name: string }
+  return record
+}
+
+export async function createCollection(
+  userId: string,
+  name: string
+): Promise<CollectionSummary> {
+  const trimmed = validateCollectionName(name)
 
   const { data, error } = await supabase
     .from('collections')
