@@ -58,7 +58,7 @@ export default function ShareRecipeButton({
       type="button"
       className={`recipe-modal__edit-button share-recipe-button ${className}`.trim()}
       onClick={() => void handleShare()}
-      aria-label="Share recipe link"
+      aria-label="Share recipe"
     >
       <Link2 size={16} aria-hidden="true" />
       {copied ? 'Copied' : 'Share'}

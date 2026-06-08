@@ -16,6 +16,7 @@ function formatNutritionValue(value: number, unit: string): string {
 }
 import type { Recipe } from '../types/Recipe'
 import { getRecipeCategoryNames, toCategoryTag } from '../utils/categories'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { ErrorBoundary } from './ErrorBoundary'
 import { Modal } from './ui/Modal'
 import SaveToCollectionButton from './SaveToCollectionButton'
@@ -38,6 +39,82 @@ type RecipeModalProps = {
   onViewAuthor?: (username: string) => void
 }
 
+type RecipeModalEngagementActionsProps = {
+  recipe: Recipe
+  liked: boolean
+  likeCount: number
+  isSaved: boolean
+  onToggleLike?: (recipeId: number) => void
+  onToggleSaved?: (recipe: Recipe) => void
+  variant?: 'default' | 'sticky'
+}
+
+function RecipeModalEngagementActions({
+  recipe,
+  liked,
+  likeCount,
+  isSaved,
+  onToggleLike,
+  onToggleSaved,
+  variant = 'default',
+}: RecipeModalEngagementActionsProps) {
+  const isSticky = variant === 'sticky'
+  const actionClass = isSticky ? ' recipe-modal__sticky-action' : ''
+  const rootClassName = isSticky
+    ? 'recipe-modal__engagement-actions recipe-modal__engagement-actions--sticky'
+    : 'recipe-modal__engagement-actions recipe-modal__engagement-actions--scroll'
+
+  return (
+    <div className={rootClassName}>
+      {recipe.source !== 'sample' && (
+        <button
+          type="button"
+          className={
+            liked
+              ? `like-button like-button--active${actionClass}`
+              : `like-button${actionClass}`
+          }
+          onClick={() => onToggleLike?.(recipe.id)}
+          aria-label={liked ? 'Unlike recipe' : 'Like recipe'}
+          aria-pressed={liked}
+        >
+          <ThumbsUp
+            size={16}
+            aria-hidden="true"
+            fill={liked ? 'currentColor' : 'none'}
+          />
+          <span>{likeCount}</span>
+        </button>
+      )}
+      <button
+        type="button"
+        className={
+          isSaved
+            ? `save-button save-button--active${actionClass}`
+            : `save-button${actionClass}`
+        }
+        onClick={() => onToggleSaved?.(recipe)}
+        aria-label={isSaved ? 'Unsave recipe' : 'Save recipe'}
+        aria-pressed={isSaved}
+      >
+        <Heart
+          size={16}
+          aria-hidden="true"
+          fill={isSaved ? 'currentColor' : 'none'}
+        />
+        <span>{isSaved ? 'Saved' : 'Save'}</span>
+      </button>
+      <ShareRecipeButton
+        recipe={recipe}
+        className={
+          isSticky ? 'recipe-modal__sticky-action share-recipe-button--sticky' : ''
+        }
+      />
+      <SaveToCollectionButton recipe={recipe} compact={isSticky} />
+    </div>
+  )
+}
+
 function RecipeModal({
   recipe,
   onClose,
@@ -53,6 +130,7 @@ function RecipeModal({
   onViewAuthor,
 }: RecipeModalProps) {
   const titleId = useId()
+  const isMobile = useMediaQuery('(max-width: 760px)')
 
   const instructions = (recipe.instructions ?? '')
     .split('\n')
@@ -234,40 +312,15 @@ function RecipeModal({
           </div>
 
           <div className="recipe-modal__action-stack">
-            <div className="recipe-modal__engagement-actions">
-              {recipe.source !== 'sample' && (
-                <button
-                  type="button"
-                  className={
-                    liked ? 'like-button like-button--active' : 'like-button'
-                  }
-                  onClick={() => onToggleLike?.(recipe.id)}
-                  aria-label={liked ? 'Unlike recipe' : 'Like recipe'}
-                >
-                  <ThumbsUp
-                    size={16}
-                    aria-hidden="true"
-                    fill={liked ? 'currentColor' : 'none'}
-                  />
-                  <span>{likeCount}</span>
-                </button>
-              )}
-              <button
-                type="button"
-                className={isSaved ? 'save-button save-button--active' : 'save-button'}
-                onClick={() => onToggleSaved?.(recipe)}
-                aria-label={isSaved ? 'Unsave recipe' : 'Save recipe'}
-              >
-                <Heart
-                  size={16}
-                  aria-hidden="true"
-                  fill={isSaved ? 'currentColor' : 'none'}
-                />
-                <span>{isSaved ? 'Saved' : 'Save'}</span>
-              </button>
-              <ShareRecipeButton recipe={recipe} />
-              <SaveToCollectionButton recipe={recipe} />
-            </div>
+            <RecipeModalEngagementActions
+              recipe={recipe}
+              liked={liked}
+              likeCount={likeCount}
+              isSaved={isSaved}
+              onToggleLike={onToggleLike}
+              onToggleSaved={onToggleSaved}
+              variant="default"
+            />
 
             {canManage ? (
               <div className="recipe-modal__management-actions">
@@ -315,6 +368,23 @@ function RecipeModal({
             </ErrorBoundary>
           </div>
         </div>
+
+        {isMobile ? (
+          <div
+            className="recipe-modal__sticky-actions"
+            data-testid="recipe-modal-sticky-actions"
+          >
+            <RecipeModalEngagementActions
+              recipe={recipe}
+              liked={liked}
+              likeCount={likeCount}
+              isSaved={isSaved}
+              onToggleLike={onToggleLike}
+              onToggleSaved={onToggleSaved}
+              variant="sticky"
+            />
+          </div>
+        ) : null}
       </div>
     </Modal>
   )

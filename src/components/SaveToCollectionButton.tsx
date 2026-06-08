@@ -16,10 +16,12 @@ const DEFAULT_COLLECTION_NAME = 'Saved recipes'
 
 type SaveToCollectionButtonProps = {
   recipe: Recipe
+  compact?: boolean
 }
 
 export default function SaveToCollectionButton({
   recipe,
+  compact = false,
 }: SaveToCollectionButtonProps) {
   const { user } = useAuth()
   const [collections, setCollections] = useState<CollectionSummary[]>([])
@@ -143,43 +145,63 @@ export default function SaveToCollectionButton({
     }
   }
 
-  const savedLabel =
-    savedCollections.length === 1
+  const savedLabel = compact
+    ? 'Saved'
+    : savedCollections.length === 1
       ? `In collection · ${savedCollections[0].name}`
       : savedCollections.length > 1
         ? `In ${savedCollections.length} collections`
         : 'Added to collection'
 
+  const buttonLabel = compact
+    ? busy
+      ? 'Adding…'
+      : isSaved
+        ? savedLabel
+        : 'Collection'
+    : busy
+      ? 'Adding…'
+      : isSaved
+        ? savedLabel
+        : 'Add to collection'
+
   return (
-    <div className="save-to-collection">
+    <div
+      className={
+        compact ? 'save-to-collection save-to-collection--compact' : 'save-to-collection'
+      }
+    >
       <button
         type="button"
         className={
-          isSaved
-            ? 'recipe-modal__edit-button save-to-collection__toggle save-to-collection__toggle--saved'
-            : 'recipe-modal__edit-button save-to-collection__toggle'
+          [
+            'recipe-modal__edit-button',
+            'save-to-collection__toggle',
+            compact ? 'recipe-modal__sticky-action' : '',
+            isSaved ? 'save-to-collection__toggle--saved' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')
         }
         onClick={() => void handleSaveClick()}
         aria-expanded={open}
         aria-pressed={isSaved}
         aria-haspopup={collections.length > 1 ? 'menu' : undefined}
         disabled={busy}
-        aria-label={
-          isSaved
-            ? 'Recipe added to one or more collections'
-            : 'Add recipe to a collection'
-        }
+        aria-label="Add to collection"
       >
         {isSaved ? (
           <BookmarkCheck size={16} aria-hidden="true" />
         ) : (
           <Bookmark size={16} aria-hidden="true" />
         )}
-        {busy ? 'Adding…' : isSaved ? savedLabel : 'Add to collection'}
+        {buttonLabel}
       </button>
-      <p className="save-to-collection__hint">
-        Collections help organize recipes you have already saved.
-      </p>
+      {compact ? null : (
+        <p className="save-to-collection__hint">
+          Collections help organize recipes you have already saved.
+        </p>
+      )}
 
       {open && collections.length > 1 ? (
         <div className="save-to-collection__menu" role="menu">

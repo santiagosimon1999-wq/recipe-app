@@ -501,8 +501,42 @@ test.describe('release gate — signed out smoke', () => {
     await cardButton.click()
     const recipeModal = page.locator('.recipe-modal')
     await expect(recipeModal).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('recipe-modal-sticky-actions')).toBeVisible()
     await recipeModal.getByRole('button', { name: /Close recipe/i }).click()
     await expect(recipeModal).toHaveCount(0)
+  })
+
+  test('desktop recipe modal does not show sticky action bar', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto('/community')
+    const cardButton = page.getByRole('button', { name: /^Open /i }).first()
+    test.skip((await cardButton.count()) === 0, 'No community recipes available')
+
+    await cardButton.click()
+    const recipeModal = page.locator('.recipe-modal')
+    await expect(recipeModal).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('recipe-modal-sticky-actions')).toHaveCount(0)
+    await expect(
+      recipeModal.locator('.recipe-modal__engagement-actions--scroll')
+    ).toBeVisible()
+    await recipeModal.getByRole('button', { name: /Close recipe/i }).click()
+  })
+
+  test('signed-out save from mobile sticky bar opens Join Savora prompt', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/community')
+    const cardButton = page.getByRole('button', { name: /^Open /i }).first()
+    test.skip((await cardButton.count()) === 0, 'No community recipes available')
+
+    await cardButton.click()
+    const stickyBar = page.getByTestId('recipe-modal-sticky-actions')
+    await expect(stickyBar).toBeVisible({ timeout: 10_000 })
+    await stickyBar.getByRole('button', { name: /^Save recipe$/i }).click()
+    await expect(page.getByRole('dialog').last()).toBeVisible()
+    await expect(page.getByRole('button', { name: /Continue to sign up/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Continue to login/i })).toBeVisible()
   })
 
   test('protected saved route shows guest teaser copy', async ({ page }) => {
