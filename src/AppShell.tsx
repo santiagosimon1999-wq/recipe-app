@@ -415,6 +415,7 @@ export default function AppShell({ theme, onToggleTheme }: AppShellProps) {
             key={recipeBeingEdited?.id ?? 'new'}
             initialRecipe={recipeBeingEdited}
             categoryOptions={categoryOptions}
+            isSaving={savingRecipe}
             onSaveRecipe={handleAddRecipe}
             onCancel={handleCancelRecipeForm}
           />

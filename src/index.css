@@ -497,6 +497,7 @@ html.app--light,
   background-color: var(--surface);
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(16px);
+  overflow-x: hidden;
 }
 
 .discover-panel__header h2,
@@ -1137,9 +1138,44 @@ html.app--light,
   font-weight: 900;
 }
 
+.recipe-form__hint {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.recipe-form__field-error {
+  margin: 0;
+  color: var(--error-text);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.recipe-form__group input[type='file'] {
+  min-height: 44px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
 .recipe-form__group textarea {
   min-height: 110px;
   resize: vertical;
+}
+
+.recipe-form__group input:disabled,
+.recipe-form__group textarea:disabled,
+.recipe-form__group input[type='file']:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.recipe-form__submit-button:disabled,
+.recipe-form__cancel-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .recipe-form__selected-categories {
@@ -1234,11 +1270,36 @@ html.app--light,
   cursor: not-allowed;
 }
 
+.recipe-form__estimate-note,
+.recipe-form__nutrition-feedback {
+  font-size: 0.84rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
 .recipe-form__estimate-note {
-  font-size: 0.8rem;
   color: var(--text-soft);
   font-style: italic;
-  margin: 0;
+}
+
+.recipe-form__nutrition-feedback--success {
+  color: var(--text-soft);
+  font-style: italic;
+}
+
+.recipe-form__nutrition-feedback--warning {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background-color: var(--accent-soft);
+  color: var(--text-main);
+}
+
+.recipe-form__nutrition-feedback--error {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background-color: var(--error-bg);
+  color: var(--error-text);
+  font-weight: 700;
 }
 
 .recipe-form__nutrition-grid {
@@ -1629,6 +1690,7 @@ html.app--dark .recipe-modal {
   .recipe-form-section,
   .empty-profile-state {
     padding: 18px;
+    padding-bottom: calc(18px + var(--bottom-nav-reserve) + 56px);
     border-radius: 22px;
   }
 
@@ -4338,11 +4400,19 @@ html.app--dark .recipe-modal {
     z-index: 5;
     margin-top: 8px;
     padding: 12px 0 4px;
+    gap: 12px;
     background: linear-gradient(
       to top,
-      var(--app-bg) 70%,
+      var(--app-bg) 78%,
       rgba(255, 255, 255, 0)
     );
+  }
+
+  .recipe-form__submit-button,
+  .recipe-form__cancel-button {
+    flex: 1 1 140px;
+    min-height: 44px;
+    font-size: 1rem;
   }
 
   .trust-page__content {

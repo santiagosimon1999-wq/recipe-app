@@ -1,7 +1,8 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useId, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Sparkles } from 'lucide-react'
 import {
   calculateNutrition,
+  debugParseIngredients,
   estimateCookingTime,
   estimateServings,
 } from '../lib/nutritionService'
@@ -15,10 +16,20 @@ import {
   groupCategoryOptions,
   type CategoryOption,
 } from '../utils/categories'
+import {
+  getNutritionEstimateFeedback,
+  getSubmitButtonLabel,
+  RECIPE_FORM_HINTS,
+  validateRecipeFormFields,
+  type NutritionEstimateFeedback,
+  type RecipeFormFieldErrors,
+  type RecipeFormFieldKey,
+} from './recipeFormHelpers'
 
 type RecipeFormProps = {
   initialRecipe: Recipe | null
   categoryOptions?: Record<CategoryGroupKey, CategoryOption[]>
+  isSaving?: boolean
   onSaveRecipe: (recipe: Recipe) => void
   onCancel: () => void
 }
@@ -95,9 +106,19 @@ function parsePositiveInt(value: string): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
 }
 
+function fieldErrorId(field: RecipeFormFieldKey): string {
+  return `recipe-form-error-${field}`
+}
+
+function describedBy(...ids: Array<string | undefined>): string | undefined {
+  const value = ids.filter(Boolean).join(' ')
+  return value || undefined
+}
+
 function RecipeForm({
   initialRecipe,
   categoryOptions,
+  isSaving = false,
   onSaveRecipe,
   onCancel,
 }: RecipeFormProps) {
@@ -105,9 +126,13 @@ function RecipeForm({
     getInitialFormState(initialRecipe)
   )
 
-  const [errorMessage, setErrorMessage] = useState('')
+  const [formErrorMessage, setFormErrorMessage] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<RecipeFormFieldErrors>({})
   const [estimating, setEstimating] = useState(false)
-  const [showEstimateNote, setShowEstimateNote] = useState(false)
+  const [nutritionFeedback, setNutritionFeedback] =
+    useState<NutritionEstimateFeedback | null>(null)
+
+  const nutritionFeedbackId = useId()
 
   const groupedCategoryOptions =
     categoryOptions && Object.values(categoryOptions).some((group) => group.length > 0)
@@ -127,6 +152,15 @@ function RecipeForm({
     }
   }, [imagePreviewUrl])
 
+  function clearFieldError(field: RecipeFormFieldKey) {
+    setFieldErrors((current) => {
+      if (!current[field]) return current
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
+  }
+
   function updateField<K extends keyof RecipeFormState>(
     field: K,
     value: RecipeFormState[K]
@@ -135,6 +169,19 @@ function RecipeForm({
       ...current,
       [field]: value,
     }))
+
+    if (
+      field === 'title' ||
+      field === 'description' ||
+      field === 'ingredients' ||
+      field === 'instructions'
+    ) {
+      clearFieldError(field)
+    }
+
+    if (field === 'ingredients' || field === 'instructions') {
+      setNutritionFeedback(null)
+    }
   }
 
   function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
@@ -152,20 +199,20 @@ function RecipeForm({
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage('Image must be 5 MB or smaller.')
+      setFormErrorMessage('Image must be 5 MB or smaller.')
       event.target.value = ''
       return
     }
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
     if (!allowedTypes.includes(file.type)) {
-      setErrorMessage('Please upload a JPEG, PNG, WebP, or GIF image.')
+      setFormErrorMessage('Please upload a JPEG, PNG, WebP, or GIF image.')
       event.target.value = ''
       return
     }
 
     updateField('imageFile', file)
-    setErrorMessage('')
+    setFormErrorMessage('')
 
     setImagePreviewUrl((current) => {
       if (current.startsWith('blob:')) {
@@ -182,15 +229,27 @@ function RecipeForm({
       .filter((line) => line !== '')
 
     if (ingredientLines.length === 0) {
-      setErrorMessage('Add at least one ingredient before estimating.')
+      setFieldErrors((current) => ({
+        ...current,
+        ingredients: 'Add at least one ingredient before estimating.',
+      }))
       return
     }
 
     setEstimating(true)
-    setErrorMessage('')
+    setFormErrorMessage('')
+    setNutritionFeedback(null)
 
     try {
       const nutrition = await calculateNutrition(ingredientLines)
+      const parsed = debugParseIngredients(ingredientLines)
+      const feedback = getNutritionEstimateFeedback(nutrition, parsed)
+      setNutritionFeedback(feedback)
+
+      if (feedback?.kind === 'error') {
+        return
+      }
+
       const cookingTime = estimateCookingTime({
         title: formState.title,
         ingredients: ingredientLines,
@@ -207,15 +266,26 @@ function RecipeForm({
 
       setFormState((current) => ({
         ...current,
-        calories: nutrition.calories > 0 ? String(Math.round(nutrition.calories)) : current.calories,
-        protein: nutrition.protein > 0 ? String(Math.round(nutrition.protein)) : current.protein,
-        carbs: nutrition.carbs > 0 ? String(Math.round(nutrition.carbs)) : current.carbs,
+        calories:
+          nutrition.calories > 0
+            ? String(Math.round(nutrition.calories))
+            : current.calories,
+        protein:
+          nutrition.protein > 0
+            ? String(Math.round(nutrition.protein))
+            : current.protein,
+        carbs:
+          nutrition.carbs > 0 ? String(Math.round(nutrition.carbs)) : current.carbs,
         fat: nutrition.fat > 0 ? String(Math.round(nutrition.fat)) : current.fat,
         cookingTime: String(cookingTime),
         servings: String(servings),
       }))
-
-      setShowEstimateNote(true)
+    } catch (error) {
+      console.error('Nutrition estimate failed:', error)
+      setNutritionFeedback({
+        kind: 'error',
+        message: RECIPE_FORM_HINTS.nutritionEstimateError,
+      })
     } finally {
       setEstimating(false)
     }
@@ -224,19 +294,20 @@ function RecipeForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (
-      !formState.title.trim() ||
-      !formState.description.trim() ||
-      !formState.ingredients.trim() ||
-      !formState.instructions.trim()
-    ) {
-      setErrorMessage('Please fill in all required fields.')
-      return
-    }
+    if (isSaving) return
 
     const normalizedCategories = dedupeCategoryNames(formState.categories)
-    if (normalizedCategories.length === 0) {
-      setErrorMessage('Please choose at least one category.')
+    const validationErrors = validateRecipeFormFields({
+      title: formState.title,
+      description: formState.description,
+      ingredients: formState.ingredients,
+      instructions: formState.instructions,
+      categories: normalizedCategories,
+    })
+
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors)
+      setFormErrorMessage('Please fix the highlighted fields before saving.')
       return
     }
 
@@ -265,7 +336,8 @@ function RecipeForm({
       liked: initialRecipe?.liked ?? false,
     }
 
-    setErrorMessage('')
+    setFormErrorMessage('')
+    setFieldErrors({})
     onSaveRecipe(recipeToSave)
   }
 
@@ -282,7 +354,10 @@ function RecipeForm({
         category: getPrimaryCategory(nextCategories),
       }
     })
+    clearFieldError('categories')
   }
+
+  const submitLabel = getSubmitButtonLabel(Boolean(initialRecipe), isSaving)
 
   return (
     <section className="recipe-form-section">
@@ -290,9 +365,13 @@ function RecipeForm({
         {initialRecipe ? 'Edit Recipe' : 'Create Recipe'}
       </h2>
 
-      {errorMessage ? <p className="recipe-form__error">{errorMessage}</p> : null}
+      {formErrorMessage ? (
+        <p className="recipe-form__error" role="alert">
+          {formErrorMessage}
+        </p>
+      ) : null}
 
-      <form className="recipe-form" onSubmit={handleSubmit}>
+      <form className="recipe-form" onSubmit={handleSubmit} noValidate>
         <div className="recipe-form__group">
           <label htmlFor="title">Title</label>
           <input
@@ -300,7 +379,21 @@ function RecipeForm({
             type="text"
             value={formState.title}
             onChange={(event) => updateField('title', event.target.value)}
+            aria-invalid={Boolean(fieldErrors.title)}
+            aria-describedby={
+              fieldErrors.title ? fieldErrorId('title') : undefined
+            }
+            disabled={isSaving}
           />
+          {fieldErrors.title ? (
+            <p
+              id={fieldErrorId('title')}
+              className="recipe-form__field-error"
+              role="alert"
+            >
+              {fieldErrors.title}
+            </p>
+          ) : null}
         </div>
 
         <div className="recipe-form__group">
@@ -308,9 +401,13 @@ function RecipeForm({
           <input
             id="imageFile"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={handleImageChange}
+            disabled={isSaving}
           />
+          <p id="imageFile-hint" className="recipe-form__hint">
+            Optional. JPEG, PNG, WebP, or GIF up to 5 MB.
+          </p>
 
           {imagePreviewUrl ? (
             <img
@@ -319,7 +416,7 @@ function RecipeForm({
               alt="Recipe preview"
             />
           ) : (
-            <p>You can save the recipe without an image.</p>
+            <p className="recipe-form__hint">You can save the recipe without an image.</p>
           )}
         </div>
 
@@ -329,7 +426,21 @@ function RecipeForm({
             id="description"
             value={formState.description}
             onChange={(event) => updateField('description', event.target.value)}
+            aria-invalid={Boolean(fieldErrors.description)}
+            aria-describedby={
+              fieldErrors.description ? fieldErrorId('description') : undefined
+            }
+            disabled={isSaving}
           />
+          {fieldErrors.description ? (
+            <p
+              id={fieldErrorId('description')}
+              className="recipe-form__field-error"
+              role="alert"
+            >
+              {fieldErrors.description}
+            </p>
+          ) : null}
         </div>
 
         <div className="recipe-form__group">
@@ -340,6 +451,7 @@ function RecipeForm({
             value={formState.categorySearch}
             onChange={(event) => updateField('categorySearch', event.target.value)}
             placeholder="Search categories..."
+            disabled={isSaving}
           />
 
           <div className="recipe-form__selected-categories">
@@ -349,12 +461,24 @@ function RecipeForm({
                 type="button"
                 className="recipe-form__category-chip recipe-form__category-chip--active"
                 onClick={() => handleToggleCategory(categoryName)}
+                disabled={isSaving}
+                aria-label={`Remove ${categoryName} category`}
               >
                 <span>{categoryName}</span>
                 <span aria-hidden="true">×</span>
               </button>
             ))}
           </div>
+
+          {fieldErrors.categories ? (
+            <p
+              id={fieldErrorId('categories')}
+              className="recipe-form__field-error"
+              role="alert"
+            >
+              {fieldErrors.categories}
+            </p>
+          ) : null}
 
           <div className="recipe-form__category-groups">
             {(Object.entries(groupedCategoryOptions) as Array<
@@ -383,6 +507,8 @@ function RecipeForm({
                               : 'recipe-form__category-chip'
                           }
                           onClick={() => handleToggleCategory(option.name)}
+                          disabled={isSaving}
+                          aria-pressed={selected}
                         >
                           {option.icon ? <span aria-hidden="true">{option.icon}</span> : null}
                           <span>{option.name}</span>
@@ -398,33 +524,66 @@ function RecipeForm({
 
         <div className="recipe-form__group">
           <label htmlFor="ingredients">Ingredients — one per line</label>
+          <p id="ingredients-hint" className="recipe-form__hint">
+            {RECIPE_FORM_HINTS.ingredients}
+          </p>
           <textarea
             id="ingredients"
             value={formState.ingredients}
-            onChange={(event) => {
-              updateField('ingredients', event.target.value)
-              setShowEstimateNote(false)
-            }}
+            onChange={(event) => updateField('ingredients', event.target.value)}
+            aria-describedby={describedBy(
+              'ingredients-hint',
+              fieldErrors.ingredients ? fieldErrorId('ingredients') : undefined
+            )}
+            aria-invalid={Boolean(fieldErrors.ingredients)}
             placeholder={`Example:
-200g chicken breast
+2 eggs
 1 cup rice
 1 tbsp olive oil`}
+            disabled={isSaving}
           />
+          {fieldErrors.ingredients ? (
+            <p
+              id={fieldErrorId('ingredients')}
+              className="recipe-form__field-error"
+              role="alert"
+            >
+              {fieldErrors.ingredients}
+            </p>
+          ) : null}
         </div>
 
         <div className="recipe-form__group">
           <label htmlFor="instructions">Instructions</label>
+          <p id="instructions-hint" className="recipe-form__hint">
+            {RECIPE_FORM_HINTS.instructions}
+          </p>
           <textarea
             id="instructions"
             value={formState.instructions}
-            onChange={(event) => {
-              updateField('instructions', event.target.value)
-              setShowEstimateNote(false)
-            }}
+            onChange={(event) => updateField('instructions', event.target.value)}
+            aria-describedby={describedBy(
+              'instructions-hint',
+              fieldErrors.instructions ? fieldErrorId('instructions') : undefined
+            )}
+            aria-invalid={Boolean(fieldErrors.instructions)}
+            placeholder={`Example:
+Preheat the oven to 400°F.
+Toss vegetables with olive oil and roast for 20 minutes.
+Serve warm.`}
+            disabled={isSaving}
           />
+          {fieldErrors.instructions ? (
+            <p
+              id={fieldErrorId('instructions')}
+              className="recipe-form__field-error"
+              role="alert"
+            >
+              {fieldErrors.instructions}
+            </p>
+          ) : null}
         </div>
 
-        {/* ── Nutrition + time estimation ── */}
         <div className="recipe-form__nutrition-section">
           <div className="recipe-form__nutrition-header">
             <p className="recipe-form__nutrition-label">Nutrition &amp; details</p>
@@ -432,7 +591,7 @@ function RecipeForm({
               type="button"
               className="recipe-form__estimate-button"
               onClick={() => void handleEstimate()}
-              disabled={estimating}
+              disabled={estimating || isSaving}
               aria-busy={estimating}
             >
               <Sparkles size={15} aria-hidden="true" />
@@ -440,11 +599,26 @@ function RecipeForm({
             </button>
           </div>
 
-          {showEstimateNote ? (
-            <p className="recipe-form__estimate-note">
-              Estimates are approximate. You can edit them before saving.
+          {nutritionFeedback ? (
+            <p
+              id={nutritionFeedbackId}
+              className={
+                nutritionFeedback.kind === 'error'
+                  ? 'recipe-form__nutrition-feedback recipe-form__nutrition-feedback--error'
+                  : nutritionFeedback.kind === 'warning'
+                    ? 'recipe-form__nutrition-feedback recipe-form__nutrition-feedback--warning'
+                    : 'recipe-form__nutrition-feedback recipe-form__nutrition-feedback--success'
+              }
+              role="status"
+              aria-live="polite"
+            >
+              {nutritionFeedback.message}
             </p>
-          ) : null}
+          ) : (
+            <p className="recipe-form__estimate-note">
+              {RECIPE_FORM_HINTS.nutritionDisclaimer}
+            </p>
+          )}
 
           <div className="recipe-form__nutrition-grid">
             <div className="recipe-form__group recipe-form__group--inline">
@@ -457,6 +631,7 @@ function RecipeForm({
                 value={formState.calories}
                 onChange={(event) => updateField('calories', event.target.value)}
                 placeholder="e.g. 450"
+                disabled={isSaving}
               />
             </div>
 
@@ -470,6 +645,7 @@ function RecipeForm({
                 value={formState.protein}
                 onChange={(event) => updateField('protein', event.target.value)}
                 placeholder="e.g. 30"
+                disabled={isSaving}
               />
             </div>
 
@@ -483,6 +659,7 @@ function RecipeForm({
                 value={formState.carbs}
                 onChange={(event) => updateField('carbs', event.target.value)}
                 placeholder="e.g. 45"
+                disabled={isSaving}
               />
             </div>
 
@@ -496,6 +673,7 @@ function RecipeForm({
                 value={formState.fat}
                 onChange={(event) => updateField('fat', event.target.value)}
                 placeholder="e.g. 12"
+                disabled={isSaving}
               />
             </div>
 
@@ -509,6 +687,7 @@ function RecipeForm({
                 value={formState.cookingTime}
                 onChange={(event) => updateField('cookingTime', event.target.value)}
                 placeholder="e.g. 30"
+                disabled={isSaving}
               />
             </div>
 
@@ -522,6 +701,7 @@ function RecipeForm({
                 value={formState.servings}
                 onChange={(event) => updateField('servings', event.target.value)}
                 placeholder="e.g. 4"
+                disabled={isSaving}
               />
             </div>
           </div>
@@ -534,17 +714,30 @@ function RecipeForm({
               type="checkbox"
               checked={formState.isPublic}
               onChange={(event) => updateField('isPublic', event.target.checked)}
+              disabled={isSaving}
             />
             Share this recipe publicly
           </label>
         </div>
 
         <div className="recipe-form__actions">
-          <button type="submit">
-            {initialRecipe ? 'Update Recipe' : 'Save Recipe'}
+          <button
+            type="submit"
+            className="recipe-form__submit-button"
+            disabled={isSaving || estimating}
+            aria-busy={isSaving}
+            aria-disabled={isSaving}
+          >
+            {submitLabel}
           </button>
 
-          <button type="button" onClick={onCancel}>
+          <button
+            type="button"
+            className="recipe-form__cancel-button"
+            onClick={onCancel}
+            disabled={isSaving}
+            aria-disabled={isSaving}
+          >
             Cancel
           </button>
         </div>
